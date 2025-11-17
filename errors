@@ -1,0 +1,9 @@
+[
+  {
+    "recordNumber": 1,
+    "email": "just-email@example.com",
+    "errorMessage": "Cannot read properties of null (reading 'organization')",
+    "timestamp": "2025-11-17T17:32:18.528Z",
+    "rawRow": null
+  }
+]
