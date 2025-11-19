@@ -12,7 +12,7 @@ export async function writeErrorsOut(outPath: string, errors: ErrorRecord[]): Pr
   if (errors.length === 0) return;
   const ext = path.extname(outPath).toLowerCase();
   if (ext === ".csv") {
-    const header = ["recordNumber", "email", "userId", "errorMessage", "httpStatus", "workosCode", "workosRequestId", "timestamp", "rawRow"];
+    const header = ["recordNumber", "email", "userId", "errorType", "errorMessage", "httpStatus", "workosCode", "workosRequestId", "timestamp", "rawRow"];
     const lines: string[] = [];
     lines.push(header.join(","));
     for (const err of errors) {
@@ -21,6 +21,7 @@ export async function writeErrorsOut(outPath: string, errors: ErrorRecord[]): Pr
         String(err.recordNumber),
         err.email ?? "",
         err.userId ?? "",
+        err.errorType ?? "",
         err.errorMessage,
         err.httpStatus != null ? String(err.httpStatus) : "",
         err.workosCode ?? "",

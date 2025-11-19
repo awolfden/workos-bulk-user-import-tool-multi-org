@@ -38,6 +38,12 @@ Options:
 - `--errors-out <path>`: Optional. If given, writes detailed per-record errors. If the extension is `.csv`, writes CSV; otherwise writes JSON.
 - `--quiet`: Optional. Suppresses per-record output but still prints a final summary to stderr.
 - `--concurrency <n>`: Optional. Max parallel requests (default: 10).
+- `--org-id <id>`: Single-org mode. Use an existing WorkOS Organization by ID.
+- `--org-external-id <externalId>`: Single-org mode. Resolve org by external_id.
+- `--create-org-if-missing`: With `--org-external-id`, create the organization if not found (requires `--org-name`).
+- `--org-name <name>`: Required with `--create-org-if-missing`. Name for created organization.
+- `--require-membership`: If membership creation fails, delete the newly created user and mark failure.
+- `--dry-run`: Parse and validate only; do not call WorkOS APIs. If `--org-external-id` is used with `--create-org-if-missing`, the org will not be created; a warning will indicate what would happen.
 - `--user-export <path>`: Deprecated alias for `--csv`.
 
 ### CSV Format
@@ -56,7 +62,6 @@ Optional columns:
 - `email_verified` (supports: true/false, 1/0, yes/no, case-insensitive)
 - `external_id`
 - `metadata` (JSON string; if invalid JSON, the record fails; if blank/whitespace, ignored)
-- `organization` (Organization ID string; if present, an organization membership is created for the user)
 
 Notes:
 
@@ -70,9 +75,14 @@ Notes:
   - `email_verified` → `emailVerified`
   - `external_id` → `externalId`
   - `metadata` (JSON) → `metadata` object
-  - `organization` (CSV) is used to call `userManagement.createOrganizationMembership({ userId, organizationId })` after the user is created.
 - Unknown columns are ignored (a one-time warning is printed).
 - If both plaintext `password` and `password_hash/password_hash_type` are present, the importer prefers the hash path and ignores plaintext `password`.
+
+Organization behavior:
+- The CSV is user-only; organization targeting is controlled by CLI flags.
+- User-only mode (no org flags): creates users only, no memberships.
+- Single-org mode (`--org-id` or `--org-external-id`): for each created user, creates a membership in the resolved organization.
+- With `--require-membership`, users created this run are deleted if their membership creation fails.
 
 ### Behavior
 
@@ -129,6 +139,30 @@ See `examples/example-input.csv` for sample rows:
 - With plaintext password
 - With password_hash + password_hash_type
 - With metadata JSON
+
+### Usage Examples
+
+User-only:
+```bash
+WORKOS_SECRET_KEY=sk_test_123 \
+  npx tsx bin/import-users.ts --csv examples/example-input.csv
+```
+
+Single-org with existing org:
+```bash
+WORKOS_SECRET_KEY=sk_test_123 \
+  npx tsx bin/import-users.ts --csv examples/example-input.csv --org-id org_123
+```
+
+Single-org by external_id, create if missing:
+```bash
+WORKOS_SECRET_KEY=sk_test_123 \
+  npx tsx bin/import-users.ts \
+    --csv examples/example-input.csv \
+    --org-external-id acme-123 \
+    --create-org-if-missing \
+    --org-name "Acme Inc."
+```
 
 ### Development
 

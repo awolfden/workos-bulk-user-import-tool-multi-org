@@ -8,7 +8,6 @@ export type CSVRow = {
   email_verified?: string | boolean;
   external_id?: string;
   metadata?: string;
-  organization?: string;
   // Allow unknowns; they will be ignored with a once-only warning
   [key: string]: unknown;
 };
@@ -29,6 +28,7 @@ export type ErrorRecord = {
   recordNumber: number;
   email?: string;
   userId?: string;
+  errorType?: "user_create" | "membership_create";
   errorMessage: string;
   timestamp: string;
   rawRow?: Record<string, unknown>;
@@ -42,6 +42,7 @@ export type ImportSummary = {
   total: number;
   successes: number;
   failures: number;
+  membershipsCreated: number;
   startedAt: number;
   endedAt: number;
   warnings: string[];

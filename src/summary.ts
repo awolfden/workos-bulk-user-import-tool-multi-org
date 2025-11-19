@@ -32,11 +32,13 @@ export function renderSummaryBox(summary: ImportSummary): string {
   const imported = `${summary.successes}/${summary.total}`;
   const warningsCount = summary.warnings.length;
   const errorsCount = summary.failures;
+  const memberships = summary.membershipsCreated;
 
   const content = [
     "SUMMARY",
     `Status: ${status}`,
     `Users imported: ${imported}`,
+    `Memberships created: ${memberships}`,
     `Duration: ${duration}`,
     `Warnings: ${warningsCount}`,
     `Errors: ${errorsCount}`

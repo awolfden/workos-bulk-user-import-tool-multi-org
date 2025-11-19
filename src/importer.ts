@@ -9,6 +9,9 @@ type ImportOptions = {
   csvPath: string;
   quiet?: boolean;
   concurrency?: number;
+  orgId?: string | null;
+  requireMembership?: boolean;
+  dryRun?: boolean;
 };
 
 class Semaphore {
@@ -48,8 +51,7 @@ const KNOWN_COLUMNS = new Set([
   "last_name",
   "email_verified",
   "external_id",
-  "metadata",
-  "organization"
+  "metadata"
 ]);
 
 function buildPayloadFromRow(row: CSVRow): { payload?: CreateUserPayload; error?: string } {
@@ -159,11 +161,20 @@ async function retryCreateOrganizationMembership(
   }
 }
 
+async function deleteUserSafe(userId: string): Promise<void> {
+  const workos = getWorkOSClient();
+  try {
+    await (workos.userManagement as any).deleteUser(userId);
+  } catch {
+    // Best-effort delete; ignore errors
+  }
+}
+
 export async function importUsersFromCsv(options: ImportOptions): Promise<{
   summary: ImportSummary;
   errors: ErrorRecord[];
 }> {
-  const { csvPath, quiet, concurrency = 10 } = options;
+  const { csvPath, quiet, concurrency = 10, orgId = null, requireMembership = false, dryRun = false } = options;
   const logger = createLogger({ quiet });
   const startedAt = Date.now();
   const errors: ErrorRecord[] = [];
@@ -172,6 +183,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
     total: 0,
     successes: 0,
     failures: 0,
+    membershipsCreated: 0,
     startedAt,
     endedAt: startedAt,
     warnings
@@ -227,6 +239,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
             const errRec: ErrorRecord = {
               recordNumber: currentRecord,
               email,
+              errorType: "user_create",
               errorMessage: built.error,
               timestamp: new Date().toISOString(),
               rawRow: rowData as Record<string, unknown>
@@ -238,18 +251,74 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
           }
           let createdUserId: string | undefined;
           try {
-            createdUserId = await retryCreateUser(built.payload!);
-            // Create org membership if organization column provided
-            const organizationId =
-              typeof (rowData as any).organization === "string"
-                ? ((rowData as any).organization as string).trim()
-                : "";
-            if (organizationId) {
-              await retryCreateOrganizationMembership(createdUserId, organizationId);
+            if (!dryRun) {
+              createdUserId = await retryCreateUser(built.payload!);
+            } else {
+              // Simulate user creation
+              createdUserId = undefined;
+            }
+            // If single-org mode, create membership
+            if (orgId) {
+              try {
+                if (!dryRun) {
+                  await retryCreateOrganizationMembership(createdUserId!, orgId);
+                }
+                summary.membershipsCreated += 1;
+              } catch (err) {
+                if (requireMembership) {
+                    if (!dryRun && createdUserId) {
+                      await deleteUserSafe(createdUserId);
+                    }
+                }
+                const status: number | undefined =
+                  (err as any)?.status ?? (err as any)?.httpStatus ?? (err as any)?.response?.status ?? (err as any)?.code;
+                const workosCode: string | undefined =
+                  (err as any)?.response?.data?.code ?? (err as any)?.code;
+                const requestId: string | undefined =
+                  (err as any)?.requestId ?? (err as any)?.response?.headers?.["x-request-id"] ?? (err as any)?.response?.headers?.["X-Request-Id"];
+                const workosErrors = (err as any)?.response?.data?.errors ?? (err as any)?.errors;
+                const message: string = (err as any)?.message || "Unknown error";
+                const errRec: ErrorRecord = {
+                  recordNumber: currentRecord,
+                  email,
+                  userId: createdUserId,
+                  errorType: "membership_create",
+                  errorMessage: message,
+                  timestamp: new Date().toISOString(),
+                  rawRow: rowData as Record<string, unknown>,
+                  httpStatus: status,
+                  workosCode,
+                  workosRequestId: requestId,
+                  workosErrors
+                };
+                errors.push(errRec);
+                summary.failures += 1;
+                logger.stepFailure(currentRecord);
+                const statusStr = status != null ? String(status) : "?";
+                const codeStr = workosCode ?? "?";
+                const reqStr = requestId ?? "?";
+                logger.warn(`Record #${currentRecord} membership failed: status=${statusStr} code=${codeStr} requestId=${reqStr} message=${message}`);
+                return;
+              }
             }
             summary.successes += 1;
             logger.stepSuccess(currentRecord);
           } catch (err: any) {
+            if (dryRun) {
+              // Should not reach here in dry run; treat as logic error
+              const errRec: ErrorRecord = {
+                recordNumber: currentRecord,
+                email,
+                errorType: "user_create",
+                errorMessage: err?.message || "Dry run error",
+                timestamp: new Date().toISOString(),
+                rawRow: rowData as Record<string, unknown>
+              };
+              errors.push(errRec);
+              summary.failures += 1;
+              logger.stepFailure(currentRecord);
+              return;
+            }
             const status: number | undefined =
               err?.status ?? err?.httpStatus ?? err?.response?.status ?? err?.code;
             const workosCode: string | undefined =
@@ -262,6 +331,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
               recordNumber: currentRecord,
               email,
               userId: createdUserId,
+              errorType: "user_create",
               errorMessage: message,
               timestamp: new Date().toISOString(),
               rawRow: rowData as Record<string, unknown>,
