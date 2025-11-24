@@ -4,6 +4,7 @@ import { getWorkOSClient } from "./workos.js";
 import { createLogger } from "./logger.js";
 import { isBlank, parseBooleanLike } from "./boolean.js";
 import { CreateUserPayload, CSVRow, ErrorRecord, ImportSummary } from "./types.js";
+import { RateLimiter } from "./rateLimiter.js";
 
 type ImportOptions = {
   csvPath: string;
@@ -103,6 +104,7 @@ function buildPayloadFromRow(row: CSVRow): { payload?: CreateUserPayload; error?
 
 async function retryCreateUser(
   payload: CreateUserPayload,
+  limiter: RateLimiter,
   maxRetries = 3,
   baseDelayMs = 500
 ): Promise<string> {
@@ -111,6 +113,7 @@ async function retryCreateUser(
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
+      await limiter.acquire();
       const user = await workos.userManagement.createUser(payload as any);
       return (user as any)?.id as string;
     } catch (err: any) {
@@ -132,6 +135,7 @@ async function retryCreateUser(
 async function retryCreateOrganizationMembership(
   userId: string,
   organizationId: string,
+  limiter: RateLimiter,
   maxRetries = 3,
   baseDelayMs = 500
 ): Promise<void> {
@@ -140,6 +144,7 @@ async function retryCreateOrganizationMembership(
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
+      await limiter.acquire();
       await workos.userManagement.createOrganizationMembership({
         userId,
         organizationId
@@ -176,6 +181,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
 }> {
   const { csvPath, quiet, concurrency = 10, orgId = null, requireMembership = false, dryRun = false } = options;
   const logger = createLogger({ quiet });
+  const limiter = new RateLimiter(50);
   const startedAt = Date.now();
   const errors: ErrorRecord[] = [];
   const warnings: string[] = [];
@@ -252,7 +258,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
           let createdUserId: string | undefined;
           try {
             if (!dryRun) {
-              createdUserId = await retryCreateUser(built.payload!);
+              createdUserId = await retryCreateUser(built.payload!, limiter);
             } else {
               // Simulate user creation
               createdUserId = undefined;
@@ -261,7 +267,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
             if (orgId) {
               try {
                 if (!dryRun) {
-                  await retryCreateOrganizationMembership(createdUserId!, orgId);
+                  await retryCreateOrganizationMembership(createdUserId!, orgId, limiter);
                 }
                 summary.membershipsCreated += 1;
               } catch (err) {
