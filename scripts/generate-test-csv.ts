@@ -47,6 +47,15 @@ function shouldHaveError(index: number, errorRate: number): boolean {
   return (index * 7919) % 1000 < errorRate * 1000;
 }
 
+function escapeCsvField(value: string): string {
+  // If field contains quotes, commas, or newlines, wrap in quotes and escape internal quotes
+  if (!value) return value;
+  if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
 function generateCSV(options: GenerateOptions): void {
   const { count, outputPath, withErrors = false, errorRate = 0.05 } = options;
 
@@ -84,9 +93,9 @@ function generateCSV(options: GenerateOptions): void {
     let row: string;
     if (withErrors && shouldHaveError(i, errorRate)) {
       // Intentional error: missing email (invalid row)
-      row = `,${firstName},${lastName},${emailVerified},${externalId},${metadata}\n`;
+      row = `,${firstName},${lastName},${emailVerified},${externalId},${escapeCsvField(metadata)}\n`;
     } else {
-      row = `${email},${firstName},${lastName},${emailVerified},${externalId},${metadata}\n`;
+      row = `${email},${firstName},${lastName},${emailVerified},${externalId},${escapeCsvField(metadata)}\n`;
     }
 
     stream.write(row);
