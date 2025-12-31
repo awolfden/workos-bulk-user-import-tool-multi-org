@@ -123,7 +123,17 @@ async function retryCreateUser(
       const isRateLimited = status === 429 || /rate.?limit/i.test(message);
       attempt += 1;
       if (isRateLimited && attempt <= maxRetries) {
-        const delay = baseDelayMs * Math.pow(2, attempt - 1);
+        let delay = baseDelayMs * Math.pow(2, attempt - 1);
+
+        // Respect Retry-After header if provided
+        const retryAfter = err?.response?.headers?.['retry-after'] ?? err?.response?.headers?.['Retry-After'];
+        if (retryAfter) {
+          const retryAfterSeconds = parseInt(retryAfter, 10);
+          if (!isNaN(retryAfterSeconds)) {
+            delay = retryAfterSeconds * 1000; // Convert seconds to milliseconds
+          }
+        }
+
         await new Promise(r => setTimeout(r, delay));
         continue;
       }
@@ -157,7 +167,17 @@ async function retryCreateOrganizationMembership(
       const isRateLimited = status === 429 || /rate.?limit/i.test(message);
       attempt += 1;
       if (isRateLimited && attempt <= maxRetries) {
-        const delay = baseDelayMs * Math.pow(2, attempt - 1);
+        let delay = baseDelayMs * Math.pow(2, attempt - 1);
+
+        // Respect Retry-After header if provided
+        const retryAfter = err?.response?.headers?.['retry-after'] ?? err?.response?.headers?.['Retry-After'];
+        if (retryAfter) {
+          const retryAfterSeconds = parseInt(retryAfter, 10);
+          if (!isNaN(retryAfterSeconds)) {
+            delay = retryAfterSeconds * 1000; // Convert seconds to milliseconds
+          }
+        }
+
         await new Promise(r => setTimeout(r, delay));
         continue;
       }
