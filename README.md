@@ -1,6 +1,15 @@
-## WorkOS CSV User Importer (Generic)
+## WorkOS Multi-Org User Importer (Enterprise)
 
-Import a list of users from a CSV file into WorkOS User Management. This guide is written for non-technical users and includes copy‑and‑paste commands.
+> **Note:** This is the **enterprise multi-org version** for importing users across multiple organizations at scale.
+> For single-org imports, see: [workos-bulk-user-import-tool](https://github.com/awolfden/workos-bulk-user-import-tool)
+
+Import users from a CSV file into WorkOS User Management with support for **multiple organizations**, **organization caching**, and **million+ user scale**.
+
+### Key Differences from Single-Org Tool
+- ✅ Multiple organizations in one CSV file
+- ✅ Organization caching for performance
+- ✅ Designed for 1M+ users across 1K+ organizations
+- ✅ Based on production-tested v1.1.0 foundation
 
 ---
 

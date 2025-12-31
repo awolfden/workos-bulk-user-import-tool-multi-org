@@ -1,8 +1,8 @@
 {
-  "name": "workos-user-import-cli",
+  "name": "workos-user-import-cli-multi-org",
   "version": "1.1.0",
   "private": true,
-  "description": "Generic CSV-based WorkOS User Importer CLI",
+  "description": "Enterprise-scale WorkOS User Importer CLI with multi-org support",
   "type": "module",
   "bin": {
     "workos-import-users": "bin/import-users.ts"
