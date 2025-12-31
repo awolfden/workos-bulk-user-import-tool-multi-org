@@ -310,6 +310,339 @@ These defaults work for 99%+ of use cases (100-1,000 organizations).
 
 ---
 
+### Chunking & Resumability (Phase 3)
+
+For very large imports (10K+ users), enable **chunked processing** with automatic checkpointing and resume capability. This provides constant memory usage (~100MB), crash recovery, and progress tracking with ETA.
+
+#### When to Use Chunking
+
+**Use chunked mode for:**
+- Imports with 10,000+ users
+- Long-running imports (>10 minutes)
+- Unreliable network environments
+- Multi-hour migrations where progress must be preserved
+
+**Don't use chunked mode for:**
+- Small imports (<5K users)
+- One-off quick imports
+- When simplicity is preferred over recoverability
+
+#### How Chunking Works
+
+```
+┌──────────────────────────────────────────────────┐
+│ CSV File (100K rows)                             │
+└─────────────┬────────────────────────────────────┘
+              │
+              ▼
+     ┌────────────────────┐
+     │ Split into Chunks  │
+     │ (1000 rows each)   │
+     └────────┬───────────┘
+              │
+              ▼
+┌─────────────────────────────────────────────────┐
+│ Chunk 1  → Process → Checkpoint → Save          │
+│ Chunk 2  → Process → Checkpoint → Save          │
+│ Chunk 3  → Process → Checkpoint → Save          │
+│ ...                                              │
+│ Chunk 100 → Process → Checkpoint → Complete     │
+└─────────────────────────────────────────────────┘
+         │
+         └─→ If crash: Resume from last checkpoint
+```
+
+**Benefits:**
+- **Constant Memory**: ~100MB regardless of CSV size
+- **Crash Recovery**: Resume from last completed chunk
+- **Progress Tracking**: Real-time ETA and percentage complete
+- **Cache Persistence**: Organization cache survives restarts
+
+#### Starting a Chunked Job
+
+Use `--job-id` to enable chunked mode with checkpointing:
+
+```bash
+WORKOS_SECRET_KEY=sk_test_123 \
+  npx tsx bin/import-users.ts \
+    --csv large-import.csv \
+    --job-id prod-migration-2024-01-15
+```
+
+**Job ID Guidelines:**
+- Choose descriptive, unique IDs (e.g., `migration-acme-2024-01-15`)
+- Use date stamps for easy identification
+- Avoid spaces or special characters (use hyphens/underscores)
+
+**What Happens:**
+1. Tool analyzes CSV (counts rows, calculates hash)
+2. Creates checkpoint directory: `.workos-checkpoints/{job-id}/`
+3. Splits import into chunks (default: 1000 rows per chunk)
+4. Processes chunks sequentially
+5. Saves checkpoint after each chunk
+6. Displays progress: `Progress: 45/100 chunks (45%) - ETA: 12m 30s`
+
+#### Resuming a Job
+
+If your import is interrupted (crash, Ctrl+C, network failure), resume with `--resume`:
+
+```bash
+# Resume specific job
+WORKOS_SECRET_KEY=sk_test_123 \
+  npx tsx bin/import-users.ts --resume prod-migration-2024-01-15
+
+# Resume most recent job (auto-detect)
+WORKOS_SECRET_KEY=sk_test_123 \
+  npx tsx bin/import-users.ts --resume
+```
+
+**Resume Behavior:**
+- Loads checkpoint from `.workos-checkpoints/{job-id}/`
+- Validates CSV hasn't changed (SHA-256 hash)
+- Restores organization cache (maintains 99%+ hit rate)
+- Continues from next pending chunk
+- Accumulates statistics across resume sessions
+
+**CSV Change Detection:**
+If the CSV file has been modified since the checkpoint:
+```
+WARNING: CSV file has changed since checkpoint was created!
+Resuming with a modified CSV may produce unexpected results.
+```
+
+The tool continues anyway (you can Ctrl+C to abort). Modified CSV rows may cause unexpected behavior.
+
+#### Chunk Configuration
+
+Customize chunk size based on your needs:
+
+```bash
+# Larger chunks (faster, more memory)
+--chunk-size 5000    # 5K rows per chunk
+
+# Smaller chunks (slower, less risk)
+--chunk-size 500     # 500 rows per chunk
+```
+
+**Chunk Size Trade-offs:**
+
+| Chunk Size | Checkpoints | Lost Work on Crash | Memory | Recommended For |
+|------------|-------------|-------------------|---------|-----------------|
+| 500 | More frequent | <30 seconds | Lower | Unstable networks |
+| 1000 (default) | Balanced | ~30-60 seconds | Medium | Most use cases |
+| 5000 | Less frequent | ~2-5 minutes | Higher | Fast, stable networks |
+
+**Default (1000 rows):** Good balance between checkpoint overhead and crash recovery.
+
+#### Checkpoint Directory
+
+Checkpoints are stored in `.workos-checkpoints/` by default. Customize with:
+
+```bash
+--checkpoint-dir /path/to/checkpoints
+```
+
+**Checkpoint Structure:**
+```
+.workos-checkpoints/
+└── prod-migration-2024-01-15/
+    ├── checkpoint.json       # Job state and progress
+    └── errors.jsonl          # Error records (streamed)
+```
+
+**checkpoint.json contents:**
+```json
+{
+  "jobId": "prod-migration-2024-01-15",
+  "csvPath": "/path/to/large-import.csv",
+  "csvHash": "a3f5e9c2...",
+  "createdAt": 1705324800000,
+  "updatedAt": 1705328400000,
+  "chunkSize": 1000,
+  "concurrency": 10,
+  "totalRows": 100000,
+  "chunks": [
+    { "chunkId": 0, "startRow": 1, "endRow": 1000, "status": "completed", ... },
+    { "chunkId": 1, "startRow": 1001, "endRow": 2000, "status": "completed", ... },
+    { "chunkId": 2, "startRow": 2001, "endRow": 3000, "status": "pending", ... }
+  ],
+  "summary": { "total": 2000, "successes": 1995, "failures": 5, ... },
+  "orgCache": { "entries": [...], "stats": { "hits": 1990, "misses": 10 } }
+}
+```
+
+#### Progress Tracking
+
+Real-time progress displayed after each chunk:
+
+```
+Progress: 15/100 chunks (15%) - ETA: 45m 20s
+Progress: 16/100 chunks (16%) - ETA: 44m 10s
+Progress: 17/100 chunks (17%) - ETA: 43m 5s
+```
+
+**ETA Calculation:**
+- Based on moving average of last 5 chunks
+- Becomes accurate after ~5-10 chunks
+- Adapts to changing API performance
+
+**Final Summary (Chunked Mode):**
+```
+┌─────────────────────────────────┐
+│ SUMMARY                         │
+│ Status: Success                 │
+│ Users imported: 100000/100000   │
+│ Memberships created: 100000     │
+│ Duration: 3242.5 s              │
+│ Warnings: 0                     │
+│ Errors: 0                       │
+│ Cache hits: 99000               │
+│ Cache misses: 1000              │
+│ Cache hit rate: 99.0%           │
+│ Chunk progress: 100/100 (100%) │
+└─────────────────────────────────┘
+```
+
+#### Error Handling in Chunked Mode
+
+Errors are always streamed to checkpoint directory in chunked mode:
+
+```bash
+# Errors automatically written to:
+.workos-checkpoints/{job-id}/errors.jsonl
+```
+
+**Error Format (JSONL):**
+```json
+{"recordNumber":1523,"email":"bad@example.com","errorType":"user_create","errorMessage":"Invalid email format","timestamp":"2024-01-15T10:30:15Z"}
+{"recordNumber":2891,"email":"conflict@example.com","errorType":"user_create","errorMessage":"Email already exists","httpStatus":409,"timestamp":"2024-01-15T10:35:22Z"}
+```
+
+**Crash Recovery:**
+- If crash occurs mid-chunk, entire chunk is re-processed on resume
+- Duplicate user attempts result in 409 errors (WorkOS handles gracefully)
+- Max duplicate work: 1 chunk (~30-60 seconds with default 1000 rows)
+
+#### Memory Guarantees
+
+Chunked mode provides **constant memory usage** regardless of CSV size:
+
+| CSV Size | Memory (Chunked) | Memory (Streaming) |
+|----------|------------------|-------------------|
+| 10K rows | ~75 MB | ~50 MB |
+| 100K rows | ~100 MB | ~75 MB |
+| 500K rows | ~100 MB | ~150 MB |
+| 1M+ rows | ~100 MB | ~300 MB+ |
+
+**Why Chunked Mode Uses Constant Memory:**
+- Processes 1 chunk at a time (bounded batch size)
+- Closes CSV stream after each chunk
+- Errors streamed to disk (not accumulated)
+- Organization cache bounded at 10K entries (LRU eviction)
+
+#### Complete Examples
+
+**Example 1: Large Multi-Org Import with Checkpointing**
+```bash
+# Start new job
+WORKOS_SECRET_KEY=sk_test_123 \
+  npx tsx bin/import-users.ts \
+    --csv migration-100k-users.csv \
+    --job-id migration-acme-jan-2024 \
+    --chunk-size 1000 \
+    --concurrency 20 \
+    --quiet
+
+# Output:
+# Analyzing CSV file...
+# CSV analysis complete: 100000 rows, hash: a3f5e9c2...
+# Checkpoint created: .workos-checkpoints/migration-acme-jan-2024
+# Multi-org mode: Organizations will be resolved per-row from CSV
+# Progress: 1/100 chunks (1%) - ETA: 52m 15s
+# Progress: 2/100 chunks (2%) - ETA: 51m 10s
+# ...
+```
+
+**Example 2: Resume After Crash**
+```bash
+# Job was interrupted at chunk 45/100
+WORKOS_SECRET_KEY=sk_test_123 \
+  npx tsx bin/import-users.ts --resume migration-acme-jan-2024
+
+# Output:
+# Resuming job: migration-acme-jan-2024
+# Checkpoint loaded: 45/100 chunks completed (45%)
+# Restored organization cache: 250 entries
+# Progress: 46/100 chunks (46%) - ETA: 28m 40s
+# ...
+```
+
+**Example 3: Single-Org with Chunking**
+```bash
+# Start job with explicit org
+WORKOS_SECRET_KEY=sk_test_123 \
+  npx tsx bin/import-users.ts \
+    --csv large-company-users.csv \
+    --org-id org_01ABC123 \
+    --job-id acme-corp-import \
+    --chunk-size 2000
+```
+
+#### Best Practices
+
+**1. Choose appropriate chunk size:**
+- Default (1000): Good for most cases
+- Larger (5000): Fast, stable networks
+- Smaller (500): Unstable networks or cautious migrations
+
+**2. Use descriptive job IDs:**
+```bash
+# Good
+--job-id migration-acme-corp-2024-01-15
+--job-id prod-100k-users-attempt-2
+
+# Avoid
+--job-id job1
+--job-id test
+```
+
+**3. Monitor progress:**
+- Watch ETA stabilize after 5-10 chunks
+- Check `.workos-checkpoints/{job-id}/errors.jsonl` for ongoing errors
+
+**4. Clean up old checkpoints:**
+```bash
+# After successful completion, remove checkpoint
+rm -rf .workos-checkpoints/old-job-id
+```
+
+**5. Test with dry-run first:**
+```bash
+# Validate before starting large job
+npx tsx bin/import-users.ts \
+  --csv large-import.csv \
+  --dry-run
+```
+
+#### Backward Compatibility
+
+**No breaking changes:**
+- Existing scripts continue to work (streaming mode)
+- Chunking is opt-in via `--job-id` or `--resume`
+- No performance impact when not using chunking
+
+**Streaming vs Chunked Mode:**
+
+| Feature | Streaming (default) | Chunked (--job-id) |
+|---------|--------------------|--------------------|
+| Memory | Low-Medium | Constant (~100MB) |
+| Resumable | No | Yes |
+| Progress | Row count | Chunks + ETA |
+| Checkpoints | None | Every chunk |
+| Best For | <10K users | 10K+ users |
+
+---
+
 ### CSV format at a glance
 
 Required column:
@@ -364,7 +697,11 @@ Notes
 - `--create-org-if-missing`: Optional. Used with `--org-external-id`; creates the org if it doesn’t exist (requires `--org-name`).
 - `--org-name <name>`: Required with `--create-org-if-missing`. Name of the new Organization.
 - `--require-membership`: Optional. If membership creation fails, delete the user created in this run and count it as a failure.
-- `--dry-run`: Optional. Validate and show what would happen, but don’t call WorkOS APIs or create anything.
+- `--dry-run`: Optional. Validate and show what would happen, but don't call WorkOS APIs or create anything.
+- `--job-id <id>`: Optional (Phase 3). Job identifier for checkpoint/resume (enables chunked mode).
+- `--resume [job-id]`: Optional (Phase 3). Resume from checkpoint (auto-detects last job if no ID provided).
+- `--chunk-size <n>`: Optional (Phase 3). Rows per chunk for checkpointing (default: 1000).
+- `--checkpoint-dir <path>`: Optional (Phase 3). Checkpoint storage directory (default: .workos-checkpoints).
 - `--user-export <path>`: Deprecated alias for `--csv`.
 
 ---

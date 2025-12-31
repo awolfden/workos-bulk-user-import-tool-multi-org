@@ -53,6 +53,13 @@ export function renderSummaryBox(summary: ImportSummary): string {
     );
   }
 
+  // Add chunk progress if available (chunked mode)
+  if (summary.chunkProgress) {
+    content.push(
+      `Chunk progress: ${summary.chunkProgress.completedChunks}/${summary.chunkProgress.totalChunks} chunks (${summary.chunkProgress.percentComplete}%)`
+    );
+  }
+
   // Compute max content width and render a neatly padded box
   const maxLen = content.reduce((m, s) => Math.max(m, s.length), 0);
   const horizontal = "─".repeat(maxLen + 2);

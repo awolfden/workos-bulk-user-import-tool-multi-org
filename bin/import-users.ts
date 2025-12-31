@@ -7,6 +7,8 @@ import { renderSummaryBox } from "../src/summary.js";
 import { writeErrorsOut } from "../src/errorsOut.js";
 import { createLogger } from "../src/logger.js";
 import { resolveOrganization } from "../src/orgs.js";
+import { CheckpointManager, findLastJob } from "../src/checkpoint/manager.js";
+import { calculateCsvHash, countCsvRows } from "../src/checkpoint/csvUtils.js";
 
 const program = new Command();
 
@@ -23,6 +25,11 @@ program
   .option("--org-name <name>", "Organization name when creating via --create-org-if-missing")
   .option("--require-membership", "If membership creation fails, delete newly created user and mark failure", false)
   .option("--dry-run", "Parse and validate only; do not call WorkOS APIs", false)
+  // Phase 3: Chunking and resumability
+  .option("--job-id <id>", "Job identifier for checkpoint/resume (enables chunked mode)")
+  .option("--resume [job-id]", "Resume from checkpoint (auto-detects last job if no ID provided)")
+  .option("--chunk-size <n>", "Rows per chunk for checkpointing (default: 1000)", (v) => parseInt(v, 10))
+  .option("--checkpoint-dir <path>", "Checkpoint storage directory (default: .workos-checkpoints)")
   // Back-compat: accept --user-export as alias to --csv
   .option("--user-export <path>", "(deprecated) Use --csv instead", undefined)
   .parse(process.argv);
@@ -40,6 +47,11 @@ async function main() {
     orgName?: string;
     requireMembership?: boolean;
     dryRun?: boolean;
+    // Phase 3: Checkpoint/resume flags
+    jobId?: string;
+    resume?: string | boolean;
+    chunkSize?: number;
+    checkpointDir?: string;
   }>();
 
   const csvPath = opts.csv ?? opts.userExport;
@@ -50,6 +62,64 @@ async function main() {
   }
   const absCsv = path.resolve(csvPath);
   const logger = createLogger({ quiet: opts.quiet });
+
+  // Phase 3: Checkpoint initialization
+  let checkpointManager: CheckpointManager | undefined;
+
+  // Handle resume mode
+  if (opts.resume) {
+    const resumeJobId = typeof opts.resume === 'string' ? opts.resume : await findLastJob(opts.checkpointDir);
+
+    if (!resumeJobId) {
+      // eslint-disable-next-line no-console
+      console.error("Error: No checkpoint found to resume. Use --job-id to start a new job.");
+      process.exit(2);
+    }
+
+    logger.log(`Resuming job: ${resumeJobId}`);
+    checkpointManager = await CheckpointManager.resume(resumeJobId, opts.checkpointDir);
+
+    // Validate CSV hasn't changed
+    const state = checkpointManager.getState();
+    const currentHash = await calculateCsvHash(absCsv);
+
+    if (currentHash !== state.csvHash) {
+      logger.warn("WARNING: CSV file has changed since checkpoint was created!");
+      logger.warn("Resuming with a modified CSV may produce unexpected results.");
+      // Continue anyway (user can Ctrl+C if they want to abort)
+    }
+
+    const progress = checkpointManager.getProgress();
+    logger.log(`Checkpoint loaded: ${progress.completedChunks}/${progress.totalChunks} chunks completed (${progress.percentComplete}%)`);
+  }
+  // Handle new job with checkpointing
+  else if (opts.jobId) {
+    logger.log("Analyzing CSV file...");
+    const totalRows = await countCsvRows(absCsv);
+    const csvHash = await calculateCsvHash(absCsv);
+
+    logger.log(`CSV analysis complete: ${totalRows} rows, hash: ${csvHash.substring(0, 16)}...`);
+
+    // Determine mode before creating checkpoint
+    const hasSingleOrgFlags = Boolean(opts.orgId || opts.orgExternalId);
+    const mode: 'single-org' | 'multi-org' | 'user-only' = hasSingleOrgFlags
+      ? 'single-org'
+      : 'multi-org'; // Will be refined after org resolution
+
+    checkpointManager = await CheckpointManager.create({
+      jobId: opts.jobId,
+      csvPath: absCsv,
+      csvHash,
+      totalRows,
+      chunkSize: opts.chunkSize ?? 1000,
+      concurrency: opts.concurrency ?? 10,
+      mode,
+      orgId: null, // Will be set after org resolution
+      checkpointDir: opts.checkpointDir
+    });
+
+    logger.log(`Checkpoint created: ${checkpointManager.getCheckpointDir()}`);
+  }
 
   let exitCode = 0;
   try {
@@ -133,7 +203,8 @@ async function main() {
       requireMembership: Boolean(opts.requireMembership),
       dryRun: Boolean(opts.dryRun),
       errorsOutPath: useJsonlStreaming ? errorsOutPath : undefined,
-      multiOrgMode
+      multiOrgMode,
+      checkpointManager // Phase 3: Enable chunked mode if checkpoint provided
     });
 
     // Handle CSV error output (legacy, memory-limited)

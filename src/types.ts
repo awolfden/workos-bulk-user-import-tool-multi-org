@@ -59,5 +59,20 @@ export type ImportSummary = {
     misses: number;
     hitRate: string; // formatted as percentage
   };
+  // Chunk progress (Phase 3: chunked mode only)
+  chunkProgress?: {
+    completedChunks: number;
+    totalChunks: number;
+    percentComplete: number;
+  };
 };
 
+// Phase 3: Checkpoint types (re-export from checkpoint/types.ts)
+export type {
+  CheckpointState,
+  ChunkMetadata,
+  SerializedCacheEntry,
+  CreateCheckpointOptions,
+  ChunkSummary,
+  ProgressStats
+} from './checkpoint/types.js';

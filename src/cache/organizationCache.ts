@@ -293,4 +293,48 @@ export class OrganizationCache {
     this.inFlightRequests.clear();
     this.resetStats();
   }
+
+  /**
+   * Phase 3: Serialize cache for checkpoint storage
+   * Returns array of cache entries (without in-flight requests)
+   */
+  serialize(): import('../checkpoint/types.js').SerializedCacheEntry[] {
+    const entries: import('../checkpoint/types.js').SerializedCacheEntry[] = [];
+
+    for (const [key, entry] of this.cache.entries()) {
+      entries.push({
+        key,
+        id: entry.id,
+        externalId: entry.externalId,
+        name: entry.name
+      });
+    }
+
+    return entries;
+  }
+
+  /**
+   * Phase 3: Deserialize cache from checkpoint
+   * Restores cache entries from serialized format
+   */
+  static deserialize(
+    entries: import('../checkpoint/types.js').SerializedCacheEntry[],
+    options?: OrganizationCacheOptions
+  ): OrganizationCache {
+    const cache = new OrganizationCache(options);
+
+    for (const entry of entries) {
+      const cacheEntry: OrganizationCacheEntry = {
+        id: entry.id,
+        externalId: entry.externalId,
+        name: entry.name,
+        cachedAt: Date.now(), // Fresh timestamp on restore
+        ttl: cache.enableTTL ? cache.defaultTTLMs : undefined
+      };
+
+      cache.cache.set(entry.key, cacheEntry);
+    }
+
+    return cache;
+  }
 }

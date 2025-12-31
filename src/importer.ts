@@ -6,6 +6,8 @@ import { isBlank, parseBooleanLike } from "./boolean.js";
 import { CreateUserPayload, CSVRow, ErrorRecord, ImportSummary } from "./types.js";
 import { RateLimiter } from "./rateLimiter.js";
 import { OrganizationCache } from "./cache/organizationCache.js";
+import { CheckpointManager } from "./checkpoint/manager.js";
+import type { ChunkMetadata } from "./types.js";
 
 type ImportOptions = {
   csvPath: string;
@@ -15,7 +17,8 @@ type ImportOptions = {
   requireMembership?: boolean;
   dryRun?: boolean;
   errorsOutPath?: string;
-  multiOrgMode?: boolean; // NEW: Enables per-row org resolution with caching
+  multiOrgMode?: boolean; // Enables per-row org resolution with caching
+  checkpointManager?: CheckpointManager; // Phase 3: Enables chunked mode with checkpoints
 };
 
 class Semaphore {
@@ -239,6 +242,23 @@ async function deleteUserSafe(userId: string): Promise<void> {
 }
 
 export async function importUsersFromCsv(options: ImportOptions): Promise<{
+  summary: ImportSummary;
+  errors: ErrorRecord[];
+}> {
+  // Phase 3: Route to chunked mode if checkpoint manager provided
+  if (options.checkpointManager) {
+    return importUsersChunkedMode(options);
+  }
+
+  // Original streaming mode (backward compatible)
+  return importUsersStreamingMode(options);
+}
+
+/**
+ * Phase 3: Streaming mode (original behavior, backward compatible)
+ * Processes entire CSV in one pass without checkpointing
+ */
+async function importUsersStreamingMode(options: ImportOptions): Promise<{
   summary: ImportSummary;
   errors: ErrorRecord[];
 }> {
@@ -550,7 +570,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
   // Close error stream if opened
   if (errorStream) {
     await new Promise<void>((resolve, reject) => {
-      errorStream!.end((err) => {
+      errorStream!.end((err?: Error | null) => {
         if (err) reject(err);
         else resolve();
       });
@@ -560,3 +580,302 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
   return { summary, errors };
 }
 
+/**
+ * Phase 3: Chunked mode with checkpointing
+ * Processes CSV in chunks, saving state after each chunk for resumability
+ */
+async function importUsersChunkedMode(options: ImportOptions): Promise<{
+  summary: ImportSummary;
+  errors: ErrorRecord[];
+}> {
+  const { checkpointManager, quiet } = options;
+  if (!checkpointManager) {
+    throw new Error("Checkpoint manager required for chunked mode");
+  }
+
+  const logger = createLogger({ quiet });
+  const state = checkpointManager.getState();
+
+  // Restore organization cache from checkpoint if available
+  let orgCache: OrganizationCache | null = null;
+  if (state.mode === 'multi-org') {
+    orgCache = checkpointManager.restoreCache();
+    if (orgCache) {
+      const stats = orgCache.getStats();
+      logger.log(`Restored organization cache: ${stats.size} entries`);
+    } else {
+      orgCache = new OrganizationCache({ maxSize: 10000 });
+      logger.log("Multi-org mode: Organization cache initialized");
+    }
+  }
+
+  // Process chunks sequentially
+  while (true) {
+    const chunk = checkpointManager.getNextPendingChunk();
+    if (!chunk) {
+      break; // All chunks completed
+    }
+
+    logger.log(`Processing chunk ${chunk.chunkId + 1}/${state.chunks.length} (rows ${chunk.startRow}-${chunk.endRow})`);
+
+    checkpointManager.markChunkStarted(chunk.chunkId);
+
+    try {
+      const chunkSummary = await processChunk(chunk, options, orgCache);
+      checkpointManager.markChunkCompleted(chunk.chunkId, chunkSummary);
+    } catch (err: any) {
+      checkpointManager.markChunkFailed(chunk.chunkId);
+      logger.error(`Chunk ${chunk.chunkId} failed: ${err.message}`);
+      throw err;
+    }
+
+    // Serialize cache to checkpoint
+    if (orgCache) {
+      checkpointManager.serializeCache(orgCache);
+    }
+
+    // Save checkpoint
+    await checkpointManager.saveCheckpoint();
+
+    // Report progress
+    const progress = checkpointManager.getProgress();
+    const eta = progress.estimatedTimeRemainingMs
+      ? formatDuration(progress.estimatedTimeRemainingMs)
+      : "calculating...";
+    logger.log(`Progress: ${progress.completedChunks}/${progress.totalChunks} chunks (${progress.percentComplete}%) - ETA: ${eta}`);
+  }
+
+  // Return final summary
+  const summary = checkpointManager.getFinalSummary();
+  return { summary, errors: [] }; // Errors streamed to checkpoint dir
+}
+
+/**
+ * Phase 3: Process a single chunk
+ * Re-parses CSV from start, skips to chunk start, processes chunk rows
+ */
+async function processChunk(
+  chunk: ChunkMetadata,
+  options: ImportOptions,
+  orgCache: OrganizationCache | null
+): Promise<import("./types.js").ChunkSummary> {
+  const { csvPath, concurrency = 10, orgId = null, requireMembership = false, dryRun = false, checkpointManager } = options;
+  const logger = createLogger({ quiet: true }); // Quiet for individual rows
+  const limiter = new RateLimiter(50);
+  const sem = new Semaphore(concurrency);
+
+  const chunkStartTime = Date.now();
+  let chunkSuccesses = 0;
+  let chunkFailures = 0;
+  let chunkMemberships = 0;
+
+  // Set up error streaming to checkpoint dir
+  let errorStream: fs.WriteStream | null = null;
+  if (checkpointManager) {
+    const errorPath = `${checkpointManager.getCheckpointDir()}/errors.jsonl`;
+    errorStream = fs.createWriteStream(errorPath, { flags: 'a', encoding: 'utf8' });
+  }
+
+  const recordError = (errRec: ErrorRecord) => {
+    if (errorStream) {
+      errorStream.write(JSON.stringify(errRec) + '\n');
+    }
+  };
+
+  // Re-open CSV and parse
+  const input = fs.createReadStream(csvPath);
+  const parser = parse({
+    columns: true,
+    bom: true,
+    skip_empty_lines: true,
+    trim: true
+  });
+
+  let recordNumber = 0;
+  const inFlight: Promise<void>[] = [];
+
+  await new Promise<void>((resolve, reject) => {
+    parser.on("readable", async () => {
+      let row: CSVRow | null;
+      while ((row = parser.read()) !== null) {
+        recordNumber++;
+
+        // Skip rows before chunk start or after chunk end
+        if (recordNumber < chunk.startRow || recordNumber > chunk.endRow) {
+          continue;
+        }
+
+        // Capture row value for closure
+        const currentRow = row;
+        const currentRecordNumber = recordNumber;
+
+        // Process row (same logic as streaming mode)
+        const run = (async () => {
+          await sem.acquire();
+          try {
+            const built = buildUserAndOrgFromRow(currentRow);
+
+            if (built.error) {
+              chunkFailures += 1;
+              recordError({
+                recordNumber: currentRecordNumber,
+                email: String(currentRow.email ?? ""),
+                errorType: "user_create",
+                errorMessage: built.error,
+                timestamp: new Date().toISOString(),
+                rawRow: currentRow
+              });
+              return;
+            }
+
+            if (!built.userPayload) {
+              return;
+            }
+
+            const payload = built.userPayload;
+
+            // Resolve org for this row (multi-org mode)
+            let resolvedOrgId = orgId;
+            if (!orgId && built.orgInfo && orgCache) {
+              try {
+                await limiter.acquire();
+                resolvedOrgId = await orgCache.resolve({
+                  orgId: built.orgInfo.orgId,
+                  orgExternalId: built.orgInfo.orgExternalId,
+                  createIfMissing: Boolean(built.orgInfo.orgName),
+                  orgName: built.orgInfo.orgName
+                });
+
+                if (!resolvedOrgId) {
+                  chunkFailures += 1;
+                  recordError({
+                    recordNumber: currentRecordNumber,
+                    email: payload.email,
+                    errorType: "org_resolution",
+                    errorMessage: `Organization not found: ${built.orgInfo.orgExternalId || built.orgInfo.orgId}`,
+                    orgId: built.orgInfo.orgId,
+                    orgExternalId: built.orgInfo.orgExternalId,
+                    timestamp: new Date().toISOString(),
+                    rawRow: currentRow
+                  });
+                  return;
+                }
+              } catch (err: any) {
+                chunkFailures += 1;
+                recordError({
+                  recordNumber: currentRecordNumber,
+                  email: payload.email,
+                  errorType: "org_resolution",
+                  errorMessage: err.message || String(err),
+                  orgId: built.orgInfo.orgId,
+                  orgExternalId: built.orgInfo.orgExternalId,
+                  timestamp: new Date().toISOString(),
+                  rawRow: currentRow
+                });
+                return;
+              }
+            }
+
+            // Create user
+            if (!dryRun) {
+              try {
+                await limiter.acquire();
+                const createdUserId = await retryCreateUser(payload, limiter);
+
+                // Create membership if org specified
+                if (resolvedOrgId) {
+                  try {
+                    await limiter.acquire();
+                    await retryCreateOrganizationMembership(createdUserId, resolvedOrgId, limiter);
+                    chunkMemberships += 1;
+                  } catch (membershipErr: any) {
+                    if (requireMembership) {
+                      await deleteUserSafe(createdUserId);
+                      chunkFailures += 1;
+                      recordError({
+                        recordNumber: currentRecordNumber,
+                        email: payload.email,
+                        userId: createdUserId,
+                        errorType: "membership_create",
+                        errorMessage: membershipErr.message || String(membershipErr),
+                        httpStatus: membershipErr.status,
+                        workosCode: membershipErr.code,
+                        workosRequestId: membershipErr.requestId,
+                        timestamp: new Date().toISOString(),
+                        rawRow: currentRow
+                      });
+                      return;
+                    }
+                  }
+                }
+
+                chunkSuccesses += 1;
+              } catch (userErr: any) {
+                chunkFailures += 1;
+                recordError({
+                  recordNumber: currentRecordNumber,
+                  email: payload.email,
+                  errorType: "user_create",
+                  errorMessage: userErr.message || String(userErr),
+                  httpStatus: userErr.status,
+                  workosCode: userErr.code,
+                  workosRequestId: userErr.requestId,
+                  timestamp: new Date().toISOString(),
+                  rawRow: currentRow
+                });
+              }
+            } else {
+              chunkSuccesses += 1;
+            }
+          } finally {
+            sem.release();
+          }
+        })();
+
+        inFlight.push(run);
+      }
+    });
+
+    parser.on("end", () => resolve());
+    parser.on("error", (err) => reject(err));
+
+    input.pipe(parser);
+  });
+
+  // Wait for all in-flight tasks
+  await Promise.all(inFlight);
+
+  // Close error stream
+  if (errorStream) {
+    await new Promise<void>((resolve, reject) => {
+      errorStream!.end((err?: Error | null) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  }
+
+  const chunkDuration = Date.now() - chunkStartTime;
+
+  return {
+    successes: chunkSuccesses,
+    failures: chunkFailures,
+    membershipsCreated: chunkMemberships,
+    durationMs: chunkDuration
+  };
+}
+
+/**
+ * Helper: Format duration in ms to human-readable string
+ */
+function formatDuration(ms: number): string {
+  if (ms < 60000) {
+    return `${Math.round(ms / 1000)}s`;
+  } else if (ms < 3600000) {
+    return `${Math.round(ms / 60000)}m`;
+  } else {
+    const hours = Math.floor(ms / 3600000);
+    const minutes = Math.round((ms % 3600000) / 60000);
+    return `${hours}h ${minutes}m`;
+  }
+}
