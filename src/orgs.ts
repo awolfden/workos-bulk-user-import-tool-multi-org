@@ -35,6 +35,11 @@ export async function createOrganization(name: string, externalId: string): Prom
   return org.id as string;
 }
 
+export async function resolveOrganizationById(orgId: string): Promise<string | null> {
+  const exists = await getOrganizationById(orgId);
+  return exists ? orgId : null;
+}
+
 export async function resolveOrganization(options: {
   orgId?: string;
   orgExternalId?: string;

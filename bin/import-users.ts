@@ -62,34 +62,48 @@ async function main() {
     if (opts.createOrgIfMissing && (!opts.orgName || String(opts.orgName).trim() === "")) {
       throw new Error("--org-name is required when using --create-org-if-missing");
     }
+    // Determine import mode
     let resolvedOrgId: string | null = null;
-    if (opts.dryRun) {
-      // In dry run, avoid creating organizations; best-effort resolve when possible
-      if (opts.orgId) {
-        resolvedOrgId = opts.orgId;
-      } else if (opts.orgExternalId) {
-        try {
-          resolvedOrgId = await resolveOrganization({
-            orgId: undefined,
-            orgExternalId: opts.orgExternalId,
-            createIfMissing: false,
-            orgName: undefined
-          });
-          if (!resolvedOrgId && opts.createOrgIfMissing) {
-            logger.warn(`Dry run: organization with external_id="${opts.orgExternalId}" not found; would create "${opts.orgName ?? "(no name)"}"`);
+    let multiOrgMode = false;
+
+    // Check for single-org CLI flags
+    const hasSingleOrgFlags = Boolean(opts.orgId || opts.orgExternalId);
+
+    if (hasSingleOrgFlags) {
+      // Single-org mode via CLI flags (existing behavior)
+      if (opts.dryRun) {
+        // In dry run, avoid creating organizations; best-effort resolve when possible
+        if (opts.orgId) {
+          resolvedOrgId = opts.orgId;
+        } else if (opts.orgExternalId) {
+          try {
+            resolvedOrgId = await resolveOrganization({
+              orgId: undefined,
+              orgExternalId: opts.orgExternalId,
+              createIfMissing: false,
+              orgName: undefined
+            });
+            if (!resolvedOrgId && opts.createOrgIfMissing) {
+              logger.warn(`Dry run: organization with external_id="${opts.orgExternalId}" not found; would create "${opts.orgName ?? "(no name)"}"`);
+            }
+          } catch (e: any) {
+            logger.warn(`Dry run: org resolution warning: ${e?.message || String(e)}`);
           }
-        } catch (e: any) {
-          logger.warn(`Dry run: org resolution warning: ${e?.message || String(e)}`);
         }
+        logger.warn("Dry run enabled: no users or memberships will be created.");
+      } else {
+        resolvedOrgId = await resolveOrganization({
+          orgId: opts.orgId,
+          orgExternalId: opts.orgExternalId,
+          createIfMissing: opts.createOrgIfMissing,
+          orgName: opts.orgName
+        });
       }
-      logger.warn("Dry run enabled: no users or memberships will be created.");
+      logger.log(`Single-org mode: Resolved organization ${resolvedOrgId}`);
     } else {
-      resolvedOrgId = await resolveOrganization({
-        orgId: opts.orgId,
-        orgExternalId: opts.orgExternalId,
-        createIfMissing: opts.createOrgIfMissing,
-        orgName: opts.orgName
-      });
+      // Multi-org or user-only mode (determined by CSV content)
+      multiOrgMode = true;
+      logger.log("Multi-org mode: Organizations will be resolved per-row from CSV");
     }
     // Determine error output path and format
     let errorsOutPath: string | undefined;
@@ -118,7 +132,8 @@ async function main() {
       orgId: resolvedOrgId,
       requireMembership: Boolean(opts.requireMembership),
       dryRun: Boolean(opts.dryRun),
-      errorsOutPath: useJsonlStreaming ? errorsOutPath : undefined
+      errorsOutPath: useJsonlStreaming ? errorsOutPath : undefined,
+      multiOrgMode
     });
 
     // Handle CSV error output (legacy, memory-limited)

@@ -44,6 +44,15 @@ export function renderSummaryBox(summary: ImportSummary): string {
     `Errors: ${errorsCount}`
   ];
 
+  // Add cache statistics if available (multi-org mode)
+  if (summary.cacheStats) {
+    content.push(
+      `Cache hits: ${summary.cacheStats.hits}`,
+      `Cache misses: ${summary.cacheStats.misses}`,
+      `Cache hit rate: ${summary.cacheStats.hitRate}`
+    );
+  }
+
   // Compute max content width and render a neatly padded box
   const maxLen = content.reduce((m, s) => Math.max(m, s.length), 0);
   const horizontal = "─".repeat(maxLen + 2);
