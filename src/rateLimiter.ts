@@ -39,6 +39,12 @@ export class RateLimiter {
       if (next) next();
     }
   }
+
+  stop(): void {
+    if (this.timer) {
+      clearInterval(this.timer);
+    }
+  }
 }
 
 

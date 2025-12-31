@@ -377,6 +377,9 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
   await Promise.all(inFlight);
   summary.endedAt = Date.now();
 
+  // Clean up rate limiter
+  limiter.stop();
+
   return { summary, errors };
 }
 
