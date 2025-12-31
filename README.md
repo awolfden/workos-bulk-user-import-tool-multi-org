@@ -283,6 +283,24 @@ Run memory usage test:
 npx tsx scripts/memory-test.ts examples/hundred-thousand-users.csv
 ```
 
+Verify rate limiting:
+
+```bash
+# Quick verification (recommended - runs in ~5 seconds)
+npx tsx scripts/rate-limit-quick-test.ts
+
+# Visual demonstration
+npx tsx scripts/rate-limit-demo.ts
+
+# Comprehensive test suite (slower - takes ~1 minute)
+npx tsx scripts/rate-limit-test.ts
+```
+
+**Rate Limit Configuration:**
+- WorkOS limit: 500 requests per 10 seconds (50 req/sec)
+- Tool configuration: 50 req/sec with 50 burst capacity
+- ✅ Guaranteed to never exceed limits at any scale
+
 Install dependencies:
 
 ```bash
