@@ -241,6 +241,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
 
   const semaphore = new Semaphore(concurrency);
   const inFlight: Promise<void>[] = [];
+  const MAX_INFLIGHT_BATCH = concurrency * 10; // Process in batches of 10x concurrency
 
   await new Promise<void>((resolve, reject) => {
     const parser = parse({
@@ -253,10 +254,16 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
     parser.on("error", (err) => reject(err));
     parser.on("end", () => resolve());
 
-    parser.on("readable", () => {
+    parser.on("readable", async () => {
       let row: CSVRow | null;
       // eslint-disable-next-line no-cond-assign
       while ((row = parser.read()) !== null) {
+        // If we've reached batch limit, wait for current batch to complete
+        if (inFlight.length >= MAX_INFLIGHT_BATCH) {
+          await Promise.allSettled(inFlight);
+          inFlight.length = 0; // Clear completed batch
+        }
+
         const rowData = row as CSVRow; // capture per-iteration to avoid closure over mutable 'row'
         if (!headerHandled) {
           headerHandled = true;
