@@ -91,19 +91,42 @@ async function main() {
         orgName: opts.orgName
       });
     }
+    // Determine error output path and format
+    let errorsOutPath: string | undefined;
+    let useJsonlStreaming = false;
+    if (opts.errorsOut) {
+      errorsOutPath = path.resolve(opts.errorsOut);
+      const ext = path.extname(errorsOutPath).toLowerCase();
+
+      // Use JSONL streaming by default, unless explicitly .csv
+      if (ext === '.csv') {
+        logger.warn('Warning: CSV error output loads all errors into memory. Use .jsonl for large imports.');
+        useJsonlStreaming = false;
+      } else {
+        // Default to JSONL streaming (append .jsonl if no extension)
+        if (!ext || ext === '.json') {
+          errorsOutPath = errorsOutPath.replace(/\.json$/, '') + '.jsonl';
+        }
+        useJsonlStreaming = true;
+      }
+    }
+
     const { summary, errors } = await importUsersFromCsv({
       csvPath: absCsv,
       quiet: opts.quiet,
       concurrency: opts.concurrency ?? 10,
       orgId: resolvedOrgId,
       requireMembership: Boolean(opts.requireMembership),
-      dryRun: Boolean(opts.dryRun)
+      dryRun: Boolean(opts.dryRun),
+      errorsOutPath: useJsonlStreaming ? errorsOutPath : undefined
     });
 
-    if (opts.errorsOut && errors.length > 0) {
-      const outPath = path.resolve(opts.errorsOut);
-      await writeErrorsOut(outPath, errors);
-      logger.warn(`Wrote ${errors.length} error record(s) to: ${outPath}`);
+    // Handle CSV error output (legacy, memory-limited)
+    if (opts.errorsOut && !useJsonlStreaming && errors.length > 0) {
+      await writeErrorsOut(errorsOutPath!, errors);
+      logger.warn(`Wrote ${errors.length} error record(s) to: ${errorsOutPath}`);
+    } else if (opts.errorsOut && useJsonlStreaming) {
+      logger.warn(`Errors streamed to: ${errorsOutPath}`);
     }
 
     const summaryBox = renderSummaryBox(summary);

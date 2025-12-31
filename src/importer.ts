@@ -13,6 +13,7 @@ type ImportOptions = {
   orgId?: string | null;
   requireMembership?: boolean;
   dryRun?: boolean;
+  errorsOutPath?: string;
 };
 
 class Semaphore {
@@ -199,12 +200,30 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
   summary: ImportSummary;
   errors: ErrorRecord[];
 }> {
-  const { csvPath, quiet, concurrency = 10, orgId = null, requireMembership = false, dryRun = false } = options;
+  const { csvPath, quiet, concurrency = 10, orgId = null, requireMembership = false, dryRun = false, errorsOutPath } = options;
   const logger = createLogger({ quiet });
   const limiter = new RateLimiter(50);
   const startedAt = Date.now();
   const errors: ErrorRecord[] = [];
   const warnings: string[] = [];
+
+  // Set up error streaming if output path provided
+  let errorStream: fs.WriteStream | null = null;
+  let errorCount = 0;
+  if (errorsOutPath) {
+    errorStream = fs.createWriteStream(errorsOutPath, { flags: 'w', encoding: 'utf8' });
+  }
+
+  // Helper to record errors - streams to file if available, else accumulates in memory
+  const recordError = (errRec: ErrorRecord) => {
+    errorCount += 1;
+    if (errorStream) {
+      errorStream.write(JSON.stringify(errRec) + '\n');
+    } else {
+      errors.push(errRec);
+    }
+  };
+
   const summary: ImportSummary = {
     total: 0,
     successes: 0,
@@ -270,7 +289,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
               timestamp: new Date().toISOString(),
               rawRow: rowData as Record<string, unknown>
             };
-            errors.push(errRec);
+            recordError(errRec);
             summary.failures += 1;
             logger.stepFailure(currentRecord);
             return;
@@ -317,7 +336,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
                   workosRequestId: requestId,
                   workosErrors
                 };
-                errors.push(errRec);
+                recordError(errRec);
                 summary.failures += 1;
                 logger.stepFailure(currentRecord);
                 const statusStr = status != null ? String(status) : "?";
@@ -340,7 +359,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
                 timestamp: new Date().toISOString(),
                 rawRow: rowData as Record<string, unknown>
               };
-              errors.push(errRec);
+              recordError(errRec);
               summary.failures += 1;
               logger.stepFailure(currentRecord);
               return;
@@ -366,7 +385,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
               workosRequestId: requestId,
               workosErrors
             };
-            errors.push(errRec);
+            recordError(errRec);
             summary.failures += 1;
             logger.stepFailure(currentRecord);
             const statusStr = status != null ? String(status) : "?";
@@ -399,6 +418,16 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
 
   // Clean up rate limiter
   limiter.stop();
+
+  // Close error stream if opened
+  if (errorStream) {
+    await new Promise<void>((resolve, reject) => {
+      errorStream!.end((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  }
 
   return { summary, errors };
 }
