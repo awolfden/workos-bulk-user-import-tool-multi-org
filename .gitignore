@@ -137,3 +137,13 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Generated test files
+examples/*-thousand-users.csv
+examples/hundred-thousand-users.csv
+examples/fifty-thousand-users.csv
+
+# Test output files
+*.jsonl
+errors-*.csv
+errors-*.json

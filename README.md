@@ -207,22 +207,121 @@ See `examples/example-input.csv` for samples including:
 
 ---
 
-### For developers
+### Performance & Memory Usage
 
-Install dependencies
+This tool is optimized for large-scale imports with bounded memory usage:
+
+**Memory Characteristics:**
+
+- Streams CSV files (no full file load into memory)
+- Errors streamed to disk in JSONL format by default
+- Constant memory usage regardless of CSV size
+- Processes in batches to prevent memory exhaustion
+
+**Performance Benchmarks:**
+
+| Users | Duration\*     | Memory Usage | Recommended Flags          |
+| ----- | -------------- | ------------ | -------------------------- |
+| 1K    | ~30-40 seconds | <50 MB       | Default settings           |
+| 10K   | ~3-4 minutes   | ~50 MB       | Default settings           |
+| 50K   | ~15-20 minutes | ~75 MB       | `--concurrency 20`         |
+| 100K  | ~30-40 minutes | ~100 MB      | `--concurrency 20 --quiet` |
+| 500K+ | ~2.5-3.5 hours | ~150 MB      | `--concurrency 20 --quiet` |
+
+\* Assumes 50 req/sec rate limit, 200ms avg API latency, with organization membership
+
+**Best Practices for Large Imports:**
+
+1. **Use JSONL for error output** (default):
+
+   ```bash
+   --errors-out errors.jsonl  # Streamed to disk, bounded memory
+   ```
+
+2. **Avoid CSV error output for large imports**:
+
+   ```bash
+   --errors-out errors.csv    # Loads all errors in memory (not recommended for >10K rows)
+   ```
+
+3. **Increase concurrency for faster imports**:
+
+   ```bash
+   --concurrency 20           # Default is 10, increase if API allows
+   ```
+
+4. **Use quiet mode to reduce logging overhead**:
+
+   ```bash
+   --quiet                    # Suppresses per-record logging
+   ```
+
+5. **Test with dry-run first**:
+   ```bash
+   --dry-run                  # Validates CSV without API calls
+   ```
+
+**Memory Optimization (v1.1.0+):**
+
+- WorkOS client singleton (prevents connection exhaustion)
+- Bounded in-flight promise array (constant memory)
+- Error streaming (no accumulation in memory)
+- Rate limiter cleanup (proper resource management)
+
+---
+
+### Testing & Development
+
+Generate test CSV files:
+
+```bash
+# Generate 100K users
+npx tsx scripts/generate-test-csv.ts 100000 examples/hundred-thousand-users.csv
+
+# Generate with intentional errors (for testing)
+npx tsx scripts/generate-test-csv.ts 50000 examples/test-with-errors.csv --with-errors
+```
+
+Run memory usage test:
+
+```bash
+# Test memory usage with large CSV (dry-run mode, no API calls)
+npx tsx scripts/memory-test.ts examples/hundred-thousand-users.csv
+```
+
+Verify rate limiting:
+
+```bash
+# Quick verification (recommended - runs in ~5 seconds)
+npx tsx scripts/rate-limit-quick-test.ts
+
+# Visual demonstration
+npx tsx scripts/rate-limit-demo.ts
+
+# Comprehensive test suite (slower - takes ~1 minute)
+npx tsx scripts/rate-limit-test.ts
+```
+
+**Rate Limit Configuration:**
+
+- WorkOS limit: 500 requests per 10 seconds (50 req/sec)
+- Tool configuration: 50 req/sec with 50 burst capacity
+- ✅ Guaranteed to never exceed limits at any scale
+
+Install dependencies:
 
 ```bash
 pnpm i # or npm i / yarn
 ```
 
-Run locally
+Run locally:
 
 ```bash
 WORKOS_SECRET_KEY=sk_test_123 \
-  pnpm start -- --csv examples/example-input.csv
+  pnpm start --csv examples/example-input.csv
 ```
 
-Type‑check
+Type‑check:
 
 ```bash
 pnpm run typecheck

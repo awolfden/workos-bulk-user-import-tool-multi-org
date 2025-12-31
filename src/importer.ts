@@ -13,6 +13,7 @@ type ImportOptions = {
   orgId?: string | null;
   requireMembership?: boolean;
   dryRun?: boolean;
+  errorsOutPath?: string;
 };
 
 class Semaphore {
@@ -123,7 +124,17 @@ async function retryCreateUser(
       const isRateLimited = status === 429 || /rate.?limit/i.test(message);
       attempt += 1;
       if (isRateLimited && attempt <= maxRetries) {
-        const delay = baseDelayMs * Math.pow(2, attempt - 1);
+        let delay = baseDelayMs * Math.pow(2, attempt - 1);
+
+        // Respect Retry-After header if provided
+        const retryAfter = err?.response?.headers?.['retry-after'] ?? err?.response?.headers?.['Retry-After'];
+        if (retryAfter) {
+          const retryAfterSeconds = parseInt(retryAfter, 10);
+          if (!isNaN(retryAfterSeconds)) {
+            delay = retryAfterSeconds * 1000; // Convert seconds to milliseconds
+          }
+        }
+
         await new Promise(r => setTimeout(r, delay));
         continue;
       }
@@ -157,7 +168,17 @@ async function retryCreateOrganizationMembership(
       const isRateLimited = status === 429 || /rate.?limit/i.test(message);
       attempt += 1;
       if (isRateLimited && attempt <= maxRetries) {
-        const delay = baseDelayMs * Math.pow(2, attempt - 1);
+        let delay = baseDelayMs * Math.pow(2, attempt - 1);
+
+        // Respect Retry-After header if provided
+        const retryAfter = err?.response?.headers?.['retry-after'] ?? err?.response?.headers?.['Retry-After'];
+        if (retryAfter) {
+          const retryAfterSeconds = parseInt(retryAfter, 10);
+          if (!isNaN(retryAfterSeconds)) {
+            delay = retryAfterSeconds * 1000; // Convert seconds to milliseconds
+          }
+        }
+
         await new Promise(r => setTimeout(r, delay));
         continue;
       }
@@ -179,12 +200,30 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
   summary: ImportSummary;
   errors: ErrorRecord[];
 }> {
-  const { csvPath, quiet, concurrency = 10, orgId = null, requireMembership = false, dryRun = false } = options;
+  const { csvPath, quiet, concurrency = 10, orgId = null, requireMembership = false, dryRun = false, errorsOutPath } = options;
   const logger = createLogger({ quiet });
   const limiter = new RateLimiter(50);
   const startedAt = Date.now();
   const errors: ErrorRecord[] = [];
   const warnings: string[] = [];
+
+  // Set up error streaming if output path provided
+  let errorStream: fs.WriteStream | null = null;
+  let errorCount = 0;
+  if (errorsOutPath) {
+    errorStream = fs.createWriteStream(errorsOutPath, { flags: 'w', encoding: 'utf8' });
+  }
+
+  // Helper to record errors - streams to file if available, else accumulates in memory
+  const recordError = (errRec: ErrorRecord) => {
+    errorCount += 1;
+    if (errorStream) {
+      errorStream.write(JSON.stringify(errRec) + '\n');
+    } else {
+      errors.push(errRec);
+    }
+  };
+
   const summary: ImportSummary = {
     total: 0,
     successes: 0,
@@ -202,6 +241,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
 
   const semaphore = new Semaphore(concurrency);
   const inFlight: Promise<void>[] = [];
+  const MAX_INFLIGHT_BATCH = concurrency * 10; // Process in batches of 10x concurrency
 
   await new Promise<void>((resolve, reject) => {
     const parser = parse({
@@ -214,10 +254,16 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
     parser.on("error", (err) => reject(err));
     parser.on("end", () => resolve());
 
-    parser.on("readable", () => {
+    parser.on("readable", async () => {
       let row: CSVRow | null;
       // eslint-disable-next-line no-cond-assign
       while ((row = parser.read()) !== null) {
+        // If we've reached batch limit, wait for current batch to complete
+        if (inFlight.length >= MAX_INFLIGHT_BATCH) {
+          await Promise.allSettled(inFlight);
+          inFlight.length = 0; // Clear completed batch
+        }
+
         const rowData = row as CSVRow; // capture per-iteration to avoid closure over mutable 'row'
         if (!headerHandled) {
           headerHandled = true;
@@ -250,7 +296,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
               timestamp: new Date().toISOString(),
               rawRow: rowData as Record<string, unknown>
             };
-            errors.push(errRec);
+            recordError(errRec);
             summary.failures += 1;
             logger.stepFailure(currentRecord);
             return;
@@ -297,7 +343,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
                   workosRequestId: requestId,
                   workosErrors
                 };
-                errors.push(errRec);
+                recordError(errRec);
                 summary.failures += 1;
                 logger.stepFailure(currentRecord);
                 const statusStr = status != null ? String(status) : "?";
@@ -320,7 +366,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
                 timestamp: new Date().toISOString(),
                 rawRow: rowData as Record<string, unknown>
               };
-              errors.push(errRec);
+              recordError(errRec);
               summary.failures += 1;
               logger.stepFailure(currentRecord);
               return;
@@ -346,7 +392,7 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
               workosRequestId: requestId,
               workosErrors
             };
-            errors.push(errRec);
+            recordError(errRec);
             summary.failures += 1;
             logger.stepFailure(currentRecord);
             const statusStr = status != null ? String(status) : "?";
@@ -376,6 +422,19 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
   // Wait for all in-flight tasks
   await Promise.all(inFlight);
   summary.endedAt = Date.now();
+
+  // Clean up rate limiter
+  limiter.stop();
+
+  // Close error stream if opened
+  if (errorStream) {
+    await new Promise<void>((resolve, reject) => {
+      errorStream!.end((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  }
 
   return { summary, errors };
 }
