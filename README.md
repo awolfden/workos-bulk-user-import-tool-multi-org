@@ -8,10 +8,9 @@ Import users from a CSV file into WorkOS User Management with support for **mult
 ### Key Differences from Single-Org Tool
 - ✅ Multiple organizations in one CSV file
 - ✅ Organization caching for performance
-- ✅ Parallel processing with worker pool (4x faster)
+- ✅ Parallel processing with worker pool 
 - ✅ Checkpointing and resumability for large imports
 - ✅ Designed for 1M+ users across 1K+ organizations
-- ✅ Based on production-tested v1.1.0 foundation
 
 ---
 
