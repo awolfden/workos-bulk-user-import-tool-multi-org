@@ -791,6 +791,330 @@ Memory usage is **constant** regardless of import size.
 
 ---
 
+### Debugging & Troubleshooting
+
+When imports fail or encounter errors, use these debugging techniques to identify and resolve issues.
+
+#### Viewing Errors
+
+All errors are logged to `errors.jsonl` in your checkpoint directory. Use `jq` to parse and analyze them:
+
+**Find your checkpoint directory:**
+```bash
+# List all checkpoints
+ls -la .workos-checkpoints/
+
+# View errors from specific job
+cat .workos-checkpoints/{job-id}/errors.jsonl
+```
+
+**View all errors (formatted):**
+```bash
+# Pretty-print all errors
+cat .workos-checkpoints/{job-id}/errors.jsonl | jq .
+
+# View first 10 errors
+head -10 .workos-checkpoints/{job-id}/errors.jsonl | jq .
+
+# View last 10 errors
+tail -10 .workos-checkpoints/{job-id}/errors.jsonl | jq .
+```
+
+**Count errors by type:**
+```bash
+# Count each error type
+cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r .errorType | sort | uniq -c
+
+# Example output:
+#   150 user_create
+#    25 org_resolution
+#     8 membership_create
+```
+
+**Count errors by message:**
+```bash
+# See most common error messages
+cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r .errorMessage | sort | uniq -c | sort -rn
+
+# Example output:
+# 2423 The external_id provided has already been assigned to another organization.
+#   86 Internal Server Error
+#   12 Email already exists
+```
+
+**Filter specific error types:**
+```bash
+# View only org_resolution errors
+cat .workos-checkpoints/{job-id}/errors.jsonl | jq 'select(.errorType == "org_resolution")'
+
+# View only user_create errors
+cat .workos-checkpoints/{job-id}/errors.jsonl | jq 'select(.errorType == "user_create")'
+
+# View errors with specific HTTP status
+cat .workos-checkpoints/{job-id}/errors.jsonl | jq 'select(.httpStatus == 409)'
+```
+
+**View specific fields:**
+```bash
+# Just email addresses that failed
+cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r .email
+
+# Record numbers and messages
+cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r '[.recordNumber, .errorMessage] | @tsv'
+
+# Errors with timestamps
+cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r '[.timestamp, .email, .errorMessage] | @tsv'
+```
+
+#### Common Errors & Solutions
+
+**Error: "Internal Server Error"**
+
+**What it means:** WorkOS API is experiencing issues or rate limiting.
+
+**Solutions:**
+```bash
+# 1. Resume the import to retry failed chunks
+npx tsx bin/import-users.ts --resume {job-id}
+
+# 2. Use fewer workers to reduce API load
+npx tsx bin/import-users.ts --resume {job-id} --workers 2
+
+# 3. Reduce concurrency
+npx tsx bin/import-users.ts --resume {job-id} --concurrency 5
+
+# 4. If persistent, wait a few minutes and retry
+```
+
+**When this happens:**
+- High API load or rate limiting
+- Temporary WorkOS service issues
+- Too many concurrent workers overwhelming the API
+
+**Error: "The external_id provided has already been assigned to another organization"**
+
+**What it means:** You're trying to import users with external_ids that already exist in WorkOS from previous test runs.
+
+**Solutions:**
+
+**Option 1: Generate fresh test data (recommended)**
+```bash
+# Create new CSV with unique IDs
+node -e "
+const fs = require('fs');
+const timestamp = Date.now();
+const lines = ['email,first_name,last_name,email_verified,external_id,org_external_id,org_name'];
+for (let i = 0; i < 1000; i++) {
+  const org = i % 50;
+  lines.push(\`user\${i}_\${timestamp}@org\${org}.test.com,User\${i},Last\${i},true,usr_\${i}_\${timestamp},org-\${String(org).padStart(6,'0')}_\${timestamp},TestOrg \${org}\`);
+}
+fs.writeFileSync('/tmp/fresh-test.csv', lines.join('\\n'));
+console.log('Created /tmp/fresh-test.csv');
+"
+
+# Import with fresh data
+npx tsx bin/import-users.ts --csv /tmp/fresh-test.csv --job-id fresh-import
+```
+
+**Option 2: Clean up existing test data**
+- Log into WorkOS dashboard
+- Delete test users/organizations manually
+- Re-run the import
+
+**Option 3: Use dry-run for testing**
+```bash
+# Test without making API calls
+npx tsx bin/import-users.ts --csv users.csv --dry-run --workers 4
+```
+
+**When this happens:**
+- Running the same test CSV multiple times
+- Testing with data that conflicts with production data
+- Previous import was partially successful
+
+**Error: "Email already exists"**
+
+**What it means:** A user with this email already exists in WorkOS.
+
+**Solutions:**
+```bash
+# Skip duplicate emails by filtering your CSV first
+# Or use unique emails in your test data
+
+# View which emails are duplicates
+cat .workos-checkpoints/{job-id}/errors.jsonl | jq 'select(.errorMessage | contains("Email already exists")) | .email'
+```
+
+**Error: "Organization not found"**
+
+**What it means:** Organization lookup failed (org_external_id doesn't exist).
+
+**Solutions:**
+```bash
+# Option 1: Add org_name column to auto-create orgs
+# CSV should have: org_external_id,org_name
+# acme-corp,Acme Corporation
+
+# Option 2: Pre-create organizations in WorkOS
+# Option 3: Use org_id instead of org_external_id (direct ID, no lookup)
+```
+
+#### Recovery Workflows
+
+**Workflow 1: Resume a Failed Import**
+
+When an import fails partway through (network issues, API errors, etc.):
+
+```bash
+# 1. Check what failed
+cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r .errorMessage | sort | uniq -c
+
+# 2. Resume from where it stopped
+npx tsx bin/import-users.ts --resume {job-id}
+
+# 3. Monitor progress
+# The tool will retry failed chunks automatically
+```
+
+**Workflow 2: Test Before Production**
+
+Always validate with dry-run before importing real data:
+
+```bash
+# 1. Dry-run to validate CSV and logic
+npx tsx bin/import-users.ts --csv users.csv --dry-run --workers 4
+
+# 2. Check for any validation errors
+# Look for: "Multi-org mode detected", "X users would be imported"
+
+# 3. Run actual import
+npx tsx bin/import-users.ts --csv users.csv --job-id prod-import --workers 4
+
+# 4. Monitor errors during import
+tail -f .workos-checkpoints/prod-import/errors.jsonl | jq .
+```
+
+**Workflow 3: Handle Duplicate Data**
+
+When you have duplicate external_ids from previous runs:
+
+```bash
+# 1. Check how many duplicates
+cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r .errorMessage | grep "already been assigned" | wc -l
+
+# 2. Generate fresh test data with timestamps
+timestamp=$(date +%s)
+# Use script from "Option 1" above with $timestamp
+
+# 3. Import with new data
+npx tsx bin/import-users.ts --csv /tmp/fresh-test.csv --job-id test-$timestamp
+```
+
+**Workflow 4: Debug Specific Records**
+
+When specific rows are failing:
+
+```bash
+# 1. Find failing record numbers
+cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r .recordNumber | sort -n
+
+# 2. View details for specific record
+cat .workos-checkpoints/{job-id}/errors.jsonl | jq 'select(.recordNumber == 1523)'
+
+# 3. Check the raw CSV row
+sed -n '1524p' users.csv  # recordNumber + 1 (for header row)
+
+# 4. Fix the CSV and re-import just that section
+# Create a new CSV with just the fixed rows
+```
+
+#### Debugging Commands Cheat Sheet
+
+**Quick diagnostics:**
+```bash
+# Count total errors
+cat .workos-checkpoints/{job-id}/errors.jsonl | wc -l
+
+# Group errors by type
+cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r .errorType | sort | uniq -c
+
+# Most common error messages
+cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r .errorMessage | sort | uniq -c | sort -rn | head -5
+
+# Check checkpoint status
+cat .workos-checkpoints/{job-id}/checkpoint.json | jq '.summary'
+
+# View cache statistics
+cat .workos-checkpoints/{job-id}/checkpoint.json | jq '.orgCache.stats'
+```
+
+**Resume and retry:**
+```bash
+# Resume with same config
+npx tsx bin/import-users.ts --resume {job-id}
+
+# Resume with fewer workers
+npx tsx bin/import-users.ts --resume {job-id} --workers 2
+
+# Resume with lower concurrency
+npx tsx bin/import-users.ts --resume {job-id} --concurrency 5
+```
+
+**Generate test data:**
+```bash
+# Multi-org test data (1000 users, 50 orgs)
+npx tsx scripts/generate-multi-org-csv.ts 1000 50 /tmp/test.csv
+
+# With unique timestamp to avoid duplicates
+npx tsx scripts/generate-multi-org-csv.ts 1000 50 /tmp/test-$(date +%s).csv
+```
+
+**Dry-run testing:**
+```bash
+# Test without API calls (multi-org)
+npx tsx bin/import-users.ts --csv users.csv --dry-run
+
+# Test with workers
+npx tsx bin/import-users.ts --csv users.csv --dry-run --workers 4 --job-id test
+
+# Test with specific chunk size
+npx tsx bin/import-users.ts --csv users.csv --dry-run --chunk-size 100
+```
+
+**Clean up:**
+```bash
+# Remove old checkpoints
+rm -rf .workos-checkpoints/{old-job-id}
+
+# Remove all test checkpoints
+rm -rf .workos-checkpoints/test-*
+
+# View disk usage
+du -sh .workos-checkpoints/*
+```
+
+#### Understanding Error Types
+
+**Error types and what they mean:**
+
+| Error Type | What Failed | Common Causes |
+|------------|-------------|---------------|
+| `user_create` | Creating the WorkOS user | Invalid email, email exists, API error |
+| `org_resolution` | Finding/creating organization | Org not found, invalid external_id, org creation failed |
+| `membership_create` | Adding user to organization | User already member, org doesn't exist, API error |
+
+**HTTP Status Codes:**
+
+| Status | Meaning | Common Causes |
+|--------|---------|---------------|
+| 400 | Bad Request | Invalid data format, missing required fields |
+| 404 | Not Found | Organization doesn't exist |
+| 409 | Conflict | Email/external_id already exists |
+| 429 | Rate Limit | Too many requests (auto-retried) |
+| 500 | Server Error | WorkOS API issue (retry recommended) |
+
+---
+
 ### CSV format at a glance
 
 Required column:
