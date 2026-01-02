@@ -1,0 +1,67 @@
+{
+  "jobId": "test-coord-1767370382886",
+  "csvPath": "/Users/adamwolfman/Documents/workos-bulk-user-import-tool-multi-org/examples/phase3-chunk-test.csv",
+  "csvHash": "f10fb984807aadbc8325fc4eca3b11f5e1905438c55c2027a80e334be781f79c",
+  "createdAt": 1767370382890,
+  "updatedAt": 1767370383115,
+  "chunkSize": 3,
+  "concurrency": 2,
+  "totalRows": 10,
+  "chunks": [
+    {
+      "chunkId": 0,
+      "startRow": 1,
+      "endRow": 3,
+      "status": "completed",
+      "successes": 3,
+      "failures": 0,
+      "membershipsCreated": 0,
+      "completedAt": 1767370383113,
+      "durationMs": 5
+    },
+    {
+      "chunkId": 1,
+      "startRow": 4,
+      "endRow": 6,
+      "status": "completed",
+      "successes": 3,
+      "failures": 0,
+      "membershipsCreated": 0,
+      "completedAt": 1767370383113,
+      "durationMs": 5
+    },
+    {
+      "chunkId": 2,
+      "startRow": 7,
+      "endRow": 9,
+      "status": "completed",
+      "successes": 3,
+      "failures": 0,
+      "membershipsCreated": 0,
+      "completedAt": 1767370383115,
+      "durationMs": 2
+    },
+    {
+      "chunkId": 3,
+      "startRow": 10,
+      "endRow": 10,
+      "status": "completed",
+      "successes": 1,
+      "failures": 0,
+      "membershipsCreated": 0,
+      "completedAt": 1767370383115,
+      "durationMs": 1
+    }
+  ],
+  "summary": {
+    "total": 10,
+    "successes": 10,
+    "failures": 0,
+    "membershipsCreated": 0,
+    "startedAt": 1767370382890,
+    "endedAt": null,
+    "warnings": []
+  },
+  "mode": "single-org",
+  "orgId": "org_test_single"
+}

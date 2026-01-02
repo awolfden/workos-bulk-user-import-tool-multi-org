@@ -139,6 +139,9 @@ export class CheckpointManager {
   async saveCheckpoint(): Promise<void> {
     this.state.updatedAt = Date.now();
 
+    // Ensure directory exists (defensive programming for worker environments)
+    await fs.promises.mkdir(this.checkpointDir, { recursive: true });
+
     // Atomic write: write to temp file, then rename
     const tempPath = `${this.checkpointPath}.tmp`;
     await fs.promises.writeFile(tempPath, JSON.stringify(this.state, null, 2), 'utf8');

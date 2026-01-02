@@ -337,4 +337,25 @@ export class OrganizationCache {
 
     return cache;
   }
+
+  /**
+   * Phase 4: Merge cache entries from worker
+   * Only adds entries that don't already exist (workers send all their entries)
+   */
+  mergeEntries(entries: import('../checkpoint/types.js').SerializedCacheEntry[]): void {
+    for (const entry of entries) {
+      // Only add if not already in cache
+      if (!this.cache.has(entry.key)) {
+        const cacheEntry: OrganizationCacheEntry = {
+          id: entry.id,
+          externalId: entry.externalId,
+          name: entry.name,
+          cachedAt: Date.now(),
+          ttl: this.enableTTL ? this.defaultTTLMs : undefined
+        };
+
+        this.cache.set(entry.key, cacheEntry);
+      }
+    }
+  }
 }

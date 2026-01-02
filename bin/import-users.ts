@@ -30,6 +30,8 @@ program
   .option("--resume [job-id]", "Resume from checkpoint (auto-detects last job if no ID provided)")
   .option("--chunk-size <n>", "Rows per chunk for checkpointing (default: 1000)", (v) => parseInt(v, 10))
   .option("--checkpoint-dir <path>", "Checkpoint storage directory (default: .workos-checkpoints)")
+  // Phase 4: Parallel processing
+  .option("--workers <n>", "Number of worker threads for parallel processing (default: 1, requires --job-id)", (v) => parseInt(v, 10))
   // Back-compat: accept --user-export as alias to --csv
   .option("--user-export <path>", "(deprecated) Use --csv instead", undefined)
   .parse(process.argv);
@@ -52,6 +54,8 @@ async function main() {
     resume?: string | boolean;
     chunkSize?: number;
     checkpointDir?: string;
+    // Phase 4: Parallel processing
+    workers?: number;
   }>();
 
   const csvPath = opts.csv ?? opts.userExport;
@@ -62,6 +66,27 @@ async function main() {
   }
   const absCsv = path.resolve(csvPath);
   const logger = createLogger({ quiet: opts.quiet });
+
+  // Phase 4: Validate worker count
+  let numWorkers = opts.workers ?? 1;
+  if (numWorkers < 1) {
+    // eslint-disable-next-line no-console
+    console.error("Error: --workers must be >= 1");
+    process.exit(2);
+  }
+  if (numWorkers > 1 && !opts.jobId && !opts.resume) {
+    // eslint-disable-next-line no-console
+    console.error("Error: --workers requires --job-id or --resume (checkpoint mode)");
+    process.exit(2);
+  }
+  // Note: We use dynamic import of 'os' module to avoid loading it when not needed
+  if (numWorkers > 1) {
+    const os = await import('node:os');
+    const cpuCount = os.cpus().length;
+    if (numWorkers > cpuCount) {
+      logger.warn(`Warning: --workers ${numWorkers} exceeds CPU count (${cpuCount})`);
+    }
+  }
 
   // Phase 3: Checkpoint initialization
   let checkpointManager: CheckpointManager | undefined;
@@ -204,7 +229,8 @@ async function main() {
       dryRun: Boolean(opts.dryRun),
       errorsOutPath: useJsonlStreaming ? errorsOutPath : undefined,
       multiOrgMode,
-      checkpointManager // Phase 3: Enable chunked mode if checkpoint provided
+      checkpointManager, // Phase 3: Enable chunked mode if checkpoint provided
+      numWorkers // Phase 4: Enable worker pool if multiple workers specified
     });
 
     // Handle CSV error output (legacy, memory-limited)

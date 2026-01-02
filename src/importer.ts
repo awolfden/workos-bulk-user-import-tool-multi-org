@@ -19,6 +19,7 @@ type ImportOptions = {
   errorsOutPath?: string;
   multiOrgMode?: boolean; // Enables per-row org resolution with caching
   checkpointManager?: CheckpointManager; // Phase 3: Enables chunked mode with checkpoints
+  numWorkers?: number; // Phase 4: Number of worker threads for parallel processing
 };
 
 class Semaphore {
@@ -245,6 +246,11 @@ export async function importUsersFromCsv(options: ImportOptions): Promise<{
   summary: ImportSummary;
   errors: ErrorRecord[];
 }> {
+  // Phase 4: Route to worker pool mode if multiple workers specified
+  if (options.checkpointManager && options.numWorkers && options.numWorkers > 1) {
+    return importUsersWorkerMode(options);
+  }
+
   // Phase 3: Route to chunked mode if checkpoint manager provided
   if (options.checkpointManager) {
     return importUsersChunkedMode(options);
@@ -863,6 +869,64 @@ async function processChunk(
     membershipsCreated: chunkMemberships,
     durationMs: chunkDuration
   };
+}
+
+/**
+ * Phase 4: Worker pool mode for parallel processing
+ * Uses multiple worker threads to process chunks in parallel
+ */
+async function importUsersWorkerMode(options: ImportOptions): Promise<{
+  summary: ImportSummary;
+  errors: ErrorRecord[];
+}> {
+  const { checkpointManager, quiet, numWorkers = 4 } = options;
+
+  if (!checkpointManager) {
+    throw new Error("Checkpoint manager required for worker mode");
+  }
+
+  const logger = createLogger({ quiet });
+  const state = checkpointManager.getState();
+
+  // Initialize organization cache for multi-org mode
+  let orgCache: OrganizationCache | null = null;
+  if (state.mode === 'multi-org') {
+    orgCache = checkpointManager.restoreCache();
+    if (orgCache) {
+      logger.log(`Restored organization cache: ${orgCache.getStats().size} entries`);
+    } else {
+      orgCache = new OrganizationCache({ maxSize: 10000 });
+      logger.log("Multi-org mode: Organization cache initialized");
+    }
+  }
+
+  // Import WorkerCoordinator dynamically to avoid circular dependency
+  const { WorkerCoordinator } = await import('./workers/coordinator.js');
+
+  // Create worker import options
+  const workerOptions = {
+    csvPath: options.csvPath,
+    concurrency: options.concurrency ?? 10,
+    orgId: options.orgId ?? null,
+    requireMembership: options.requireMembership ?? false,
+    dryRun: options.dryRun ?? false
+  };
+
+  // Create and start coordinator
+  const coordinator = new WorkerCoordinator(
+    {
+      checkpointManager,
+      numWorkers,
+      orgCache,
+      importOptions: workerOptions as any
+    },
+    logger
+  );
+
+  logger.log(`Starting parallel import with ${numWorkers} workers...`);
+  const summary = await coordinator.start();
+
+  return { summary, errors: [] }; // Errors streamed to checkpoint dir
 }
 
 /**
