@@ -46,6 +46,7 @@ export interface OrganizationCacheOptions {
   maxSize?: number; // default: 10000
   enableTTL?: boolean; // default: false
   defaultTTLMs?: number; // default: 3600000 (1 hour)
+  dryRun?: boolean; // default: false - skip API calls in dry-run mode
 }
 
 export class OrganizationCache {
@@ -59,6 +60,7 @@ export class OrganizationCache {
   private readonly maxSize: number;
   private readonly enableTTL: boolean;
   private readonly defaultTTLMs: number;
+  private readonly dryRun: boolean;
 
   constructor(options?: OrganizationCacheOptions) {
     this.cache = new Map();
@@ -71,6 +73,7 @@ export class OrganizationCache {
     this.maxSize = options?.maxSize ?? 10000;
     this.enableTTL = options?.enableTTL ?? false;
     this.defaultTTLMs = options?.defaultTTLMs ?? 3600000; // 1 hour default
+    this.dryRun = options?.dryRun ?? false;
   }
 
   /**
@@ -195,6 +198,33 @@ export class OrganizationCache {
     orgName?: string
   ): Promise<string | null> {
     this.stats.misses += 1;
+
+    // In dry-run mode, skip API calls and use provided IDs directly
+    if (this.dryRun) {
+      let resolvedOrgId: string | null = null;
+
+      if (orgId) {
+        // Use org ID directly without validation
+        resolvedOrgId = orgId;
+      } else if (orgExternalId) {
+        // Generate fake org ID from external ID for dry-run
+        resolvedOrgId = `org_dryrun_${orgExternalId}`;
+      }
+
+      // Cache the dry-run result
+      if (resolvedOrgId) {
+        const entry: OrganizationCacheEntry = {
+          id: resolvedOrgId,
+          externalId: orgExternalId,
+          name: orgName,
+          cachedAt: Date.now(),
+          ttl: this.enableTTL ? this.defaultTTLMs : undefined
+        };
+        this.set(cacheKey, entry);
+      }
+
+      return resolvedOrgId;
+    }
 
     try {
       let resolvedOrgId: string | null = null;

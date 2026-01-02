@@ -278,7 +278,7 @@ async function importUsersStreamingMode(options: ImportOptions): Promise<{
   // Initialize organization cache for multi-org mode
   let orgCache: OrganizationCache | null = null;
   if (!orgId && multiOrgMode) {
-    orgCache = new OrganizationCache({ maxSize: 10000 });
+    orgCache = new OrganizationCache({ maxSize: 10000, dryRun });
     logger.log("Multi-org mode: Organization cache initialized");
   }
 
@@ -594,7 +594,7 @@ async function importUsersChunkedMode(options: ImportOptions): Promise<{
   summary: ImportSummary;
   errors: ErrorRecord[];
 }> {
-  const { checkpointManager, quiet } = options;
+  const { checkpointManager, quiet, dryRun } = options;
   if (!checkpointManager) {
     throw new Error("Checkpoint manager required for chunked mode");
   }
@@ -605,12 +605,12 @@ async function importUsersChunkedMode(options: ImportOptions): Promise<{
   // Restore organization cache from checkpoint if available
   let orgCache: OrganizationCache | null = null;
   if (state.mode === 'multi-org') {
-    orgCache = checkpointManager.restoreCache();
+    orgCache = checkpointManager.restoreCache(dryRun);
     if (orgCache) {
       const stats = orgCache.getStats();
       logger.log(`Restored organization cache: ${stats.size} entries`);
     } else {
-      orgCache = new OrganizationCache({ maxSize: 10000 });
+      orgCache = new OrganizationCache({ maxSize: 10000, dryRun });
       logger.log("Multi-org mode: Organization cache initialized");
     }
   }
@@ -879,7 +879,7 @@ async function importUsersWorkerMode(options: ImportOptions): Promise<{
   summary: ImportSummary;
   errors: ErrorRecord[];
 }> {
-  const { checkpointManager, quiet, numWorkers = 4 } = options;
+  const { checkpointManager, quiet, dryRun, numWorkers = 4 } = options;
 
   if (!checkpointManager) {
     throw new Error("Checkpoint manager required for worker mode");
@@ -891,11 +891,11 @@ async function importUsersWorkerMode(options: ImportOptions): Promise<{
   // Initialize organization cache for multi-org mode
   let orgCache: OrganizationCache | null = null;
   if (state.mode === 'multi-org') {
-    orgCache = checkpointManager.restoreCache();
+    orgCache = checkpointManager.restoreCache(dryRun);
     if (orgCache) {
       logger.log(`Restored organization cache: ${orgCache.getStats().size} entries`);
     } else {
-      orgCache = new OrganizationCache({ maxSize: 10000 });
+      orgCache = new OrganizationCache({ maxSize: 10000, dryRun });
       logger.log("Multi-org mode: Organization cache initialized");
     }
   }

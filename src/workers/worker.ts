@@ -52,13 +52,11 @@ async function handleInitialize(payload: InitializePayload): Promise<void> {
   try {
     // Restore organization cache from serialized entries
     if (payload.cacheEntries && payload.cacheEntries.length > 0) {
-      orgCache = OrganizationCache.deserialize(payload.cacheEntries);
-      console.log(`[Worker ${workerData?.workerId ?? '?'}] Initialized cache with ${payload.cacheEntries.length} entries`);
+      orgCache = OrganizationCache.deserialize(payload.cacheEntries, { dryRun: payload.options.dryRun });
     } else {
       // Multi-org mode without existing cache
       if (payload.options.orgId === null) {
-        orgCache = new OrganizationCache({ maxSize: 10000 });
-        console.log(`[Worker ${workerData?.workerId ?? '?'}] Initialized empty cache for multi-org mode`);
+        orgCache = new OrganizationCache({ maxSize: 10000, dryRun: payload.options.dryRun });
       }
     }
 
@@ -68,8 +66,6 @@ async function handleInitialize(payload: InitializePayload): Promise<void> {
     // Store import options and checkpoint directory
     importOptions = payload.options;
     checkpointDir = payload.checkpointDir;
-
-    console.log(`[Worker ${workerData?.workerId ?? '?'}] Initialized successfully`);
 
     // Signal ready to coordinator
     sendMessage({ type: 'ready' });
@@ -98,8 +94,6 @@ async function handleProcessChunk(payload: ProcessChunkPayload): Promise<void> {
   const { chunk } = payload;
   const chunkId = chunk.chunkId;
 
-  console.log(`[Worker ${workerData?.workerId ?? '?'}] Processing chunk ${chunkId} (rows ${chunk.startRow}-${chunk.endRow})`);
-
   try {
     // Process the chunk
     const summary = await processChunkInWorker(
@@ -124,8 +118,6 @@ async function handleProcessChunk(payload: ProcessChunkPayload): Promise<void> {
         });
       }
     }
-
-    console.log(`[Worker ${workerData?.workerId ?? '?'}] Completed chunk ${chunkId}: ${summary.successes} successes, ${summary.failures} failures`);
 
     // Send completion message
     const completePayload: ChunkCompletePayload = {
@@ -158,7 +150,6 @@ async function handleProcessChunk(payload: ProcessChunkPayload): Promise<void> {
  * Cleanup and exit gracefully
  */
 function handleShutdown(): void {
-  console.log(`[Worker ${workerData?.workerId ?? '?'}] Shutting down...`);
   isShuttingDown = true;
 
   // Cleanup rate limiter
@@ -217,5 +208,3 @@ process.on('unhandledRejection', (reason) => {
   console.error(`[Worker ${workerData?.workerId ?? '?'}] Unhandled rejection:`, reason);
   process.exit(1);
 });
-
-console.log(`[Worker ${workerData?.workerId ?? '?'}] Started, waiting for initialization...`);

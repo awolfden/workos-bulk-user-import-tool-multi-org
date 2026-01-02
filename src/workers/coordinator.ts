@@ -27,6 +27,7 @@ import { RateLimiter } from '../rateLimiter.js';
 import { CheckpointManager } from '../checkpoint/manager.js';
 import { OrganizationCache } from '../cache/organizationCache.js';
 import { createLogger } from '../logger.js';
+import { ProgressUI } from '../ui/progressUI.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,6 +61,8 @@ export class WorkerCoordinator {
   private allChunksDispatched: boolean = false;
   private chunkCompletionPromises: Map<number, { resolve: () => void; reject: (err: Error) => void }> = new Map();
   private checkpointSaveLock: Promise<void> = Promise.resolve();
+  private progressUI: ProgressUI;
+  private startTime: number = Date.now();
 
   constructor(options: CoordinatorOptions, logger: ReturnType<typeof createLogger>) {
     this.checkpointManager = options.checkpointManager;
@@ -68,10 +71,10 @@ export class WorkerCoordinator {
     this.importOptions = options.importOptions;
     this.logger = logger;
     this.rateLimiter = new RateLimiter(50); // Global 50 rps limit
+    this.progressUI = new ProgressUI(options.importOptions.quiet);
 
     // Resolve worker path (compiled JS file)
-    // In development: dist/workers/workers/worker.js
-    // In production: adjust as needed
+    // Note: Worker threads need compiled JavaScript, not TypeScript
     this.workerPath = path.join(__dirname, '../../dist/workers/workers/worker.js');
   }
 
@@ -79,14 +82,40 @@ export class WorkerCoordinator {
    * Start the coordinator and process all chunks
    */
   async start(): Promise<ImportSummary> {
-    this.logger.log(`Starting coordinator with ${this.numWorkers} workers...`);
+    this.startTime = Date.now();
 
     await this.initializeWorkers();
     this.loadChunkQueue();
+
+    // Initialize progress UI
+    const totalChunks = this.chunkQueue.length;
+    this.progressUI.startImport(totalChunks);
+    if (this.numWorkers > 1) {
+      this.progressUI.initializeWorkers(this.numWorkers);
+    }
+
     await this.processAllChunks();
     await this.shutdownWorkers();
 
-    return this.checkpointManager.getFinalSummary();
+    const summary = this.checkpointManager.getFinalSummary();
+    const duration = Date.now() - this.startTime;
+    const throughput = duration > 0 ? (summary.successes / duration) * 1000 : 0;
+
+    // Display rich summary
+    this.progressUI.displaySummary({
+      totalUsers: summary.total,
+      imported: summary.successes,
+      failed: summary.failures,
+      cacheHits: summary.cacheStats?.hits || 0,
+      cacheMisses: summary.cacheStats?.misses || 0,
+      duration,
+      throughput,
+      membershipsCreated: summary.membershipsCreated
+    }, 'worker-pool');
+
+    this.progressUI.stop();
+
+    return summary;
   }
 
   /**
@@ -94,8 +123,6 @@ export class WorkerCoordinator {
    * Creates workers, sends initialize messages, waits for ready
    */
   private async initializeWorkers(): Promise<void> {
-    this.logger.log('Initializing worker pool...');
-
     const cacheEntries = this.orgCache?.serialize() || [];
     const checkpointDir = this.checkpointManager.getCheckpointDir();
 
@@ -131,7 +158,6 @@ export class WorkerCoordinator {
           if (msg.type === 'ready') {
             worker.off('message', handler);
             this.availableWorkers.add(i);
-            this.logger.log(`Worker ${i} ready`);
             resolve();
           }
         };
@@ -155,7 +181,6 @@ export class WorkerCoordinator {
 
     // Wait for all workers to be ready
     await Promise.all(workerReadyPromises);
-    this.logger.log(`All ${this.numWorkers} workers initialized`);
   }
 
   /**
@@ -166,7 +191,6 @@ export class WorkerCoordinator {
     const pendingChunks = state.chunks.filter(c => c.status === 'pending');
 
     this.chunkQueue = [...pendingChunks];
-    this.logger.log(`Loaded ${this.chunkQueue.length} pending chunks`);
   }
 
   /**
@@ -174,8 +198,6 @@ export class WorkerCoordinator {
    * Waits for all chunks to complete
    */
   private async processAllChunks(): Promise<void> {
-    this.logger.log('Starting chunk processing...');
-
     // Start initial dispatch
     this.dispatchChunks();
 
@@ -183,8 +205,6 @@ export class WorkerCoordinator {
     while (this.activeChunks.size > 0 || this.chunkQueue.length > 0) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-
-    this.logger.log('All chunks processed');
   }
 
   /**
@@ -207,8 +227,6 @@ export class WorkerCoordinator {
 
       this.activeChunks.set(chunk.chunkId, workerId);
 
-      this.logger.log(`Dispatching chunk ${chunk.chunkId} to worker ${workerId}`);
-
       const payload: ProcessChunkPayload = {
         chunk
       };
@@ -228,7 +246,6 @@ export class WorkerCoordinator {
 
     if (this.chunkQueue.length === 0 && !this.allChunksDispatched) {
       this.allChunksDispatched = true;
-      this.logger.log('All chunks dispatched');
     }
   }
 
@@ -286,11 +303,6 @@ export class WorkerCoordinator {
   private async handleChunkComplete(workerId: number, payload: ChunkCompletePayload): Promise<void> {
     const { chunkId, summary, cacheUpdates } = payload;
 
-    this.logger.log(
-      `Chunk ${chunkId} completed by worker ${workerId}: ` +
-      `${summary.successes} successes, ${summary.failures} failures`
-    );
-
     // Mark chunk as completed in checkpoint
     this.checkpointManager.markChunkCompleted(chunkId, summary);
 
@@ -311,6 +323,17 @@ export class WorkerCoordinator {
 
     // Mark worker as available
     this.availableWorkers.add(workerId);
+
+    // Update progress UI
+    const state = this.checkpointManager.getState();
+    const completedChunks = state.chunks.filter(c => c.status === 'completed').length;
+    const totalChunks = state.chunks.length;
+    this.progressUI.updateProgress(completedChunks, totalChunks);
+
+    // Update worker-specific progress
+    if (this.numWorkers > 1) {
+      this.progressUI.updateWorker(workerId, chunkId, totalChunks);
+    }
 
     // Dispatch next chunk if available
     this.dispatchChunks();
@@ -387,8 +410,6 @@ export class WorkerCoordinator {
    * Shutdown all workers gracefully
    */
   private async shutdownWorkers(): Promise<void> {
-    this.logger.log('Shutting down workers...');
-
     const shutdownPromises = this.workers.map((worker, i) => {
       return new Promise<void>((resolve) => {
         worker.on('exit', () => resolve());
@@ -406,6 +427,5 @@ export class WorkerCoordinator {
     });
 
     await Promise.all(shutdownPromises);
-    this.logger.log('All workers shut down');
   }
 }

@@ -1,0 +1,32 @@
+{
+  "jobId": "test-debug2",
+  "csvPath": "/tmp/test-dryrun.csv",
+  "csvHash": "1df83bce54bd76d04d5b8e535ba4995eb0055ffb85cdb891fb97a4cd16db7052",
+  "createdAt": 1767378127958,
+  "updatedAt": 1767378127958,
+  "chunkSize": 1000,
+  "concurrency": 10,
+  "totalRows": 3,
+  "chunks": [
+    {
+      "chunkId": 0,
+      "startRow": 1,
+      "endRow": 3,
+      "status": "pending",
+      "successes": 0,
+      "failures": 0,
+      "membershipsCreated": 0
+    }
+  ],
+  "summary": {
+    "total": 0,
+    "successes": 0,
+    "failures": 0,
+    "membershipsCreated": 0,
+    "startedAt": 1767378127958,
+    "endedAt": null,
+    "warnings": []
+  },
+  "mode": "multi-org",
+  "orgId": null
+}

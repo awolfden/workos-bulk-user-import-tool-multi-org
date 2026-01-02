@@ -1,17 +1,9 @@
+import chalk from 'chalk';
 import { ImportSummary } from "./types.js";
 
 function supportsColor(): boolean {
-  if (process.env.NO_COLOR) return false;
+  if (process.env.NO_COLOR || process.env.CI) return false;
   return Boolean(process.stderr && process.stderr.isTTY);
-}
-
-function colorize(text: string, color: "red" | "green"): string {
-  if (!supportsColor()) return text;
-  const RED = "\x1b[31m";
-  const GREEN = "\x1b[32m";
-  const RESET = "\x1b[0m";
-  const code = color === "red" ? RED : GREEN;
-  return `${code}${text}${RESET}`;
 }
 
 function formatDuration(ms: number): string {
@@ -33,46 +25,61 @@ export function renderSummaryBox(summary: ImportSummary): string {
   const warningsCount = summary.warnings.length;
   const errorsCount = summary.failures;
   const memberships = summary.membershipsCreated;
+  const useColors = supportsColor();
 
+  // Status with icon
+  let statusLine = `Status: ${status}`;
+  if (useColors) {
+    if (status === 'Success') {
+      statusLine = `Status: ${chalk.green('✓ ' + status)}`;
+    } else if (status === 'Completed with errors') {
+      statusLine = `Status: ${chalk.yellow('⚠ ' + status)}`;
+    } else {
+      statusLine = `Status: ${chalk.red('✗ ' + status)}`;
+    }
+  }
+
+  // Build content array
   const content = [
-    "SUMMARY",
-    `Status: ${status}`,
-    `Users imported: ${imported}`,
-    `Memberships created: ${memberships}`,
-    `Duration: ${duration}`,
+    useColors ? chalk.bold('SUMMARY') : 'SUMMARY',
+    statusLine,
+    `Users imported: ${useColors ? chalk.cyan(imported) : imported}`,
+    `Memberships created: ${useColors ? chalk.blue(memberships.toString()) : memberships}`,
+    `Duration: ${useColors ? chalk.magenta(duration) : duration}`,
     `Warnings: ${warningsCount}`,
-    `Errors: ${errorsCount}`
+    `Errors: ${useColors && errorsCount > 0 ? chalk.red(errorsCount.toString()) : errorsCount}`
   ];
 
   // Add cache statistics if available (multi-org mode)
   if (summary.cacheStats) {
+    const hitRate = summary.cacheStats.hitRate;
     content.push(
-      `Cache hits: ${summary.cacheStats.hits}`,
-      `Cache misses: ${summary.cacheStats.misses}`,
-      `Cache hit rate: ${summary.cacheStats.hitRate}`
+      `Cache hits: ${useColors ? chalk.blue(summary.cacheStats.hits.toString()) : summary.cacheStats.hits} (${hitRate})`,
+      `Cache misses: ${summary.cacheStats.misses}`
     );
   }
 
   // Add chunk progress if available (chunked mode)
   if (summary.chunkProgress) {
+    const progress = `${summary.chunkProgress.completedChunks}/${summary.chunkProgress.totalChunks} chunks (${summary.chunkProgress.percentComplete}%)`;
     content.push(
-      `Chunk progress: ${summary.chunkProgress.completedChunks}/${summary.chunkProgress.totalChunks} chunks (${summary.chunkProgress.percentComplete}%)`
+      `Chunk progress: ${useColors ? chalk.cyan(progress) : progress}`
     );
   }
 
-  // Compute max content width and render a neatly padded box
-  const maxLen = content.reduce((m, s) => Math.max(m, s.length), 0);
-  const horizontal = "─".repeat(maxLen + 2);
+  // Compute max content width (strip ANSI codes for accurate length)
+  const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
+  const maxLen = content.reduce((m, s) => Math.max(m, stripAnsi(s).length), 0);
+  const horizontal = "═".repeat(maxLen + 2);
   const top = `┌${horizontal}┐`;
   const bottom = `└${horizontal}┘`;
-  const body = content.map((line) => `│ ${line.padEnd(maxLen, " ")} │`);
+  const body = content.map((line) => {
+    const stripped = stripAnsi(line);
+    const padding = " ".repeat(maxLen - stripped.length);
+    return `│ ${line}${padding} │`;
+  });
   const box = [top, ...body, bottom].join("\n");
 
-  // Apply color based on status (entire box) for TTYs; honor NO_COLOR
-  if (status === "Success") {
-    return colorize(box, "green");
-  }
-  // "Completed with errors" or "Failed"
-  return colorize(box, "red");
+  return box;
 }
 

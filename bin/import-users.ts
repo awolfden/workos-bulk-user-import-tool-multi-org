@@ -241,10 +241,13 @@ async function main() {
       logger.warn(`Errors streamed to: ${errorsOutPath}`);
     }
 
-    const summaryBox = renderSummaryBox(summary);
-    // Print summary to stderr to be visible even when quiet
-    // eslint-disable-next-line no-console
-    console.error(summaryBox);
+    // Only print summary box if not using workers (workers have their own ProgressUI summary)
+    if (!numWorkers || numWorkers <= 1) {
+      const summaryBox = renderSummaryBox(summary);
+      // Print summary to stderr to be visible even when quiet
+      // eslint-disable-next-line no-console
+      console.error(summaryBox);
+    }
 
     if (errors.length > 0) {
       exitCode = 1;

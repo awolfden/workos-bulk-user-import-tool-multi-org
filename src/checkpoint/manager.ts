@@ -330,14 +330,14 @@ export class CheckpointManager {
   /**
    * Restore organization cache from checkpoint
    */
-  restoreCache(): OrganizationCache | null {
+  restoreCache(dryRun?: boolean): OrganizationCache | null {
     if (!this.state.orgCache) {
       return null;
     }
 
     const cache = OrganizationCache.deserialize(
       this.state.orgCache.entries,
-      { maxSize: 10000 }
+      { maxSize: 10000, dryRun }
     );
 
     // Restore statistics

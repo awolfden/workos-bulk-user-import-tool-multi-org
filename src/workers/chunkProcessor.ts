@@ -328,7 +328,11 @@ export async function processChunkInWorker(
             let resolvedOrgId = orgId;
             if (!orgId && built.orgInfo && orgCache) {
               try {
-                await rateLimiter.acquire();
+                // Only acquire rate limit token if not in dry-run mode
+                if (!dryRun) {
+                  await rateLimiter.acquire();
+                }
+
                 resolvedOrgId = await orgCache.resolve({
                   orgId: built.orgInfo.orgId,
                   orgExternalId: built.orgInfo.orgExternalId,

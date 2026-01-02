@@ -1,0 +1,343 @@
+{
+  "jobId": "test-multiorg",
+  "csvPath": "/Users/adamwolfman/Documents/workos-bulk-user-import-tool-multi-org/examples/cache-test-1k-50-uniform.csv",
+  "csvHash": "b209a496c9052d8b68d97a0d523eedaeb8977f841645d3adec465aec170f7a6c",
+  "createdAt": 1767378385938,
+  "updatedAt": 1767378406225,
+  "chunkSize": 1000,
+  "concurrency": 10,
+  "totalRows": 1000,
+  "chunks": [
+    {
+      "chunkId": 0,
+      "startRow": 1,
+      "endRow": 1000,
+      "status": "completed",
+      "successes": 1000,
+      "failures": 0,
+      "membershipsCreated": 0,
+      "completedAt": 1767378406224,
+      "durationMs": 20070
+    }
+  ],
+  "summary": {
+    "total": 1000,
+    "successes": 1000,
+    "failures": 0,
+    "membershipsCreated": 0,
+    "startedAt": 1767378385938,
+    "endedAt": null,
+    "warnings": []
+  },
+  "mode": "multi-org",
+  "orgId": null,
+  "orgCache": {
+    "entries": [
+      {
+        "key": "ext:org-000000",
+        "id": "org_dryrun_org-000000",
+        "externalId": "org-000000",
+        "name": "Acme Corp 0"
+      },
+      {
+        "key": "ext:org-000001",
+        "id": "org_dryrun_org-000001",
+        "externalId": "org-000001",
+        "name": "Beta Corp 1"
+      },
+      {
+        "key": "ext:org-000002",
+        "id": "org_dryrun_org-000002",
+        "externalId": "org-000002",
+        "name": "Gamma Corp 2"
+      },
+      {
+        "key": "ext:org-000003",
+        "id": "org_dryrun_org-000003",
+        "externalId": "org-000003",
+        "name": "Delta Corp 3"
+      },
+      {
+        "key": "ext:org-000004",
+        "id": "org_dryrun_org-000004",
+        "externalId": "org-000004",
+        "name": "Epsilon Corp 4"
+      },
+      {
+        "key": "ext:org-000005",
+        "id": "org_dryrun_org-000005",
+        "externalId": "org-000005",
+        "name": "Zeta Corp 5"
+      },
+      {
+        "key": "ext:org-000006",
+        "id": "org_dryrun_org-000006",
+        "externalId": "org-000006",
+        "name": "Theta Corp 6"
+      },
+      {
+        "key": "ext:org-000007",
+        "id": "org_dryrun_org-000007",
+        "externalId": "org-000007",
+        "name": "Kappa Corp 7"
+      },
+      {
+        "key": "ext:org-000008",
+        "id": "org_dryrun_org-000008",
+        "externalId": "org-000008",
+        "name": "Acme Inc 8"
+      },
+      {
+        "key": "ext:org-000009",
+        "id": "org_dryrun_org-000009",
+        "externalId": "org-000009",
+        "name": "Beta Inc 9"
+      },
+      {
+        "key": "ext:org-000010",
+        "id": "org_dryrun_org-000010",
+        "externalId": "org-000010",
+        "name": "Gamma Inc 10"
+      },
+      {
+        "key": "ext:org-000011",
+        "id": "org_dryrun_org-000011",
+        "externalId": "org-000011",
+        "name": "Delta Inc 11"
+      },
+      {
+        "key": "ext:org-000012",
+        "id": "org_dryrun_org-000012",
+        "externalId": "org-000012",
+        "name": "Epsilon Inc 12"
+      },
+      {
+        "key": "ext:org-000013",
+        "id": "org_dryrun_org-000013",
+        "externalId": "org-000013",
+        "name": "Zeta Inc 13"
+      },
+      {
+        "key": "ext:org-000014",
+        "id": "org_dryrun_org-000014",
+        "externalId": "org-000014",
+        "name": "Theta Inc 14"
+      },
+      {
+        "key": "ext:org-000015",
+        "id": "org_dryrun_org-000015",
+        "externalId": "org-000015",
+        "name": "Kappa Inc 15"
+      },
+      {
+        "key": "ext:org-000016",
+        "id": "org_dryrun_org-000016",
+        "externalId": "org-000016",
+        "name": "Acme LLC 16"
+      },
+      {
+        "key": "ext:org-000017",
+        "id": "org_dryrun_org-000017",
+        "externalId": "org-000017",
+        "name": "Beta LLC 17"
+      },
+      {
+        "key": "ext:org-000018",
+        "id": "org_dryrun_org-000018",
+        "externalId": "org-000018",
+        "name": "Gamma LLC 18"
+      },
+      {
+        "key": "ext:org-000019",
+        "id": "org_dryrun_org-000019",
+        "externalId": "org-000019",
+        "name": "Delta LLC 19"
+      },
+      {
+        "key": "ext:org-000020",
+        "id": "org_dryrun_org-000020",
+        "externalId": "org-000020",
+        "name": "Epsilon LLC 20"
+      },
+      {
+        "key": "ext:org-000021",
+        "id": "org_dryrun_org-000021",
+        "externalId": "org-000021",
+        "name": "Zeta LLC 21"
+      },
+      {
+        "key": "ext:org-000022",
+        "id": "org_dryrun_org-000022",
+        "externalId": "org-000022",
+        "name": "Theta LLC 22"
+      },
+      {
+        "key": "ext:org-000023",
+        "id": "org_dryrun_org-000023",
+        "externalId": "org-000023",
+        "name": "Kappa LLC 23"
+      },
+      {
+        "key": "ext:org-000024",
+        "id": "org_dryrun_org-000024",
+        "externalId": "org-000024",
+        "name": "Acme Ltd 24"
+      },
+      {
+        "key": "ext:org-000025",
+        "id": "org_dryrun_org-000025",
+        "externalId": "org-000025",
+        "name": "Beta Ltd 25"
+      },
+      {
+        "key": "ext:org-000026",
+        "id": "org_dryrun_org-000026",
+        "externalId": "org-000026",
+        "name": "Gamma Ltd 26"
+      },
+      {
+        "key": "ext:org-000027",
+        "id": "org_dryrun_org-000027",
+        "externalId": "org-000027",
+        "name": "Delta Ltd 27"
+      },
+      {
+        "key": "ext:org-000028",
+        "id": "org_dryrun_org-000028",
+        "externalId": "org-000028",
+        "name": "Epsilon Ltd 28"
+      },
+      {
+        "key": "ext:org-000029",
+        "id": "org_dryrun_org-000029",
+        "externalId": "org-000029",
+        "name": "Zeta Ltd 29"
+      },
+      {
+        "key": "ext:org-000030",
+        "id": "org_dryrun_org-000030",
+        "externalId": "org-000030",
+        "name": "Theta Ltd 30"
+      },
+      {
+        "key": "ext:org-000031",
+        "id": "org_dryrun_org-000031",
+        "externalId": "org-000031",
+        "name": "Kappa Ltd 31"
+      },
+      {
+        "key": "ext:org-000032",
+        "id": "org_dryrun_org-000032",
+        "externalId": "org-000032",
+        "name": "Acme Co 32"
+      },
+      {
+        "key": "ext:org-000033",
+        "id": "org_dryrun_org-000033",
+        "externalId": "org-000033",
+        "name": "Beta Co 33"
+      },
+      {
+        "key": "ext:org-000034",
+        "id": "org_dryrun_org-000034",
+        "externalId": "org-000034",
+        "name": "Gamma Co 34"
+      },
+      {
+        "key": "ext:org-000035",
+        "id": "org_dryrun_org-000035",
+        "externalId": "org-000035",
+        "name": "Delta Co 35"
+      },
+      {
+        "key": "ext:org-000036",
+        "id": "org_dryrun_org-000036",
+        "externalId": "org-000036",
+        "name": "Epsilon Co 36"
+      },
+      {
+        "key": "ext:org-000037",
+        "id": "org_dryrun_org-000037",
+        "externalId": "org-000037",
+        "name": "Zeta Co 37"
+      },
+      {
+        "key": "ext:org-000038",
+        "id": "org_dryrun_org-000038",
+        "externalId": "org-000038",
+        "name": "Theta Co 38"
+      },
+      {
+        "key": "ext:org-000039",
+        "id": "org_dryrun_org-000039",
+        "externalId": "org-000039",
+        "name": "Kappa Co 39"
+      },
+      {
+        "key": "ext:org-000040",
+        "id": "org_dryrun_org-000040",
+        "externalId": "org-000040",
+        "name": "Acme Group 40"
+      },
+      {
+        "key": "ext:org-000041",
+        "id": "org_dryrun_org-000041",
+        "externalId": "org-000041",
+        "name": "Beta Group 41"
+      },
+      {
+        "key": "ext:org-000042",
+        "id": "org_dryrun_org-000042",
+        "externalId": "org-000042",
+        "name": "Gamma Group 42"
+      },
+      {
+        "key": "ext:org-000043",
+        "id": "org_dryrun_org-000043",
+        "externalId": "org-000043",
+        "name": "Delta Group 43"
+      },
+      {
+        "key": "ext:org-000044",
+        "id": "org_dryrun_org-000044",
+        "externalId": "org-000044",
+        "name": "Epsilon Group 44"
+      },
+      {
+        "key": "ext:org-000045",
+        "id": "org_dryrun_org-000045",
+        "externalId": "org-000045",
+        "name": "Zeta Group 45"
+      },
+      {
+        "key": "ext:org-000046",
+        "id": "org_dryrun_org-000046",
+        "externalId": "org-000046",
+        "name": "Theta Group 46"
+      },
+      {
+        "key": "ext:org-000047",
+        "id": "org_dryrun_org-000047",
+        "externalId": "org-000047",
+        "name": "Kappa Group 47"
+      },
+      {
+        "key": "ext:org-000048",
+        "id": "org_dryrun_org-000048",
+        "externalId": "org-000048",
+        "name": "Acme Industries 48"
+      },
+      {
+        "key": "ext:org-000049",
+        "id": "org_dryrun_org-000049",
+        "externalId": "org-000049",
+        "name": "Beta Industries 49"
+      }
+    ],
+    "stats": {
+      "hits": 0,
+      "misses": 0,
+      "evictions": 0
+    }
+  }
+}

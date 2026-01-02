@@ -101,6 +101,8 @@ export interface WorkerImportOptions {
   requireMembership: boolean;
   /** Dry run mode (don't actually create users/memberships) */
   dryRun: boolean;
+  /** Quiet mode (suppress per-record output) */
+  quiet?: boolean;
 }
 
 /**

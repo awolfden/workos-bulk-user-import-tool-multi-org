@@ -1,9 +1,13 @@
+import chalk from 'chalk';
+
 type LoggerOptions = {
   quiet?: boolean;
 };
 
 export function createLogger(options: LoggerOptions) {
   const quiet = Boolean(options.quiet);
+  const useColors = process.stdout.isTTY && !process.env.NO_COLOR && !process.env.CI;
+
   const log = (...args: unknown[]) => {
     if (!quiet) {
       // eslint-disable-next-line no-console
@@ -22,10 +26,12 @@ export function createLogger(options: LoggerOptions) {
     log(`▶ Processing record #${recordNumber}`);
   };
   const stepSuccess = (recordNumber: number) => {
-    log(`✔ Imported record #${recordNumber}`);
+    const message = `Imported record #${recordNumber}`;
+    log(useColors ? chalk.green(`✔ ${message}`) : `✔ ${message}`);
   };
   const stepFailure = (recordNumber: number) => {
-    log(`✖ Failed record #${recordNumber} (see summary / errors file)`);
+    const message = `Failed record #${recordNumber} (see summary / errors file)`;
+    log(useColors ? chalk.red(`✖ ${message}`) : `✖ ${message}`);
   };
   return {
     log,
