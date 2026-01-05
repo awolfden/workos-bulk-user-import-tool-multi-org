@@ -195,6 +195,84 @@ charlie@gamma.com,,gamma-llc,
 - Row 2: Lookup by external_id, create if missing
 - Row 3: Lookup by external_id only (error if not found)
 
+#### Multi-Organization Memberships (NEW in v2.1)
+
+**A single user can belong to multiple organizations** by appearing in multiple CSV rows. The importer automatically detects duplicate emails and creates additional memberships instead of duplicate users.
+
+**How It Works:**
+- **First occurrence**: Creates the user with WorkOS
+- **Subsequent occurrences**: Reuses existing user, creates additional membership
+
+**Example CSV:**
+```csv
+email,first_name,last_name,external_id,org_external_id,org_name
+alice@example.com,Alice,Smith,user-001,acme-corp,Acme Corporation
+alice@example.com,Alice,Smith,user-001,beta-inc,Beta Inc
+alice@example.com,Alice,Smith,user-001,gamma-llc,Gamma LLC
+bob@example.com,Bob,Jones,user-002,acme-corp,Acme Corporation
+bob@example.com,Bob,Jones,user-002,beta-inc,Beta Inc
+```
+
+**Result:**
+- Alice: 1 user created, 3 memberships created (in Acme, Beta, and Gamma)
+- Bob: 1 user created, 2 memberships created (in Acme and Beta)
+
+**Important Notes:**
+1. **User data from first row wins**: If user data (first_name, last_name, etc.) differs between rows, only the first occurrence is used. Subsequent rows are ignored with a warning.
+2. **Same email = same user**: The importer uses email address (case-insensitive) to identify duplicate users.
+3. **External ID should match**: Use the same external_id across all rows for the same user to maintain consistency.
+4. **Duplicate memberships are detected**: If the same user+org combination appears multiple times, duplicate memberships are skipped gracefully.
+
+**Summary Statistics:**
+
+When using multi-memberships, the summary includes new tracking fields:
+
+```
+┌────────────────────────────────┐
+│ SUMMARY                        │
+│ Status: Success                │
+│ Total rows processed: 5        │
+│ Users created: 2               │
+│ Duplicate users: 3             │
+│ Memberships created: 5         │
+│ Duplicate memberships: 0       │
+│ Duration: 3.2 s                │
+│ Warnings: 0                    │
+│ Errors: 0                      │
+│ Cache hits: 3                  │
+│ Cache misses: 2                │
+└────────────────────────────────┘
+```
+
+**Field Descriptions:**
+- `Users created`: Number of new users created in WorkOS
+- `Duplicate users`: Number of rows where user already existed (memberships added instead)
+- `Memberships created`: Total memberships created across all organizations
+- `Duplicate memberships`: Number of memberships that already existed (skipped)
+
+**Example File:** See `examples/multi-org-multi-membership.csv` for a complete demonstration.
+
+**Use Cases:**
+- Consultants working across multiple client organizations
+- Platform administrators with access to multiple tenants
+- Users with roles in parent and subsidiary companies
+- Testing scenarios requiring complex org structures
+
+**Error Handling:**
+
+409 conflicts for duplicate memberships are handled gracefully:
+```json
+{
+  "recordNumber": 3,
+  "email": "alice@example.com",
+  "errorType": "membership_create",
+  "errorMessage": "Membership already exists",
+  "httpStatus": 409
+}
+```
+
+When a 409 occurs, the row is marked as a duplicate membership (not a failure), and import continues.
+
 #### Performance Characteristics
 
 **Cache Effectiveness:**

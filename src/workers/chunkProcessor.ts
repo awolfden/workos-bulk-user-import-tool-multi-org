@@ -263,6 +263,9 @@ export async function processChunkInWorker(
   let chunkSuccesses = 0;
   let chunkFailures = 0;
   let chunkMemberships = 0;
+  let chunkUsersCreated = 0;
+  let chunkDuplicateUsers = 0;
+  let chunkDuplicateMemberships = 0;
 
   // Set up error streaming to checkpoint dir
   const errorPath = `${checkpointDir}/errors.jsonl`;
@@ -451,6 +454,9 @@ export async function processChunkInWorker(
     successes: chunkSuccesses,
     failures: chunkFailures,
     membershipsCreated: chunkMemberships,
+    usersCreated: chunkUsersCreated,
+    duplicateUsers: chunkDuplicateUsers,
+    duplicateMemberships: chunkDuplicateMemberships,
     durationMs: chunkDuration
   };
 }

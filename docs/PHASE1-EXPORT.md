@@ -212,6 +212,206 @@ Without passwords:
 
 **📖 See [PASSWORD-MIGRATION-GUIDE.md](./PASSWORD-MIGRATION-GUIDE.md) for complete details**
 
+## Multi-Organization Memberships
+
+**NEW in v2.1**: The WorkOS importer now supports users belonging to multiple organizations via multiple CSV rows.
+
+### How Auth0 Exports Handle Multi-Org
+
+Auth0's organization system allows users to belong to multiple organizations. The exporter handles this by **creating one row per user per organization**:
+
+```csv
+email,first_name,last_name,email_verified,external_id,org_external_id,org_name
+alice@example.com,Alice,Smith,true,auth0|123,acme-corp,Acme Corporation
+alice@example.com,Alice,Smith,true,auth0|123,beta-inc,Beta Inc
+alice@example.com,Alice,Smith,true,auth0|123,gamma-llc,Gamma LLC
+```
+
+In this example:
+- Alice is a member of 3 Auth0 organizations
+- The exporter creates 3 CSV rows (one per membership)
+- All rows have identical user data (email, name, external_id)
+
+### Import Behavior
+
+When importing the multi-org CSV:
+
+**First row (Alice + Acme)**:
+- Creates user `alice@example.com` in WorkOS
+- Creates membership in Acme Corporation
+- Summary: `Users created: 1`, `Memberships created: 1`
+
+**Second row (Alice + Beta)**:
+- Detects duplicate user (same email)
+- Reuses existing user ID
+- Creates new membership in Beta Inc
+- Summary: `Users created: 1`, `Duplicate users: 1`, `Memberships created: 2`
+
+**Third row (Alice + Gamma)**:
+- Detects duplicate user (same email)
+- Reuses existing user ID
+- Creates new membership in Gamma LLC
+- Summary: `Users created: 1`, `Duplicate users: 2`, `Memberships created: 3`
+
+**Final result**: One user (Alice) with three memberships (Acme, Beta, Gamma) ✅
+
+### Conflict Detection
+
+The importer automatically detects and handles conflicts:
+
+**User Data Conflicts:**
+If user data differs between rows (e.g., different first_name), a warning is logged:
+```
+Warning: Row 3: Duplicate user alice@example.com - using existing user, ignoring new user data
+```
+
+**Recommendation**: Ensure user data is consistent across all rows for the same email.
+
+**Duplicate Memberships:**
+If the same user+org combination appears multiple times:
+```
+Warning: Row 5: Membership already exists for alice@example.com in org acme-corp - skipping
+```
+
+The duplicate is tracked in the summary but does not cause an error.
+
+### Auth0 Membership Export
+
+The Auth0 exporter fetches memberships by iterating through organizations:
+
+1. **List all organizations** via Auth0 Management API
+2. **For each organization**, get all members
+3. **For each member**, export a CSV row with org context
+
+This ensures:
+- ✅ All memberships are captured
+- ✅ Users in multiple orgs appear multiple times
+- ✅ Organization data is included in each row
+
+### Example Export Flow
+
+**Auth0 Structure:**
+```
+Organizations:
+  - acme-corp (10 members)
+  - beta-inc (15 members)
+  - gamma-llc (8 members)
+
+Users:
+  - alice@example.com (member of: acme-corp, beta-inc, gamma-llc)
+  - bob@example.com (member of: acme-corp)
+  - charlie@example.com (member of: beta-inc, gamma-llc)
+```
+
+**Exported CSV (33 rows total):**
+```csv
+email,first_name,last_name,org_external_id,org_name
+alice@example.com,Alice,Smith,acme-corp,Acme Corporation
+bob@example.com,Bob,Jones,acme-corp,Acme Corporation
+... (8 more acme-corp members)
+alice@example.com,Alice,Smith,beta-inc,Beta Inc
+charlie@example.com,Charlie,Brown,beta-inc,Beta Inc
+... (13 more beta-inc members)
+alice@example.com,Alice,Smith,gamma-llc,Gamma LLC
+charlie@example.com,Charlie,Brown,gamma-llc,Gamma LLC
+... (6 more gamma-llc members)
+```
+
+**Import Summary:**
+```
+Users created: 3 (Alice, Bob, Charlie)
+Duplicate users: 30 (Alice appears 2 extra times, Charlie appears 1 extra time)
+Memberships created: 33 (total org memberships)
+```
+
+### Best Practices
+
+**1. Keep User Data Consistent**
+
+Ensure all rows for the same user have identical data:
+```csv
+# Good ✅
+alice@example.com,Alice,Smith,true,auth0|123,acme-corp,Acme
+alice@example.com,Alice,Smith,true,auth0|123,beta-inc,Beta
+
+# Bad ❌ (inconsistent first_name)
+alice@example.com,Alice,Smith,true,auth0|123,acme-corp,Acme
+alice@example.com,Alicia,Smith,true,auth0|123,beta-inc,Beta
+```
+
+**2. Use Consistent External IDs**
+
+The same user should have the same external_id across all rows:
+```csv
+# Good ✅
+alice@example.com,Alice,Smith,auth0|123,acme-corp
+alice@example.com,Alice,Smith,auth0|123,beta-inc
+
+# Bad ❌ (different external_ids)
+alice@example.com,Alice,Smith,auth0|123,acme-corp
+alice@example.com,Alice,Smith,auth0|456,beta-inc
+```
+
+**3. Review Warnings**
+
+After import, check for user data conflict warnings:
+```bash
+# View import logs
+grep "Duplicate user" import.log
+
+# Or check summary statistics
+cat .workos-checkpoints/{job-id}/checkpoint.json | jq '.summary'
+```
+
+### Testing Multi-Org Exports
+
+Test the export with a small subset first:
+
+```bash
+# Export specific organizations for testing
+npx tsx bin/export-auth0.ts \
+  --domain tenant.auth0.com \
+  --client-id YOUR_CLIENT_ID \
+  --client-secret YOUR_CLIENT_SECRET \
+  --output test-export.csv \
+  --orgs org_abc123 org_def456
+
+# Import test data
+npx tsx bin/import-users.ts \
+  --csv test-export.csv \
+  --dry-run
+
+# Review summary for multi-membership stats
+```
+
+### Troubleshooting
+
+**Issue: More rows than expected**
+
+If you see many duplicate user warnings:
+```bash
+# Count unique emails
+cut -d',' -f1 export.csv | sort -u | wc -l
+
+# Count total rows
+wc -l export.csv
+```
+
+Difference indicates users with multiple org memberships.
+
+**Issue: Membership creation fails**
+
+If memberships fail with 409 errors:
+```
+Error: Membership already exists
+```
+
+This can happen if:
+- Running import multiple times with same data
+- User manually added to org in WorkOS dashboard
+
+**Solution**: The importer now handles 409 gracefully - duplicate memberships are tracked but don't cause failures.
+
 ## Performance
 
 ### Export Speed

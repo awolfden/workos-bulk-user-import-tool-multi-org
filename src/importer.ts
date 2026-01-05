@@ -304,10 +304,17 @@ async function importUsersStreamingMode(options: ImportOptions): Promise<{
     successes: 0,
     failures: 0,
     membershipsCreated: 0,
+    usersCreated: 0,
+    duplicateUsers: 0,
+    duplicateMemberships: 0,
     startedAt,
     endedAt: startedAt,
     warnings
   };
+
+  // Track created users and memberships to support multi-org CSV (multiple rows per user)
+  const createdUsers = new Map<string, string>(); // email → userId
+  const createdMemberships = new Set<string>(); // "userId:orgId"
 
   const input = fs.createReadStream(csvPath);
   let headerHandled = false;
@@ -439,105 +446,144 @@ async function importUsersStreamingMode(options: ImportOptions): Promise<{
           }
 
           let createdUserId: string | undefined;
-          try {
-            if (!dryRun) {
-              createdUserId = await retryCreateUser(built.userPayload!, limiter);
-            } else {
-              // Simulate user creation
-              createdUserId = undefined;
+          const userEmail = built.userPayload!.email.toLowerCase();
+
+          // Check if user was already created in previous row (multi-org mode)
+          if (createdUsers.has(userEmail)) {
+            // User already created - reuse existing userId
+            createdUserId = createdUsers.get(userEmail)!;
+            summary.duplicateUsers += 1;
+
+            // Warn if user data conflicts with first occurrence
+            const firstPayload = built.userPayload!;
+            if (firstPayload.firstName || firstPayload.lastName) {
+              logger.warn(`Row ${currentRecord}: Duplicate user ${userEmail} - using existing user, ignoring new user data`);
             }
-            // Create membership if org is specified (single-org or multi-org mode)
-            if (resolvedOrgId) {
-              try {
-                if (!dryRun) {
-                  await retryCreateOrganizationMembership(createdUserId!, resolvedOrgId, limiter);
-                }
-                summary.membershipsCreated += 1;
-              } catch (err) {
-                if (requireMembership) {
-                    if (!dryRun && createdUserId) {
-                      await deleteUserSafe(createdUserId);
-                    }
-                }
-                const status: number | undefined =
-                  (err as any)?.status ?? (err as any)?.httpStatus ?? (err as any)?.response?.status ?? (err as any)?.code;
-                const workosCode: string | undefined =
-                  (err as any)?.response?.data?.code ?? (err as any)?.code;
-                const requestId: string | undefined =
-                  (err as any)?.requestId ?? (err as any)?.response?.headers?.["x-request-id"] ?? (err as any)?.response?.headers?.["X-Request-Id"];
-                const workosErrors = (err as any)?.response?.data?.errors ?? (err as any)?.errors;
-                const message: string = (err as any)?.message || "Unknown error";
+          } else {
+            // First occurrence - create user
+            try {
+              if (!dryRun) {
+                createdUserId = await retryCreateUser(built.userPayload!, limiter);
+              } else {
+                // Simulate user creation
+                createdUserId = `dry-run-user-${userEmail}`;
+              }
+              createdUsers.set(userEmail, createdUserId!);
+              summary.usersCreated += 1;
+            } catch (err: any) {
+              // Handle user creation errors
+              if (dryRun) {
+                // Should not reach here in dry run; treat as logic error
                 const errRec: ErrorRecord = {
                   recordNumber: currentRecord,
                   email,
-                  userId: createdUserId,
-                  errorType: "membership_create",
-                  errorMessage: message,
+                  errorType: "user_create",
+                  errorMessage: err?.message || "Dry run error",
                   timestamp: new Date().toISOString(),
-                  rawRow: rowData as Record<string, unknown>,
-                  httpStatus: status,
-                  workosCode,
-                  workosRequestId: requestId,
-                  workosErrors
+                  rawRow: rowData as Record<string, unknown>
                 };
                 recordError(errRec);
                 summary.failures += 1;
                 logger.stepFailure(currentRecord);
-                const statusStr = status != null ? String(status) : "?";
-                const codeStr = workosCode ?? "?";
-                const reqStr = requestId ?? "?";
-                logger.warn(`Record #${currentRecord} membership failed: status=${statusStr} code=${codeStr} requestId=${reqStr} message=${message}`);
                 return;
               }
-            }
-            summary.successes += 1;
-            logger.stepSuccess(currentRecord);
-          } catch (err: any) {
-            if (dryRun) {
-              // Should not reach here in dry run; treat as logic error
+              const status: number | undefined =
+                err?.status ?? err?.httpStatus ?? err?.response?.status ?? err?.code;
+              const workosCode: string | undefined =
+                err?.response?.data?.code ?? err?.code;
+              const requestId: string | undefined =
+                err?.requestId ?? err?.response?.headers?.["x-request-id"] ?? err?.response?.headers?.["X-Request-Id"];
+              const workosErrors = err?.response?.data?.errors ?? err?.errors;
+              const message: string = err?.message || "Unknown error";
               const errRec: ErrorRecord = {
                 recordNumber: currentRecord,
                 email,
+                userId: createdUserId,
                 errorType: "user_create",
-                errorMessage: err?.message || "Dry run error",
+                errorMessage: message,
                 timestamp: new Date().toISOString(),
-                rawRow: rowData as Record<string, unknown>
+                rawRow: rowData as Record<string, unknown>,
+                httpStatus: status,
+                workosCode,
+                workosRequestId: requestId,
+                workosErrors
               };
               recordError(errRec);
               summary.failures += 1;
               logger.stepFailure(currentRecord);
+              const statusStr = status != null ? String(status) : "?";
+              const codeStr = workosCode ?? "?";
+              const reqStr = requestId ?? "?";
+              // Print additional non-PII failure context
+              logger.warn(`Record #${currentRecord} failed: status=${statusStr} code=${codeStr} requestId=${reqStr} message=${message}`);
               return;
             }
-            const status: number | undefined =
-              err?.status ?? err?.httpStatus ?? err?.response?.status ?? err?.code;
-            const workosCode: string | undefined =
-              err?.response?.data?.code ?? err?.code;
-            const requestId: string | undefined =
-              err?.requestId ?? err?.response?.headers?.["x-request-id"] ?? err?.response?.headers?.["X-Request-Id"];
-            const workosErrors = err?.response?.data?.errors ?? err?.errors;
-            const message: string = err?.message || "Unknown error";
-            const errRec: ErrorRecord = {
-              recordNumber: currentRecord,
-              email,
-              userId: createdUserId,
-              errorType: "user_create",
-              errorMessage: message,
-              timestamp: new Date().toISOString(),
-              rawRow: rowData as Record<string, unknown>,
-              httpStatus: status,
-              workosCode,
-              workosRequestId: requestId,
-              workosErrors
-            };
-            recordError(errRec);
-            summary.failures += 1;
-            logger.stepFailure(currentRecord);
-            const statusStr = status != null ? String(status) : "?";
-            const codeStr = workosCode ?? "?";
-            const reqStr = requestId ?? "?";
-            // Print additional non-PII failure context
-            logger.warn(`Record #${currentRecord} failed: status=${statusStr} code=${codeStr} requestId=${reqStr} message=${message}`);
           }
+
+          // Create membership if org is specified (single-org or multi-org mode)
+          if (resolvedOrgId && createdUserId) {
+            const membershipKey = `${createdUserId}:${resolvedOrgId}`;
+
+            // Check if membership already created
+            if (createdMemberships.has(membershipKey)) {
+              summary.duplicateMemberships += 1;
+              logger.warn(`Row ${currentRecord}: Membership already exists for ${userEmail} in org ${resolvedOrgId} - skipping`);
+            } else {
+              try {
+                if (!dryRun) {
+                  await retryCreateOrganizationMembership(createdUserId!, resolvedOrgId, limiter);
+                }
+                createdMemberships.add(membershipKey);
+                summary.membershipsCreated += 1;
+              } catch (err) {
+                const status: number | undefined =
+                  (err as any)?.status ?? (err as any)?.httpStatus ?? (err as any)?.response?.status ?? (err as any)?.code;
+                const workosCode: string | undefined =
+                  (err as any)?.response?.data?.code ?? (err as any)?.code;
+
+                // Handle 409 conflict (duplicate membership) gracefully
+                if (status === 409) {
+                  summary.duplicateMemberships += 1;
+                  createdMemberships.add(membershipKey);
+                  logger.warn(`Row ${currentRecord}: Membership already exists (409) for ${userEmail} in org ${resolvedOrgId} - continuing`);
+                } else {
+                  // Other errors - fail the row
+                  if (requireMembership) {
+                    if (!dryRun && createdUserId) {
+                      await deleteUserSafe(createdUserId);
+                    }
+                  }
+                  const requestId: string | undefined =
+                    (err as any)?.requestId ?? (err as any)?.response?.headers?.["x-request-id"] ?? (err as any)?.response?.headers?.["X-Request-Id"];
+                  const workosErrors = (err as any)?.response?.data?.errors ?? (err as any)?.errors;
+                  const message: string = (err as any)?.message || "Unknown error";
+                  const errRec: ErrorRecord = {
+                    recordNumber: currentRecord,
+                    email,
+                    userId: createdUserId,
+                    errorType: "membership_create",
+                    errorMessage: message,
+                    timestamp: new Date().toISOString(),
+                    rawRow: rowData as Record<string, unknown>,
+                    httpStatus: status,
+                    workosCode,
+                    workosRequestId: requestId,
+                    workosErrors
+                  };
+                  recordError(errRec);
+                  summary.failures += 1;
+                  logger.stepFailure(currentRecord);
+                  const statusStr = status != null ? String(status) : "?";
+                  const codeStr = workosCode ?? "?";
+                  const reqStr = requestId ?? "?";
+                  logger.warn(`Record #${currentRecord} membership failed: status=${statusStr} code=${codeStr} requestId=${reqStr} message=${message}`);
+                  return;
+                }
+              }
+            }
+          }
+          summary.successes += 1;
+          logger.stepSuccess(currentRecord);
         })();
 
         // Acquire/release around task to enforce concurrency and backpressure
@@ -674,6 +720,13 @@ async function processChunk(
   let chunkSuccesses = 0;
   let chunkFailures = 0;
   let chunkMemberships = 0;
+  let chunkUsersCreated = 0;
+  let chunkDuplicateUsers = 0;
+  let chunkDuplicateMemberships = 0;
+
+  // Track users and memberships within this chunk (for multi-org CSV support)
+  const createdUsers = new Map<string, string>(); // email → userId
+  const createdMemberships = new Set<string>(); // "userId:orgId"
 
   // Set up error streaming to checkpoint dir
   let errorStream: fs.WriteStream | null = null;
@@ -867,6 +920,9 @@ async function processChunk(
     successes: chunkSuccesses,
     failures: chunkFailures,
     membershipsCreated: chunkMemberships,
+    usersCreated: chunkUsersCreated,
+    duplicateUsers: chunkDuplicateUsers,
+    duplicateMemberships: chunkDuplicateMemberships,
     durationMs: chunkDuration
   };
 }

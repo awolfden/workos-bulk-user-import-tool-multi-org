@@ -50,6 +50,9 @@ export type ImportSummary = {
   successes: number;
   failures: number;
   membershipsCreated: number;
+  usersCreated: number;  // Track users created (vs memberships)
+  duplicateUsers: number;  // Track duplicate emails (user already exists)
+  duplicateMemberships: number;  // Track duplicate memberships (already exists)
   startedAt: number;
   endedAt: number;
   warnings: string[];
