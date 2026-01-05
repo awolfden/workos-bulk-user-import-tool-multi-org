@@ -159,16 +159,58 @@ The exporter automatically includes Auth0-specific fields in metadata for refere
 
 **Why this matters**: Without proper sanitization, WorkOS import will fail with `metadata_required` validation errors even when metadata is present.
 
-## Password Export (Optional)
+## Password Migration (Optional)
 
-**⚠️ Requires Special Permission**
+**Important**: Auth0 does NOT provide password hashes via the Management API. Password migration requires a separate process:
 
-Auth0 password hash export requires the `read:user_idp_tokens` scope, which is not granted by default. Contact Auth0 support to enable this feature.
+1. **Request password export** from Auth0 support (1-week processing time)
+2. **Export users** using this tool (without passwords)
+3. **Merge passwords** using the password merge tool
+4. **Import to WorkOS** with password hashes included
 
-If enabled, password hashes will be included in the export and mapped to WorkOS format:
-- Auth0 bcrypt → WorkOS bcrypt
-- Auth0 md5 → WorkOS md5
-- Other Auth0 algorithms → WorkOS auth0 (for Auth0-specific formats)
+### Quick Start
+
+```bash
+# Step 1: Export users (no passwords)
+npx tsx bin/export-auth0.ts \
+  --domain tenant.auth0.com \
+  --client-id YOUR_ID \
+  --client-secret YOUR_SECRET \
+  --output auth0-users.csv
+
+# Step 2: Request passwords from Auth0 support
+# (Open support ticket, wait 1-7 days for auth0-passwords.ndjson)
+
+# Step 3: Merge password hashes into CSV
+npx tsx bin/merge-auth0-passwords.ts \
+  --csv auth0-users.csv \
+  --passwords auth0-passwords.ndjson \
+  --output auth0-users-with-passwords.csv
+
+# Step 4: Import to WorkOS
+npx tsx bin/import-users.ts \
+  --csv auth0-users-with-passwords.csv
+```
+
+### Requirements
+
+- ✅ Auth0 **paid plan** (password exports not available on free plans)
+- ✅ Support ticket access
+- ✅ 1-week processing time for password export
+
+### What Gets Migrated
+
+When passwords are included:
+- ✅ Users can log in with existing passwords (no reset required)
+- ✅ Bcrypt hashes migrated directly (Auth0 `$2b$` → WorkOS bcrypt)
+- ✅ Algorithm automatically detected
+
+Without passwords:
+- ⚠️ Users must reset passwords on first login
+- ✅ Simpler migration process
+- ✅ More secure (no password hash transport)
+
+**📖 See [PASSWORD-MIGRATION-GUIDE.md](./PASSWORD-MIGRATION-GUIDE.md) for complete details**
 
 ## Performance
 

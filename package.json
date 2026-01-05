@@ -7,6 +7,7 @@
   "bin": {
     "workos-import-users": "bin/import-users.ts",
     "workos-export-auth0": "bin/export-auth0.ts",
+    "workos-merge-auth0-passwords": "bin/merge-auth0-passwords.ts",
     "workos-setup-auth0-test": "bin/setup-auth0-test-orgs.ts"
   },
   "scripts": {
