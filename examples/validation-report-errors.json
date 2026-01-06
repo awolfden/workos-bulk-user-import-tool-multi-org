@@ -1,0 +1,79 @@
+{
+  "summary": {
+    "totalRows": 5,
+    "validRows": 0,
+    "invalidRows": 5,
+    "warningRows": 0,
+    "duplicateEmails": 4,
+    "duplicateExternalIds": 5,
+    "mode": "multi-org",
+    "autoFixApplied": false,
+    "fixedIssues": 0
+  },
+  "issues": [
+    {
+      "severity": "info",
+      "category": "header",
+      "message": "Detected mode: multi-org",
+      "ruleId": "mode-detection"
+    },
+    {
+      "severity": "error",
+      "category": "row",
+      "recordNumber": 1,
+      "field": "email",
+      "message": "Missing required email",
+      "ruleId": "required-email"
+    },
+    {
+      "severity": "error",
+      "category": "row",
+      "recordNumber": 2,
+      "field": "email",
+      "email": "invalid-email",
+      "message": "Invalid email format: invalid-email",
+      "ruleId": "email-format"
+    },
+    {
+      "severity": "error",
+      "category": "row",
+      "recordNumber": 3,
+      "field": "metadata",
+      "email": "charlie@example.com",
+      "message": "Invalid JSON in metadata field: Expected property name or '}' in JSON at position 1 (line 1 column 2)",
+      "ruleId": "metadata-json"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 3,
+      "field": "email_verified",
+      "email": "charlie@example.com",
+      "message": "Invalid boolean value: \"invalid\" (expected: true/false/1/0/yes/no/y/n)",
+      "ruleId": "boolean-format",
+      "originalValue": "invalid",
+      "fixedValue": "false"
+    },
+    {
+      "severity": "error",
+      "category": "row",
+      "recordNumber": 4,
+      "email": "dana@example.com",
+      "message": "Row has both org_id and org_external_id - these are mutually exclusive",
+      "ruleId": "org-id-conflict",
+      "orgId": "org_001",
+      "orgExternalId": "dana-org"
+    },
+    {
+      "severity": "error",
+      "category": "row",
+      "recordNumber": 5,
+      "field": "password_hash",
+      "email": "eve@example.com",
+      "message": "password_hash provided without password_hash_type",
+      "ruleId": "password-hash-complete"
+    }
+  ],
+  "timestamp": "2026-01-05T23:10:53.105Z",
+  "csvHash": "496d3f6e0ce413a02d19c9702b94b265a695b144c3b0e38ca041ed532c638cf7"
+}

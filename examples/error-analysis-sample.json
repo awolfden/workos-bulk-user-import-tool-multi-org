@@ -1,0 +1,341 @@
+{
+  "summary": {
+    "totalErrors": 150,
+    "retryableErrors": 75,
+    "nonRetryableErrors": 75,
+    "uniqueEmails": 120,
+    "uniqueErrorPatterns": 8,
+    "errorsByType": {
+      "user_create": 90,
+      "membership_create": 45,
+      "org_resolution": 15
+    },
+    "errorsByStatus": {
+      "400": 35,
+      "409": 40,
+      "500": 60,
+      "429": 15
+    }
+  },
+  "groups": [
+    {
+      "id": "user_create-500-internal-server-error",
+      "pattern": "Internal server error",
+      "errorType": "user_create",
+      "httpStatus": 500,
+      "count": 50,
+      "severity": "high",
+      "retryable": true,
+      "examples": [
+        {
+          "recordNumber": 42,
+          "email": "user42@example.com",
+          "errorType": "user_create",
+          "errorMessage": "Internal server error",
+          "timestamp": "2024-01-15T14:23:45Z",
+          "httpStatus": 500,
+          "workosRequestId": "req_01HMK7G8N4ZQ"
+        },
+        {
+          "recordNumber": 58,
+          "email": "user58@example.com",
+          "errorType": "user_create",
+          "errorMessage": "Internal server error",
+          "timestamp": "2024-01-15T14:24:12Z",
+          "httpStatus": 500,
+          "workosRequestId": "req_01HMK7H2P5RT"
+        }
+      ],
+      "affectedEmails": [
+        "user42@example.com",
+        "user58@example.com",
+        "user103@example.com"
+      ]
+    },
+    {
+      "id": "user_create-400-invalid-email-format-for-email",
+      "pattern": "Invalid email format for <EMAIL>",
+      "errorType": "user_create",
+      "httpStatus": 400,
+      "count": 35,
+      "severity": "medium",
+      "retryable": false,
+      "examples": [
+        {
+          "recordNumber": 12,
+          "email": "invalid-email",
+          "errorType": "user_create",
+          "errorMessage": "Invalid email format for invalid-email",
+          "timestamp": "2024-01-15T14:22:10Z",
+          "httpStatus": 400,
+          "rawRow": {
+            "email": "invalid-email",
+            "first_name": "John",
+            "last_name": "Doe"
+          }
+        },
+        {
+          "recordNumber": 25,
+          "email": "missing-domain@",
+          "errorType": "user_create",
+          "errorMessage": "Invalid email format for missing-domain@",
+          "timestamp": "2024-01-15T14:22:45Z",
+          "httpStatus": 400,
+          "rawRow": {
+            "email": "missing-domain@",
+            "first_name": "Jane",
+            "last_name": "Smith"
+          }
+        }
+      ],
+      "affectedEmails": [
+        "invalid-email",
+        "missing-domain@",
+        "no-at-sign.com"
+      ]
+    },
+    {
+      "id": "user_create-409-user-email-already-exists",
+      "pattern": "User <EMAIL> already exists",
+      "errorType": "user_create",
+      "httpStatus": 409,
+      "count": 25,
+      "severity": "medium",
+      "retryable": false,
+      "examples": [
+        {
+          "recordNumber": 8,
+          "email": "duplicate@example.com",
+          "errorType": "user_create",
+          "errorMessage": "User duplicate@example.com already exists",
+          "timestamp": "2024-01-15T14:21:30Z",
+          "httpStatus": 409,
+          "rawRow": {
+            "email": "duplicate@example.com",
+            "first_name": "Duplicate",
+            "last_name": "User"
+          }
+        }
+      ],
+      "affectedEmails": [
+        "duplicate@example.com",
+        "existing@example.com"
+      ]
+    },
+    {
+      "id": "membership_create-409-membership-already-exists",
+      "pattern": "Membership already exists",
+      "errorType": "membership_create",
+      "httpStatus": 409,
+      "count": 15,
+      "severity": "medium",
+      "retryable": false,
+      "examples": [
+        {
+          "recordNumber": 105,
+          "email": "member@example.com",
+          "userId": "user_01HMK7F5Q8XY",
+          "orgId": "org_01ABC123",
+          "errorType": "membership_create",
+          "errorMessage": "Membership already exists",
+          "timestamp": "2024-01-15T14:25:30Z",
+          "httpStatus": 409
+        }
+      ],
+      "affectedEmails": [
+        "member@example.com"
+      ]
+    },
+    {
+      "id": "org_resolution-org-org_id-not-found",
+      "pattern": "Organization <ORG_ID> not found",
+      "errorType": "org_resolution",
+      "count": 15,
+      "severity": "medium",
+      "retryable": false,
+      "examples": [
+        {
+          "recordNumber": 67,
+          "email": "user67@example.com",
+          "orgId": "org_nonexistent",
+          "errorType": "org_resolution",
+          "errorMessage": "Organization org_nonexistent not found",
+          "timestamp": "2024-01-15T14:23:15Z",
+          "rawRow": {
+            "email": "user67@example.com",
+            "first_name": "User",
+            "last_name": "Sixty Seven",
+            "org_id": "org_nonexistent"
+          }
+        }
+      ],
+      "affectedEmails": [
+        "user67@example.com",
+        "user89@example.com"
+      ]
+    },
+    {
+      "id": "user_create-429-rate-limit-exceeded",
+      "pattern": "Rate limit exceeded",
+      "errorType": "user_create",
+      "httpStatus": 429,
+      "count": 15,
+      "severity": "medium",
+      "retryable": true,
+      "examples": [
+        {
+          "recordNumber": 234,
+          "email": "user234@example.com",
+          "errorType": "user_create",
+          "errorMessage": "Rate limit exceeded",
+          "timestamp": "2024-01-15T14:26:45Z",
+          "httpStatus": 429,
+          "workosCode": "rate_limit_exceeded",
+          "rawRow": {
+            "email": "user234@example.com",
+            "first_name": "Rate",
+            "last_name": "Limited"
+          }
+        }
+      ],
+      "affectedEmails": [
+        "user234@example.com"
+      ]
+    },
+    {
+      "id": "membership_create-500-internal-server-error",
+      "pattern": "Internal server error",
+      "errorType": "membership_create",
+      "httpStatus": 500,
+      "count": 10,
+      "severity": "medium",
+      "retryable": true,
+      "examples": [
+        {
+          "recordNumber": 156,
+          "email": "user156@example.com",
+          "userId": "user_01HMK7G9R3AB",
+          "orgId": "org_01XYZ789",
+          "errorType": "membership_create",
+          "errorMessage": "Internal server error",
+          "timestamp": "2024-01-15T14:27:20Z",
+          "httpStatus": 500
+        }
+      ],
+      "affectedEmails": [
+        "user156@example.com"
+      ]
+    },
+    {
+      "id": "user_create-400-missing-required-field-email",
+      "pattern": "Missing required field: email",
+      "errorType": "user_create",
+      "httpStatus": 400,
+      "count": 5,
+      "severity": "low",
+      "retryable": false,
+      "examples": [
+        {
+          "recordNumber": 3,
+          "errorType": "user_create",
+          "errorMessage": "Missing required field: email",
+          "timestamp": "2024-01-15T14:20:15Z",
+          "httpStatus": 400,
+          "rawRow": {
+            "first_name": "No",
+            "last_name": "Email"
+          }
+        }
+      ],
+      "affectedEmails": []
+    }
+  ],
+  "retryability": {
+    "retryable": {
+      "count": 75,
+      "percentage": 50.0,
+      "byReason": {
+        "user_create_server_error": 50,
+        "rate_limit": 15,
+        "membership_server_error": 10
+      }
+    },
+    "nonRetryable": {
+      "count": 75,
+      "percentage": 50.0,
+      "byReason": {
+        "user_create_validation_error": 40,
+        "conflict_duplicate": 25,
+        "org_not_found": 15
+      }
+    }
+  },
+  "suggestions": [
+    {
+      "groupId": "user_create-400-invalid-email-format-for-email",
+      "pattern": "Invalid email format for <EMAIL>",
+      "severity": "medium",
+      "affectedCount": 35,
+      "suggestion": "Fix email addresses in CSV. Ensure all emails match pattern: name@domain.com",
+      "actionable": true,
+      "exampleFix": "Change \"john.doe\" to \"john.doe@example.com\""
+    },
+    {
+      "groupId": "user_create-409-user-email-already-exists",
+      "pattern": "User <EMAIL> already exists",
+      "severity": "medium",
+      "affectedCount": 25,
+      "suggestion": "Users already exist in WorkOS. Remove duplicates from CSV or skip these rows.",
+      "actionable": true,
+      "exampleFix": "Remove rows with emails that already exist in WorkOS"
+    },
+    {
+      "groupId": "membership_create-409-membership-already-exists",
+      "pattern": "Membership already exists",
+      "severity": "medium",
+      "affectedCount": 15,
+      "suggestion": "Memberships already exist. Remove duplicate org_id/user combinations.",
+      "actionable": true,
+      "exampleFix": "Ensure each user-org pair appears only once in CSV"
+    },
+    {
+      "groupId": "org_resolution-org-org_id-not-found",
+      "pattern": "Organization <ORG_ID> not found",
+      "severity": "medium",
+      "affectedCount": 15,
+      "suggestion": "Organizations not found in WorkOS. Verify org_id/org_external_id values or add org_name to create missing orgs.",
+      "actionable": true,
+      "exampleFix": "Add org_name column with organization names to auto-create missing orgs"
+    },
+    {
+      "groupId": "user_create-429-rate-limit-exceeded",
+      "pattern": "Rate limit exceeded",
+      "severity": "medium",
+      "affectedCount": 15,
+      "suggestion": "Rate limited by WorkOS API. Reduce --concurrency value (try 5 or lower) and retry.",
+      "actionable": false,
+      "exampleFix": "Run: npx tsx bin/import-users.ts --csv retry.csv --concurrency 5"
+    },
+    {
+      "groupId": "user_create-500-internal-server-error",
+      "pattern": "Internal server error",
+      "severity": "high",
+      "affectedCount": 50,
+      "suggestion": "WorkOS API server error. Wait a few minutes and retry with generated retry CSV.",
+      "actionable": false,
+      "exampleFix": "Wait 5-10 minutes, then run: npx tsx bin/import-users.ts --csv retry.csv"
+    },
+    {
+      "groupId": "user_create-400-missing-required-field-email",
+      "pattern": "Missing required field: email",
+      "severity": "low",
+      "affectedCount": 5,
+      "suggestion": "Add missing required fields to CSV rows. Check validation report for details.",
+      "actionable": true,
+      "exampleFix": "Add email column or fill empty email cells"
+    }
+  ],
+  "timestamp": "2024-01-15T14:30:00Z",
+  "errorsFile": ".workos-checkpoints/my-job/errors.jsonl",
+  "errorsFileHash": "8f3a2b1c9d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a"
+}

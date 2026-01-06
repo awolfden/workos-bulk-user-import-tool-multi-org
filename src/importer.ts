@@ -50,7 +50,7 @@ class Semaphore {
   }
 }
 
-const KNOWN_COLUMNS = new Set([
+export const KNOWN_COLUMNS = new Set([
   "email",
   "password",
   "password_hash",

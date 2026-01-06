@@ -48,6 +48,40 @@ npx tsx bin/import-users.ts --csv path/to/users.csv --errors-out errors.csv
 
 ---
 
+### CSV Validation (NEW in v2.1)
+
+**Validate your CSV before importing** to catch errors early and ensure smooth imports.
+
+```bash
+# Validate CSV before import
+npx tsx bin/validate-csv.ts --csv users.csv
+
+# Auto-fix common issues (whitespace, boolean formatting)
+npx tsx bin/validate-csv.ts \
+  --csv users.csv \
+  --auto-fix \
+  --fixed-csv users-fixed.csv
+```
+
+**What gets validated:**
+- ✅ Email column required and properly formatted
+- ✅ Duplicate email and external_id detection
+- ✅ Valid JSON in metadata fields
+- ✅ Boolean values (email_verified) properly formatted
+- ✅ Organization column conflicts (org_id vs org_external_id)
+- ✅ Password hash completeness
+- ✅ Mode detection (single-org/multi-org/user-only)
+
+**Benefits:**
+- Catch errors before importing (exit code 0 = valid, 1 = errors)
+- Auto-fix formatting issues automatically
+- JSON validation reports for CI/CD
+- Streaming validation (handles any CSV size)
+
+**Complete documentation:** See [CSV Validation Guide](./docs/PHASE2-VALIDATE.md) for detailed rules, examples, and troubleshooting.
+
+---
+
 ### Choose how to import: with or without an Organization
 
 - No org flags: Creates users only. No memberships are created.
