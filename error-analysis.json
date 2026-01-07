@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "totalErrors": 0,
+    "retryableErrors": 0,
+    "nonRetryableErrors": 0,
+    "uniqueEmails": 0,
+    "uniqueErrorPatterns": 0,
+    "errorsByType": {},
+    "errorsByStatus": {}
+  },
+  "groups": [],
+  "retryability": {
+    "retryable": {
+      "count": 0,
+      "percentage": 0,
+      "byReason": {}
+    },
+    "nonRetryable": {
+      "count": 0,
+      "percentage": 0,
+      "byReason": {}
+    }
+  },
+  "suggestions": [],
+  "timestamp": "2026-01-07T00:33:25.328Z",
+  "errorsFile": ".workos-checkpoints/migration-1767745967072/errors.jsonl",
+  "errorsFileHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

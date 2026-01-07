@@ -162,6 +162,13 @@ export class CheckpointManager {
   }
 
   /**
+   * Get job ID
+   */
+  getJobId(): string {
+    return this.jobId;
+  }
+
+  /**
    * Get checkpoint directory path
    */
   getCheckpointDir(): string {

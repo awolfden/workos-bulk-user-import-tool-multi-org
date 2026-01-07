@@ -125,9 +125,9 @@ export class MigrationOrchestrator {
     };
 
     // 6. Execute import
-    let summary;
+    let importResult;
     try {
-      summary = await importUsersFromCsv(importOptions);
+      importResult = await importUsersFromCsv(importOptions);
     } catch (err) {
       throw new Error(
         `Import failed: ${err instanceof Error ? err.message : String(err)}`
@@ -138,14 +138,14 @@ export class MigrationOrchestrator {
     const duration = Date.now() - startTime;
 
     const result: MigrationResult = {
-      success: summary.failures === 0,
-      summary,
+      success: importResult.summary.failures === 0,
+      summary: importResult.summary,
       duration,
       errorsPath: this.options.errorsOutPath,
       checkpoint: checkpointManager
         ? {
             jobId: checkpointManager.getJobId(),
-            canResume: summary.failures > 0
+            canResume: importResult.summary.failures > 0
           }
         : undefined
     };

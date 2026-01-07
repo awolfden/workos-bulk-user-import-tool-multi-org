@@ -1,0 +1,48 @@
+{
+  "jobId": "migration-1767742081296",
+  "csvPath": "users-validated.csv",
+  "csvHash": "bff6eecabc01b6cdcb424eb4156640367388f53c26077bfdb86ade9b51c7bfa8",
+  "createdAt": 1767742105867,
+  "updatedAt": 1767742105876,
+  "chunkSize": 1000,
+  "concurrency": 10,
+  "totalRows": 15,
+  "chunks": [
+    {
+      "chunkId": 0,
+      "startRow": 1,
+      "endRow": 15,
+      "status": "completed",
+      "successes": 0,
+      "failures": 15,
+      "membershipsCreated": 0,
+      "usersCreated": 0,
+      "duplicateUsers": 0,
+      "duplicateMemberships": 0,
+      "startedAt": 1767742105868,
+      "completedAt": 1767742105876,
+      "durationMs": 7
+    }
+  ],
+  "summary": {
+    "total": 15,
+    "successes": 0,
+    "failures": 15,
+    "membershipsCreated": 0,
+    "usersCreated": 0,
+    "duplicateUsers": 0,
+    "duplicateMemberships": 0,
+    "startedAt": 1767742105867,
+    "endedAt": null,
+    "warnings": []
+  },
+  "mode": "multi-org",
+  "orgCache": {
+    "entries": [],
+    "stats": {
+      "hits": 0,
+      "misses": 7,
+      "evictions": 0
+    }
+  }
+}

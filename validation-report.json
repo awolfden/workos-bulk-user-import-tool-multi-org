@@ -1,0 +1,23 @@
+{
+  "summary": {
+    "totalRows": 15,
+    "validRows": 15,
+    "invalidRows": 0,
+    "warningRows": 0,
+    "duplicateEmails": 15,
+    "duplicateExternalIds": 15,
+    "mode": "multi-org",
+    "autoFixApplied": true,
+    "fixedIssues": 0
+  },
+  "issues": [
+    {
+      "severity": "info",
+      "category": "header",
+      "message": "Detected mode: multi-org",
+      "ruleId": "mode-detection"
+    }
+  ],
+  "timestamp": "2026-01-07T00:32:59.959Z",
+  "csvHash": "bff6eecabc01b6cdcb424eb4156640367388f53c26077bfdb86ade9b51c7bfa8"
+}

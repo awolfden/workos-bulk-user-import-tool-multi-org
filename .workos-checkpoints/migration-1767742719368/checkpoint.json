@@ -1,0 +1,85 @@
+{
+  "jobId": "migration-1767742719368",
+  "csvPath": "users-validated.csv",
+  "csvHash": "bff6eecabc01b6cdcb424eb4156640367388f53c26077bfdb86ade9b51c7bfa8",
+  "createdAt": 1767742760159,
+  "updatedAt": 1767742762015,
+  "chunkSize": 1000,
+  "concurrency": 10,
+  "totalRows": 15,
+  "chunks": [
+    {
+      "chunkId": 0,
+      "startRow": 1,
+      "endRow": 15,
+      "status": "completed",
+      "successes": 15,
+      "failures": 0,
+      "membershipsCreated": 15,
+      "usersCreated": 0,
+      "duplicateUsers": 0,
+      "duplicateMemberships": 0,
+      "startedAt": 1767742760161,
+      "completedAt": 1767742762015,
+      "durationMs": 1854
+    }
+  ],
+  "summary": {
+    "total": 15,
+    "successes": 15,
+    "failures": 0,
+    "membershipsCreated": 15,
+    "usersCreated": 0,
+    "duplicateUsers": 0,
+    "duplicateMemberships": 0,
+    "startedAt": 1767742760159,
+    "endedAt": null,
+    "warnings": []
+  },
+  "mode": "multi-org",
+  "orgCache": {
+    "entries": [
+      {
+        "key": "id:org_01KEATVSVW1R2X012WPD25NSBH",
+        "id": "org_01KEATVSVW1R2X012WPD25NSBH",
+        "externalId": "org_acme_001",
+        "name": "Acme Corporation"
+      },
+      {
+        "key": "id:org_01KEATVSVCGFBQ3SV1EQRBR08D",
+        "id": "org_01KEATVSVCGFBQ3SV1EQRBR08D",
+        "externalId": "org_beta_002",
+        "name": "Beta Inc"
+      },
+      {
+        "key": "id:org_01KEATVT2218XT9BRXBC9024RP",
+        "id": "org_01KEATVT2218XT9BRXBC9024RP",
+        "externalId": "org_gamma_003",
+        "name": "Gamma LLC"
+      },
+      {
+        "key": "ext:org_beta_002",
+        "id": "org_01KEATVSVCGFBQ3SV1EQRBR08D",
+        "externalId": "org_beta_002",
+        "name": "Beta Inc"
+      },
+      {
+        "key": "ext:org_gamma_003",
+        "id": "org_01KEATVT2218XT9BRXBC9024RP",
+        "externalId": "org_gamma_003",
+        "name": "Gamma LLC"
+      },
+      {
+        "key": "ext:org_acme_001",
+        "id": "org_01KEATVSVW1R2X012WPD25NSBH",
+        "externalId": "org_acme_001",
+        "name": "Acme Corporation"
+      }
+    ],
+    "stats": {
+      "hits": 5,
+      "misses": 3,
+      "evictions": 0
+    }
+  }
+}
