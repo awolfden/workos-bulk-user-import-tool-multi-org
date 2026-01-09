@@ -14,44 +14,24 @@ import type { WizardAnswers, WizardOptions } from "./types.js";
 export async function askQuestions(
   options: WizardOptions
 ): Promise<WizardAnswers> {
-  // ASCII art banner
-  console.log(
-    chalk.cyan(
-      "-----------------------------------------------------------------------"
-    )
-  );
-  console.log(
-    chalk.cyan(
-      "\n  __  __ _               _   _           __      ___                _ "
-    )
-  );
-  console.log(
-    chalk.cyan(
-      " |  \\/  (_)__ _ _ _ __ _| |_(_)___ _ _   \\ \\    / (_)_____ _ _ _ __| |"
-    )
-  );
-  console.log(
-    chalk.cyan(
-      " | |\\/| | / _` | '_/ _` |  _| / _ \\ ' \\   \\ \\/\\/ /| |_ / _` | '_/ _` |"
-    )
-  );
-  console.log(
-    chalk.cyan(
-      " |_|  |_|_\\__, |_| \\__,_|\\__|_\\___/_||_|   \\_/\\_/ |_/__\\__,_|_| \\__,_|"
-    )
-  );
-  console.log(
-    chalk.cyan(
-      "          |___/                                                       "
-    )
-  );
-  console.log(chalk.cyan(""));
-  console.log(
-    chalk.cyan(
-      "---------------------------- By WorkOS --------------------------------"
-    )
-  );
-  console.log(chalk.cyan(" "));
+  // ASCII art banner with wizard
+  const banner = `
+╔═══════════════════════════════════════════════════════════════════════╗
+║                                                                       ║
+║       __/\\__          __  __ _               _   _                    ║
+║  . _  \\\\''//         |  \\/  (_)__ _ _ _ __ _| |_(_)___ _ _            ║
+║  -( )-/_||_\\         | |\\/| | / _\` | '_/ _\` |  _| / _ \\ ' \\           ║
+║   .'. \\_()_/         |_|  |_|_\\__, |_| \\__,_|\\__|_\\___/_||_|          ║
+║    |   | . \\                  |___/                                   ║
+║    |==| .  \\            __      ___                _                  ║
+║   .'. ,\\_____'.         \\ \\    / (_)_______ _ _ __| |                 ║
+║                          \\ \\/\\/ /| |_ / _\` | '_/ _\` |                 ║
+║                           \\_/\\_/ |_/__\\__,_|_| \\__,_|                 ║
+║                                                                       ║
+║                                                                       ║
+╚═════════════════════════════ By WorkOS ═══════════════════════════════╝
+`;
+  console.log(chalk.cyan(banner));
 
   const answers: Partial<WizardAnswers> = {};
 
@@ -256,9 +236,17 @@ async function askAuth0Credentials(
 
   // Ask about password hashes
   console.log(chalk.cyan("🔐 Password Hashes"));
-  console.log(chalk.gray("Auth0 does not provide password hashes via the Management API."));
-  console.log(chalk.gray("You must request a password export from Auth0 support."));
-  console.log(chalk.gray("This provides an NDJSON file with user emails and bcrypt hashes.\n"));
+  console.log(
+    chalk.gray("Auth0 does not provide password hashes via the Management API.")
+  );
+  console.log(
+    chalk.gray("You must request a password export from Auth0 support.")
+  );
+  console.log(
+    chalk.gray(
+      "This provides an NDJSON file with user emails and bcrypt hashes.\n"
+    )
+  );
 
   const passwordAnswer = await prompts({
     type: "confirm",
@@ -291,8 +279,12 @@ async function askAuth0Credentials(
     answers.auth0PasswordsPath = pathAnswer.passwordsPath;
     console.log(chalk.green("✓ Password file configured\n"));
   } else {
-    console.log(chalk.yellow("⚠️  Users will be imported without password hashes\n"));
-    console.log(chalk.gray("Users will need to reset their passwords on first login.\n"));
+    console.log(
+      chalk.yellow("⚠️  Users will be imported without password hashes\n")
+    );
+    console.log(
+      chalk.gray("Users will need to reset their passwords on first login.\n")
+    );
   }
 }
 

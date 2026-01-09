@@ -7,8 +7,8 @@ Pre-flight validation of CSV files before importing to WorkOS. Detects errors, d
 The CSV validator provides comprehensive validation of user import files **before** you attempt to import them to WorkOS. This helps catch errors early and ensures smooth imports.
 
 **Key Features:**
-- ✅ 10 validation rules across 3 categories (header, row, duplicate)
-- ✅ Auto-fix for common issues (whitespace, boolean values)
+- ✅ 11 validation rules across 3 categories (header, row, duplicate)
+- ✅ Auto-fix for common issues (whitespace, boolean values, metadata arrays/objects)
 - ✅ Duplicate email and external_id detection
 - ✅ Mode detection (single-org, multi-org, user-only)
 - ✅ Streaming architecture (constant memory for any CSV size)
@@ -101,7 +101,7 @@ npx tsx bin/import-users.ts --csv users.csv
 - Detects import mode based on columns present
 - Modes: `single-org`, `multi-org`, `user-only`
 
-### Row Rules (7 rules)
+### Row Rules (8 rules)
 
 **4. required-email** (error)
 - Each row must have a non-empty email
@@ -121,6 +121,13 @@ npx tsx bin/import-users.ts --csv users.csv
 - Metadata field must be valid JSON if present
 - Example: `{invalid json}` → Error
 - Example: `{"department":"Engineering"}` → Valid
+
+**7b. metadata-arrays-objects** (warning, auto-fixable)
+- Metadata values should be primitives (strings, numbers, booleans)
+- WorkOS does not support arrays or nested objects in metadata
+- Auto-fix: Converts arrays/objects to JSON strings
+- Example: `{"permissions":["read","write"]}` → `{"permissions":"[\"read\",\"write\"]"}`
+- **Why this matters**: Prevents import failures with misleading "metadata_required" errors
 
 **8. org-id-conflict** (error)
 - Row cannot have both `org_id` and `org_external_id`
@@ -186,6 +193,12 @@ The validator can automatically fix common formatting issues:
 2. **Boolean Formatting**
    - Normalizes boolean values to `true` or `false`
    - Example: `yes` → `true`, `1` → `true`, `no` → `false`
+
+3. **Metadata Arrays/Objects** (WorkOS Limitation)
+   - Converts arrays and nested objects to JSON strings
+   - Example: `{"permissions":["read","write"]}` → `{"permissions":"[\"read\",\"write\"]"}`
+   - **Critical**: Prevents import failures that show misleading "metadata_required" errors
+   - WorkOS metadata only supports primitive values (strings, numbers, booleans)
 
 ### How to Use Auto-Fix
 

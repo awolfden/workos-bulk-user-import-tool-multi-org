@@ -97,7 +97,19 @@ function buildUserAndOrgFromRow(row: CSVRow): {
     const trimmed = row.metadata.trim();
     if (trimmed.length > 0) {
       try {
-        metadata = JSON.parse(trimmed);
+        const parsed = JSON.parse(trimmed);
+        // WorkOS metadata only supports primitive values (string, number, boolean)
+        // Convert arrays and nested objects to JSON strings
+        metadata = {};
+        for (const [key, value] of Object.entries(parsed)) {
+          if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
+            // Convert arrays and objects to JSON strings
+            metadata[key] = JSON.stringify(value);
+          } else {
+            // Keep primitives as-is
+            metadata[key] = value;
+          }
+        }
       } catch {
         return { error: "Invalid metadata JSON" };
       }

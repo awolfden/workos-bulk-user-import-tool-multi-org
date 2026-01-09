@@ -216,6 +216,84 @@ const metadataJson: ValidationRule = {
   }
 };
 
+/** Rule 7b: Metadata arrays/objects should be stringified (WorkOS limitation) */
+const metadataArraysObjects: ValidationRule = {
+  id: 'metadata-arrays-objects',
+  severity: 'warning',
+  category: 'row',
+  validate: (context: ValidationContext): ValidationIssue[] => {
+    const { row, recordNumber } = context;
+    if (!row || !row.metadata) return [];
+
+    const metadata = typeof row.metadata === 'string' ? row.metadata.trim() : '';
+    if (metadata.length > 0) {
+      try {
+        const parsed = JSON.parse(metadata);
+        const issues: ValidationIssue[] = [];
+
+        for (const [key, value] of Object.entries(parsed)) {
+          if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
+            issues.push({
+              severity: 'warning',
+              category: 'row',
+              recordNumber,
+              field: 'metadata',
+              email: String(row.email || ''),
+              message: `Metadata field "${key}" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)`,
+              ruleId: 'metadata-arrays-objects',
+              originalValue: String(value),
+              fixedValue: JSON.stringify(value)
+            });
+          }
+        }
+        return issues;
+      } catch {
+        // If JSON is invalid, the metadata-json rule will catch it
+        return [];
+      }
+    }
+    return [];
+  },
+  autofix: (row: CSVRow) => {
+    const changes: AutoFixChange[] = [];
+    if (row.metadata) {
+      const metadata = typeof row.metadata === 'string' ? row.metadata.trim() : '';
+      if (metadata.length > 0) {
+        try {
+          const parsed = JSON.parse(metadata);
+          let hasChanges = false;
+          const fixed: Record<string, unknown> = {};
+
+          for (const [key, value] of Object.entries(parsed)) {
+            if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
+              // Convert arrays and objects to JSON strings
+              const stringified = JSON.stringify(value);
+              fixed[key] = stringified;
+              hasChanges = true;
+              changes.push({
+                field: `metadata.${key}`,
+                originalValue: String(value),
+                fixedValue: stringified,
+                reason: 'Converted array/object to JSON string for WorkOS compatibility'
+              });
+            } else {
+              // Keep primitives as-is
+              fixed[key] = value;
+            }
+          }
+
+          if (hasChanges) {
+            row.metadata = JSON.stringify(fixed);
+          }
+        } catch {
+          // If JSON is invalid, don't try to fix
+        }
+      }
+    }
+    return { fixed: row, changes };
+  }
+};
+
 /** Rule 8: org_id and org_external_id are mutually exclusive */
 const orgIdConflict: ValidationRule = {
   id: 'org-id-conflict',
@@ -356,6 +434,7 @@ export const ROW_RULES: ValidationRule[] = [
   emailFormat,
   emailWhitespace,
   metadataJson,
+  metadataArraysObjects,
   orgIdConflict,
   booleanFormat,
   passwordHashComplete

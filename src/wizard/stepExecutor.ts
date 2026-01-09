@@ -235,7 +235,7 @@ export function shouldRunStep(
 
   // Special logic for conditional steps
   if (step.id === 'analyze-errors') {
-    // Only run if import step completed AND errors file exists
+    // Only run if import step completed AND errors file exists with content
     const importResult = previousResults.find(r => r.stepId === 'import');
     if (!importResult) {
       return false;
@@ -253,8 +253,24 @@ export function shouldRunStep(
       }
     }
 
-    // Check if errors file exists
-    return fs.existsSync(errorsPath);
+    // Check if errors file exists AND has content
+    if (!fs.existsSync(errorsPath)) {
+      return false;
+    }
+
+    // Check if file has actual content (not just empty or whitespace)
+    try {
+      const stats = fs.statSync(errorsPath);
+      if (stats.size === 0) {
+        return false; // Empty file
+      }
+
+      // Read first few bytes to check if there's actual JSON content
+      const content = fs.readFileSync(errorsPath, 'utf-8').trim();
+      return content.length > 0; // Has non-whitespace content
+    } catch {
+      return false; // Error reading file
+    }
   }
 
   if (step.id === 'retry') {
@@ -264,9 +280,25 @@ export function shouldRunStep(
       return false;
     }
 
-    // Check if retry CSV was generated
-    // The analyze-errors step typically generates retry.csv
-    return fs.existsSync('retry.csv');
+    // Check if retry CSV was generated AND has content
+    if (!fs.existsSync('retry.csv')) {
+      return false;
+    }
+
+    // Check if file has actual content (more than just header row)
+    try {
+      const stats = fs.statSync('retry.csv');
+      if (stats.size === 0) {
+        return false; // Empty file
+      }
+
+      // Read file and check if it has more than just the header line
+      const content = fs.readFileSync('retry.csv', 'utf-8').trim();
+      const lines = content.split('\n').filter(line => line.trim().length > 0);
+      return lines.length > 1; // Has header + at least one data row
+    } catch {
+      return false; // Error reading file
+    }
   }
 
   return true;

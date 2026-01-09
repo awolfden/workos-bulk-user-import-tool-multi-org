@@ -1,62 +1,40 @@
 {
-  "timestamp": "2026-01-07T00:33:25.352Z",
-  "source": "auth0",
+  "timestamp": "2026-01-09T00:33:18.133Z",
+  "source": "custom",
   "importMode": "multi-org",
   "result": {
     "success": false,
-    "totalSteps": 6,
-    "completedSteps": 5,
+    "totalSteps": 3,
+    "completedSteps": 2,
     "failedSteps": 1,
-    "skippedSteps": 1,
-    "totalDuration": 34019,
-    "summary": {
-      "retries": 1
-    }
+    "skippedSteps": 0,
+    "totalDuration": 6666,
+    "summary": {}
   },
   "steps": [
     {
-      "stepId": "export",
-      "success": true,
-      "duration": 2223,
-      "skipped": false
-    },
-    {
       "stepId": "validate",
       "success": true,
-      "duration": 1767,
+      "duration": 1254,
       "skipped": false
     },
     {
       "stepId": "plan",
       "success": true,
-      "duration": 1308,
+      "duration": 853,
       "skipped": false
     },
     {
       "stepId": "import",
-      "success": true,
-      "duration": 3433,
-      "skipped": false
-    },
-    {
-      "stepId": "analyze-errors",
       "success": false,
-      "duration": 957,
+      "duration": 2482,
       "skipped": false,
       "error": "Command exited with code 1"
-    },
-    {
-      "stepId": "retry",
-      "success": true,
-      "duration": 0,
-      "skipped": true
     }
   ],
   "plan": {
     "warnings": [],
     "recommendations": [
-      "Users will need to reset passwords on first login (no password hashes provided)",
-      "To include passwords: Request password export from Auth0 support",
       "Checkpoint directory: .workos-checkpoints/",
       "You can resume this migration with --resume flag",
       "Multi-org mode uses organization caching for performance"

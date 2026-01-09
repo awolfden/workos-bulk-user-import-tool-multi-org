@@ -1,0 +1,102 @@
+{
+  "summary": {
+    "totalErrors": 2,
+    "retryableErrors": 0,
+    "nonRetryableErrors": 2,
+    "uniqueEmails": 2,
+    "uniqueErrorPatterns": 1,
+    "errorsByType": {
+      "user_create": 2
+    },
+    "errorsByStatus": {
+      "422": 2
+    }
+  },
+  "groups": [
+    {
+      "id": "e33fcc0ba159",
+      "pattern": "The following requirement must be met: metadata_required",
+      "errorType": "user_create",
+      "httpStatus": 422,
+      "count": 2,
+      "severity": "critical",
+      "retryable": false,
+      "examples": [
+        {
+          "recordNumber": 1,
+          "email": "alice@acme.com",
+          "errorType": "user_create",
+          "errorMessage": "The following requirement must be met:\n\tmetadata_required\n",
+          "httpStatus": 422,
+          "workosCode": "invalid_request_parameters",
+          "timestamp": "2026-01-09T00:11:59.926Z",
+          "rawRow": {
+            "email": "alice@acme.com",
+            "first_name": "Alice",
+            "last_name": "Smith",
+            "email_verified": "true",
+            "password_hash": "",
+            "password_hash_type": "",
+            "external_id": "auth0|123",
+            "metadata": "{\"_provider\":\"auth0\",\"auth0_department\":\"Engineering\",\"auth0_team\":\"Backend\",\"auth0_role\":\"admin\",\"auth0_permissions\":[\"read\",\"write\"]}",
+            "org_external_id": "org_001",
+            "org_name": "Acme Corporation"
+          }
+        },
+        {
+          "recordNumber": 3,
+          "email": "charlie@acme.com",
+          "errorType": "user_create",
+          "errorMessage": "The following requirement must be met:\n\tmetadata_required\n",
+          "httpStatus": 422,
+          "workosCode": "invalid_request_parameters",
+          "timestamp": "2026-01-09T00:11:59.929Z",
+          "rawRow": {
+            "email": "charlie@acme.com",
+            "first_name": "Charlie",
+            "last_name": "Brown",
+            "email_verified": "true",
+            "password_hash": "",
+            "password_hash_type": "",
+            "external_id": "auth0|789",
+            "metadata": "{\"_provider\":\"auth0\",\"auth0_department\":\"Engineering\",\"auth0_team\":\"Frontend\",\"auth0_role\":\"user\",\"auth0_permissions\":[\"read\"]}",
+            "org_external_id": "org_001",
+            "org_name": "Acme Corporation"
+          }
+        }
+      ],
+      "affectedEmails": [
+        "alice@acme.com",
+        "charlie@acme.com"
+      ]
+    }
+  ],
+  "retryability": {
+    "retryable": {
+      "count": 0,
+      "percentage": 0,
+      "byReason": {}
+    },
+    "nonRetryable": {
+      "count": 2,
+      "percentage": 100,
+      "byReason": {
+        "user_create_validation_error": 2
+      }
+    }
+  },
+  "suggestions": [
+    {
+      "groupId": "e33fcc0ba159",
+      "pattern": "The following requirement must be met: metadata_required",
+      "severity": "critical",
+      "affectedCount": 2,
+      "suggestion": "Validation error from WorkOS API. Review error message and fix data in CSV.",
+      "actionable": true,
+      "exampleFix": "Check error examples in report for specific field issues"
+    }
+  ],
+  "timestamp": "2026-01-09T00:14:51.989Z",
+  "errorsFile": ".workos-checkpoints/migration-1767917513680/errors.jsonl",
+  "errorsFileHash": "1926c71ef94fd684b1048a4d50ff4215c2b160d56bd8b03434a8710d9ec11661"
+}
