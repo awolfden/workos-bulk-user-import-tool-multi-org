@@ -24,7 +24,8 @@ export class Auth0Exporter implements BaseExporter {
     }
 
     this.config = config;
-    this.client = new Auth0Client(config.credentials as Auth0Credentials);
+    const rateLimit = config.rateLimit ?? 50; // Default 50 rps for Auth0 Developer tier
+    this.client = new Auth0Client(config.credentials as Auth0Credentials, rateLimit);
   }
 
   /**
@@ -60,6 +61,9 @@ export class Auth0Exporter implements BaseExporter {
 
       const endTime = Date.now();
 
+      // Stop rate limiter
+      this.client.stop();
+
       return {
         outputPath: this.config.outputPath,
         summary: {
@@ -75,6 +79,9 @@ export class Auth0Exporter implements BaseExporter {
     } catch (error: any) {
       // Ensure stream is closed on error
       writeStream.end();
+
+      // Stop rate limiter
+      this.client.stop();
 
       throw new Error(
         `Export failed: ${error.message || String(error)}`

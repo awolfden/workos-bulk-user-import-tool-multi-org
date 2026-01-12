@@ -68,11 +68,6 @@ export async function resolveOrganization(options: {
     throw new Error("--org-name is required when using --create-org-if-missing");
   }
   const createdId = await createOrganization(orgName, orgExternalId!);
-
-  // Add a small delay after organization creation to allow WorkOS to propagate
-  // This prevents race conditions where users are created before org is fully ready
-  await new Promise(resolve => setTimeout(resolve, 1000));
-
   return createdId;
 }
 

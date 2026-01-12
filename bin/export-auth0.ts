@@ -18,6 +18,7 @@ program
   .option("--audience <url>", "Auth0 API audience (default: https://{domain}/api/v2/)")
   .option("--orgs <ids...>", "Filter to specific organization IDs (space-separated)")
   .option("--page-size <n>", "API page size (default: 100, max: 100)", (v) => parseInt(v, 10))
+  .option("--rate-limit <n>", "API rate limit in requests/second (default: 50, Auth0 Free: 2, Developer: 50, Enterprise: 100+)", (v) => parseInt(v, 10))
   .option("--use-metadata", "Use user_metadata instead of Organizations API (for non-Enterprise plans)", false)
   .option("--metadata-org-id-field <field>", "Custom metadata field for org ID (e.g., company_id, tenant_id)")
   .option("--metadata-org-name-field <field>", "Custom metadata field for org name (e.g., company_name, tenant_name)")
@@ -33,6 +34,7 @@ async function main() {
     audience?: string;
     orgs?: string[];
     pageSize?: number;
+    rateLimit?: number;
     useMetadata?: boolean;
     metadataOrgIdField?: string;
     metadataOrgNameField?: string;
@@ -55,6 +57,7 @@ async function main() {
     credentials,
     outputPath: path.resolve(opts.output),
     pageSize: opts.pageSize,
+    rateLimit: opts.rateLimit,
     organizationFilter: opts.orgs,
     useMetadata: opts.useMetadata,
     metadataOrgIdField: opts.metadataOrgIdField,

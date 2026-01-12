@@ -1,17 +1,19 @@
 /**
  * Auth0 Management API client wrapper
- * Provides token caching and pagination helpers
+ * Provides token caching, pagination helpers, and rate limiting
  */
 
 import { ManagementClient } from 'auth0';
 import type { Auth0Credentials, Auth0User, Auth0Organization } from '../types.js';
+import { RateLimiter } from '../../rateLimiter.js';
 
 export class Auth0Client {
   private client: ManagementClient;
   private credentials: Auth0Credentials;
   private tokenExpiry?: number;
+  private rateLimiter: RateLimiter;
 
-  constructor(credentials: Auth0Credentials) {
+  constructor(credentials: Auth0Credentials, rateLimit: number = 50) {
     this.credentials = credentials;
 
     // Initialize Auth0 Management Client
@@ -21,6 +23,59 @@ export class Auth0Client {
       clientSecret: credentials.clientSecret,
       audience: credentials.audience
     });
+
+    // Initialize rate limiter (default 50 rps for Auth0 Developer tier)
+    this.rateLimiter = new RateLimiter(rateLimit);
+  }
+
+  /**
+   * Retry wrapper with rate limiting and exponential backoff
+   * Handles 429 rate limit errors automatically
+   */
+  private async retryWithRateLimit<T>(
+    apiCall: () => Promise<T>,
+    maxRetries: number = 3,
+    baseDelayMs: number = 1000
+  ): Promise<T> {
+    let attempt = 0;
+
+    while (true) {
+      try {
+        // Acquire rate limit token before API call
+        await this.rateLimiter.acquire();
+
+        // Execute the API call
+        return await apiCall();
+      } catch (error: any) {
+        const status = error?.statusCode || error?.status || error?.response?.status;
+        const message = error?.message || String(error);
+        const isRateLimited = status === 429 || /rate.?limit/i.test(message);
+
+        attempt += 1;
+
+        if (isRateLimited && attempt <= maxRetries) {
+          // Calculate exponential backoff delay
+          let delay = baseDelayMs * Math.pow(2, attempt - 1);
+
+          // Respect Retry-After header if provided
+          const retryAfter = error?.response?.headers?.['retry-after'] ||
+                            error?.response?.headers?.['Retry-After'];
+          if (retryAfter) {
+            const retryAfterSeconds = parseInt(retryAfter, 10);
+            if (!isNaN(retryAfterSeconds)) {
+              delay = retryAfterSeconds * 1000; // Convert to milliseconds
+            }
+          }
+
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+
+        // Not rate limited, or max retries exceeded
+        throw error;
+      }
+    }
   }
 
   /**
@@ -33,11 +88,13 @@ export class Auth0Client {
     perPage: number = 100
   ): Promise<Auth0Organization[]> {
     try {
-      // Auth0 Organizations API uses page and per_page (not from/take)
-      const response = await this.client.organizations.getAll({
-        // @ts-ignore - Auth0 SDK types may be outdated
-        page,
-        per_page: perPage
+      const response = await this.retryWithRateLimit(async () => {
+        // Auth0 Organizations API uses page and per_page (not from/take)
+        return await this.client.organizations.getAll({
+          // @ts-ignore - Auth0 SDK types may be outdated
+          page,
+          per_page: perPage
+        });
       });
 
       // Response can be an array or an object with data property
@@ -69,14 +126,16 @@ export class Auth0Client {
     perPage: number = 100
   ): Promise<Auth0User[]> {
     try {
-      // Auth0 Organizations API uses page and per_page (not from/take)
-      // Note: Organization members endpoint returns limited fields
-      // Available fields: user_id, email, picture, name, roles
-      const response = await this.client.organizations.getMembers({
-        id: orgId,
-        // @ts-ignore - Auth0 SDK types may be outdated
-        page,
-        per_page: perPage
+      const response = await this.retryWithRateLimit(async () => {
+        // Auth0 Organizations API uses page and per_page (not from/take)
+        // Note: Organization members endpoint returns limited fields
+        // Available fields: user_id, email, picture, name, roles
+        return await this.client.organizations.getMembers({
+          id: orgId,
+          // @ts-ignore - Auth0 SDK types may be outdated
+          page,
+          per_page: perPage
+        });
       });
 
       // Response can be an array or an object with members/data property
@@ -121,12 +180,14 @@ export class Auth0Client {
     try {
       const from = page * perPage;
 
-      const response = await this.client.users.getAll({
-        // @ts-ignore - Auth0 SDK types may be outdated
-        from,
-        per_page: perPage,
-        fields: 'user_id,email,email_verified,name,given_name,family_name,user_metadata,app_metadata,created_at,updated_at',
-        include_fields: true
+      const response = await this.retryWithRateLimit(async () => {
+        return await this.client.users.getAll({
+          // @ts-ignore - Auth0 SDK types may be outdated
+          from,
+          per_page: perPage,
+          fields: 'user_id,email,email_verified,name,given_name,family_name,user_metadata,app_metadata,created_at,updated_at',
+          include_fields: true
+        });
       });
 
       // Response can be an array or an object with users/data property
@@ -159,8 +220,10 @@ export class Auth0Client {
    */
   async getUser(userId: string): Promise<Auth0User | null> {
     try {
-      const response = await this.client.users.get({
-        id: userId
+      const response = await this.retryWithRateLimit(async () => {
+        return await this.client.users.get({
+          id: userId
+        });
       });
 
       // Auth0 SDK wraps response in { data, headers, status, statusText }
@@ -201,10 +264,12 @@ export class Auth0Client {
     try {
       // Note: This requires special "read:user_idp_tokens" scope
       // and may not be available for all Auth0 tenants
-      const user = await this.client.users.get({
-        id: userId
-        // @ts-ignore - Password hash fields may not be in types
-        // fields: 'password_hash,password_hash_algorithm'
+      const user = await this.retryWithRateLimit(async () => {
+        return await this.client.users.get({
+          id: userId
+          // @ts-ignore - Password hash fields may not be in types
+          // fields: 'password_hash,password_hash_algorithm'
+        });
       });
 
       // @ts-ignore
@@ -245,5 +310,13 @@ export class Auth0Client {
         error: error.message || String(error)
       };
     }
+  }
+
+  /**
+   * Stop the rate limiter
+   * Call this when done with the client to clean up timers
+   */
+  stop(): void {
+    this.rateLimiter.stop();
   }
 }

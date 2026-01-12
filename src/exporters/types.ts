@@ -57,6 +57,19 @@ export interface ExporterConfig {
    */
   concurrency?: number;
 
+  /**
+   * Rate limit for API requests (requests per second)
+   * Prevents hitting provider rate limits during export
+   *
+   * Recommended values for Auth0:
+   * - Free tier: 2 rps
+   * - Developer: 50 rps
+   * - Enterprise: 100+ rps
+   *
+   * @default 50
+   */
+  rateLimit?: number;
+
   // Filtering
   /**
    * Array of organization IDs to export (exports all if not specified)

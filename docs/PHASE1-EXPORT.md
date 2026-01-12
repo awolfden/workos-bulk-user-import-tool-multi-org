@@ -95,6 +95,39 @@ npx tsx bin/export-auth0.ts \
   --page-size 50
 ```
 
+### Rate Limiting
+
+Control API request rate to match your Auth0 plan tier (default: 50 rps):
+
+```bash
+# For Auth0 Free tier (2 rps)
+npx tsx bin/export-auth0.ts \
+  --domain mycompany.auth0.com \
+  --client-id YOUR_CLIENT_ID \
+  --client-secret YOUR_CLIENT_SECRET \
+  --output auth0-export.csv \
+  --rate-limit 2
+
+# For Auth0 Enterprise (100+ rps)
+npx tsx bin/export-auth0.ts \
+  --domain mycompany.auth0.com \
+  --client-id YOUR_CLIENT_ID \
+  --client-secret YOUR_CLIENT_SECRET \
+  --output auth0-export.csv \
+  --rate-limit 100
+```
+
+**Auth0 Rate Limits by Plan**:
+- **Free**: 2 requests/second
+- **Developer**: 50 requests/second (default)
+- **Enterprise**: 100+ requests/second
+
+**Benefits**:
+- ✅ **Prevents 429 errors**: Automatic rate limiting prevents hitting Auth0 API limits
+- ✅ **Automatic retries**: If rate limited, exports automatically retry with exponential backoff
+- ✅ **Respects Retry-After**: Honors Auth0's Retry-After header for optimal timing
+- ✅ **No manual intervention**: Set it once and export safely, even for large datasets
+
 ## Output Format
 
 The exporter generates a CSV file in WorkOS format with the following columns:
@@ -416,15 +449,27 @@ This can happen if:
 
 ### Export Speed
 
-Typical performance metrics:
+Typical performance metrics (with default 50 rps rate limit):
 - **10K users**: ~2 minutes
 - **50K users**: ~8 minutes
 - **100K users**: ~15 minutes
 
 Performance depends on:
-- Auth0 API rate limits (typically 50 req/sec)
-- Organization count (more orgs = more API calls)
-- Network latency
+- **Auth0 API rate limits**: Exporter automatically adapts to your plan tier
+  - Free (2 rps): ~10x slower than default
+  - Developer (50 rps): Default speed
+  - Enterprise (100+ rps): Up to 2x faster than default
+- **Organization count**: More orgs = more API calls
+- **Network latency**: Geographic distance to Auth0 servers
+
+### Rate Limiting Impact
+
+The built-in rate limiter ensures you **never hit Auth0 rate limits**, while maintaining maximum safe throughput:
+
+- **Prevents slowdowns**: No 429 errors that trigger exponential backoff delays
+- **Optimal speed**: Rate set to just below your Auth0 limit for maximum throughput
+- **Predictable timing**: Consistent export speed regardless of Auth0 load
+- **No manual tuning**: Automatically spaces requests to match your configured rate
 
 ### Memory Usage
 
@@ -466,12 +511,29 @@ The exporter uses streaming, so memory usage remains constant regardless of data
 
 ### Error: "Rate limit exceeded"
 
-**Cause**: Auth0 API rate limit hit (typically 50 req/sec).
+**Cause**: Auth0 API rate limit hit.
 
 **Solution**:
-- Use `--page-size 50` to reduce request frequency
-- Export during off-peak hours
-- Contact Auth0 support to increase rate limits
+The exporter now includes **automatic rate limiting and retry logic** to prevent this error:
+
+1. **Set correct rate limit for your plan**:
+   ```bash
+   # Free tier (2 rps)
+   --rate-limit 2
+
+   # Developer tier (50 rps) - default
+   --rate-limit 50
+
+   # Enterprise (100+ rps)
+   --rate-limit 100
+   ```
+
+2. **Automatic retries**: If rate limited despite the limiter, the exporter automatically retries with exponential backoff and respects Auth0's `Retry-After` header
+
+3. **Additional options** (if still experiencing issues):
+   - Use `--page-size 50` to further reduce request frequency
+   - Export during off-peak hours
+   - Contact Auth0 support to increase rate limits
 
 ### Import Error: "metadata_required"
 

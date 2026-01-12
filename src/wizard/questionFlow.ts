@@ -22,9 +22,9 @@ export async function askQuestions(
 ║  . _  \\\\''//         |  \\/  (_)__ _ _ _ __ _| |_(_)___ _ _            ║
 ║  -( )-/_||_\\         | |\\/| | / _\` | '_/ _\` |  _| / _ \\ ' \\           ║
 ║   .'. \\_()_/         |_|  |_|_\\__, |_| \\__,_|\\__|_\\___/_||_|          ║
-║    |   | . \\                  |___/                                   ║
-║    |==| .  \\            __      ___                _                  ║
-║   .'. ,\\_____'.         \\ \\    / (_)_______ _ _ __| |                 ║
+║    |   / . \\                  |___/                                   ║
+║    |==| .   \\           __      ___                _                  ║
+║  . . ,\\_____'.          \\ \\    / (_)_______ _ _ __| |                 ║
 ║                          \\ \\/\\/ /| |_ / _\` | '_/ _\` |                 ║
 ║                           \\_/\\_/ |_/__\\__,_|_| \\__,_|                 ║
 ║                                                                       ║
@@ -233,6 +233,43 @@ async function askAuth0Credentials(
   answers.auth0UseMetadata = credentialsAnswer.auth0UseMetadata;
 
   console.log(chalk.green("✓ Auth0 credentials configured\n"));
+
+  // Ask about Auth0 plan tier for rate limiting
+  console.log(chalk.cyan("⚡ Rate Limiting"));
+  console.log(
+    chalk.gray("Auth0 has different rate limits based on your plan tier.\n")
+  );
+
+  const planTierAnswer = await prompts({
+    type: "select",
+    name: "planTier",
+    message: "What Auth0 plan tier are you on?",
+    choices: [
+      {
+        title: "Developer (50 requests/second)",
+        value: 50,
+        description: "Default tier for most Auth0 accounts",
+      },
+      {
+        title: "Free (2 requests/second)",
+        value: 2,
+        description: "Limited rate for free accounts",
+      },
+      {
+        title: "Enterprise (100+ requests/second)",
+        value: 100,
+        description: "Higher rate limits for enterprise customers",
+      },
+    ],
+    initial: 0, // Developer as default
+  });
+
+  answers.auth0RateLimit = planTierAnswer.planTier || 50;
+  console.log(
+    chalk.green(
+      `✓ Rate limit set to ${answers.auth0RateLimit} requests/second\n`
+    )
+  );
 
   // Ask about password hashes
   console.log(chalk.cyan("🔐 Password Hashes"));

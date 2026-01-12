@@ -62,6 +62,7 @@ export interface WizardAnswers {
   auth0ClientId?: string;
   auth0ClientSecret?: string;
   auth0UseMetadata?: boolean;
+  auth0RateLimit?: number;
   auth0HasPasswords?: boolean;
   auth0PasswordsPath?: string;
 

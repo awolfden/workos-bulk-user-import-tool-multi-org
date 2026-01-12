@@ -77,6 +77,10 @@ function generateExportStep(answers: WizardAnswers): MigrationStep {
       args.push('--use-metadata');
     }
 
+    if (answers.auth0RateLimit) {
+      args.push('--rate-limit', String(answers.auth0RateLimit));
+    }
+
     return {
       id: 'export',
       name: 'Export from Auth0',
