@@ -141,9 +141,10 @@ export class MigrationPlanner {
     const workersCount = this.options.workers || 1;
     const concurrency = this.options.concurrency || 10;
 
-    // Base rate: ~20 users/sec at concurrency 10 with 1 worker
-    // This is a conservative estimate based on typical network conditions
-    const baseRate = 20; // users/sec
+    // Base rate: ~10 users/sec at concurrency 10 with 1 worker
+    // This is a realistic estimate based on actual WorkOS API throughput,
+    // accounting for network latency, rate limiting, and API processing time
+    const baseRate = 10; // users/sec
     const effectiveRate = baseRate * (concurrency / 10) * workersCount;
 
     const estimatedSeconds = Math.ceil(totalRows / effectiveRate);
@@ -197,26 +198,12 @@ export class MigrationPlanner {
       );
     }
 
-    // Worker recommendation
-    if (totalRows > 50000 && (!this.options.workers || this.options.workers === 1)) {
+    // Worker recommendation (lowered threshold from 50K to 10K)
+    if (totalRows > 10000 && (!this.options.workers || this.options.workers === 1)) {
       const cpus = os.cpus().length;
-      const suggested = Math.min(cpus - 1, 4);
+      const suggested = totalRows > 50000 ? Math.min(cpus - 1, 4) : 2;
       recommendations.push(
         `Use --workers ${suggested} for faster processing (${cpus} CPUs available)`
-      );
-    }
-
-    // Errors output recommendation
-    if (!this.options.errorsOutPath) {
-      recommendations.push(
-        'Add --errors-out errors.jsonl to capture failures for retry'
-      );
-    }
-
-    // Multi-org caching info
-    if (mode === 'multi-org') {
-      recommendations.push(
-        'Multi-org mode uses organization caching for performance'
       );
     }
 

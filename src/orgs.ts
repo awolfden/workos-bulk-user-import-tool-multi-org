@@ -17,22 +17,35 @@ export async function getOrganizationById(orgId: string): Promise<boolean> {
 export async function getOrganizationByExternalId(externalId: string): Promise<string | null> {
   const workos = getWorkOSClient() as WorkOS;
   try {
-    // Some SDKs expose list with filters; fallback to catch 404 if retrieve method exists
-    const resp = await (workos as any).organizations.listOrganizations({ externalId, limit: 1 });
-    const org = resp?.data?.[0];
+    const org = await (workos as any).organizations.getOrganizationByExternalId(externalId);
     return org?.id ?? null;
-  } catch {
-    return null;
+  } catch (err: any) {
+    const status: number | undefined =
+      err?.status ?? err?.httpStatus ?? err?.response?.status ?? err?.code;
+    if (status === 404) return null;
+    throw err;
   }
 }
 
 export async function createOrganization(name: string, externalId: string): Promise<string> {
   const workos = getWorkOSClient() as WorkOS;
-  const org = await (workos as any).organizations.createOrganization({
-    name,
-    externalId
-  });
-  return org.id as string;
+  try {
+    const org = await (workos as any).organizations.createOrganization({
+      name,
+      externalId
+    });
+    return org.id as string;
+  } catch (err: any) {
+    // Enhance error message for debugging
+    const enhancedErr = new Error(
+      `Failed to create organization "${name}" with external_id "${externalId}": ${err.message}`
+    );
+    // Preserve original error properties for retry logic
+    enhancedErr.stack = err.stack;
+    (enhancedErr as any).status = err.status;
+    (enhancedErr as any).original = err;
+    throw enhancedErr;
+  }
 }
 
 export async function resolveOrganizationById(orgId: string): Promise<string | null> {

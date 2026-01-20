@@ -37,13 +37,18 @@ export function generateMigrationPlan(answers: WizardAnswers): MigrationPlan {
   // Step 4: Plan import
   steps.push(generatePlanStep(answers, jobId));
 
-  // Step 5: Execute import
+  // Step 5: Dry-run import (if enabled)
+  if (answers.runDryRunFirst) {
+    steps.push(generateDryRunStep(answers, jobId));
+  }
+
+  // Step 6: Execute import
   steps.push(generateImportStep(answers, jobId));
 
-  // Step 6: Analyze errors (conditional)
+  // Step 7: Analyze errors (conditional)
   steps.push(generateErrorAnalysisStep(answers, jobId));
 
-  // Step 7: Retry failed imports (conditional)
+  // Step 8: Retry failed imports (conditional)
   steps.push(generateRetryStep(answers));
 
   // Generate warnings
@@ -190,6 +195,49 @@ function generatePlanStep(answers: WizardAnswers, jobId?: string): MigrationStep
     id: 'plan',
     name: 'Plan Import',
     description: 'Generate import plan with estimates',
+    command: 'npx tsx bin/orchestrate-migration.ts',
+    args,
+    optional: false
+  };
+}
+
+/**
+ * Generate dry-run import step
+ */
+function generateDryRunStep(answers: WizardAnswers, jobId?: string): MigrationStep {
+  const csvPath = getImportCsvPath(answers);
+  const args: string[] = ['--csv', csvPath, '--dry-run'];
+
+  // Add org configuration
+  addOrgArgs(args, answers);
+
+  // Add checkpoint configuration
+  if (answers.enableCheckpointing && jobId) {
+    args.push('--job-id', jobId);
+
+    if (answers.scale === 'large') {
+      args.push('--chunk-size', '5000');
+    } else if (answers.scale === 'medium') {
+      args.push('--chunk-size', '2000');
+    }
+  }
+
+  // Add worker configuration
+  if (answers.enableWorkers && answers.workerCount) {
+    args.push('--workers', answers.workerCount.toString());
+  }
+
+  // Add concurrency based on scale
+  if (answers.scale === 'large') {
+    args.push('--concurrency', '20');
+  } else if (answers.scale === 'medium') {
+    args.push('--concurrency', '15');
+  }
+
+  return {
+    id: 'dry-run',
+    name: 'Test Import (Dry Run)',
+    description: 'Validate import configuration without creating users',
     command: 'npx tsx bin/orchestrate-migration.ts',
     args,
     optional: false

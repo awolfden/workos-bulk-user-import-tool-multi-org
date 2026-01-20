@@ -15,13 +15,14 @@ export async function getOrganizationById(orgId) {
 export async function getOrganizationByExternalId(externalId) {
     const workos = getWorkOSClient();
     try {
-        // Some SDKs expose list with filters; fallback to catch 404 if retrieve method exists
-        const resp = await workos.organizations.listOrganizations({ externalId, limit: 1 });
-        const org = resp?.data?.[0];
+        const org = await workos.organizations.getOrganizationByExternalId(externalId);
         return org?.id ?? null;
     }
-    catch {
-        return null;
+    catch (err) {
+        const status = err?.status ?? err?.httpStatus ?? err?.response?.status ?? err?.code;
+        if (status === 404)
+            return null;
+        throw err;
     }
 }
 export async function createOrganization(name, externalId) {

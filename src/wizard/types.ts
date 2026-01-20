@@ -57,10 +57,14 @@ export interface WizardAnswers {
   logErrors: boolean;
   errorsPath?: string;
 
+  // Dry run
+  runDryRunFirst?: boolean;
+
   // Provider credentials (Auth0)
   auth0Domain?: string;
   auth0ClientId?: string;
   auth0ClientSecret?: string;
+  auth0PlanTier?: 'free' | 'developer' | 'trial' | 'enterprise';
   auth0UseMetadata?: boolean;
   auth0RateLimit?: number;
   auth0HasPasswords?: boolean;
@@ -83,6 +87,7 @@ export interface MigrationStep {
   args: string[];
   optional: boolean;
   skipCondition?: (answers: WizardAnswers) => boolean;
+  estimatedDuration?: string;
 }
 
 /**

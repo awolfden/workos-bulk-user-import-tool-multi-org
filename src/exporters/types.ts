@@ -58,6 +58,17 @@ export interface ExporterConfig {
   concurrency?: number;
 
   /**
+   * Number of users to fetch in parallel during export
+   * Higher values = faster exports, but more memory usage
+   * Respects rate limiter to prevent hitting Auth0 limits
+   *
+   * @default 10
+   * @min 1
+   * @max 50
+   */
+  userFetchConcurrency?: number;
+
+  /**
    * Rate limit for API requests (requests per second)
    * Prevents hitting provider rate limits during export
    *
@@ -115,6 +126,27 @@ export interface ExporterConfig {
    * @example "company_name", "tenant_name", "account_name"
    */
   metadataOrgNameField?: string;
+
+  // Checkpoint and resumability
+  /**
+   * Job ID for checkpointing (enables resumability)
+   * If provided, export progress is saved and can be resumed if interrupted
+   * @example "auth0-export-2024-01-15"
+   */
+  jobId?: string;
+
+  /**
+   * Resume from an existing checkpoint
+   * If true, uses jobId to resume. If string, uses that as jobId
+   * @default false
+   */
+  resume?: boolean | string;
+
+  /**
+   * Directory for checkpoint files
+   * @default ".workos-checkpoints"
+   */
+  checkpointDir?: string;
 
   // Output control
   /**

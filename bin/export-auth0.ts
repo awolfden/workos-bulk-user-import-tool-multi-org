@@ -6,6 +6,25 @@ import { Auth0Exporter } from "../src/exporters/auth0/auth0Exporter.js";
 import { createLogger } from "../src/logger.js";
 import type { Auth0Credentials } from "../src/exporters/types.js";
 
+/**
+ * Format milliseconds as human-readable ETA
+ */
+function formatETA(ms: number): string {
+  const seconds = Math.ceil(ms / 1000);
+
+  if (seconds < 60) {
+    return `${seconds}s`;
+  } else if (seconds < 3600) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+  } else {
+    const hours = Math.floor(seconds / 3600);
+    const remainingMinutes = Math.floor((seconds % 3600) / 60);
+    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+  }
+}
+
 const program = new Command();
 
 program
@@ -19,9 +38,13 @@ program
   .option("--orgs <ids...>", "Filter to specific organization IDs (space-separated)")
   .option("--page-size <n>", "API page size (default: 100, max: 100)", (v) => parseInt(v, 10))
   .option("--rate-limit <n>", "API rate limit in requests/second (default: 50, Auth0 Free: 2, Developer: 50, Enterprise: 100+)", (v) => parseInt(v, 10))
+  .option("--user-fetch-concurrency <n>", "Number of users to fetch in parallel (default: 10, max: 50)", (v) => parseInt(v, 10))
   .option("--use-metadata", "Use user_metadata instead of Organizations API (for non-Enterprise plans)", false)
   .option("--metadata-org-id-field <field>", "Custom metadata field for org ID (e.g., company_id, tenant_id)")
   .option("--metadata-org-name-field <field>", "Custom metadata field for org name (e.g., company_name, tenant_name)")
+  .option("--job-id <id>", "Job ID for checkpointing (enables resumability)")
+  .option("--resume [jobId]", "Resume from an existing checkpoint (uses --job-id if no value provided)")
+  .option("--checkpoint-dir <path>", "Directory for checkpoint files (default: .workos-checkpoints)")
   .option("--quiet", "Suppress progress output", false)
   .parse(process.argv);
 
@@ -35,9 +58,13 @@ async function main() {
     orgs?: string[];
     pageSize?: number;
     rateLimit?: number;
+    userFetchConcurrency?: number;
     useMetadata?: boolean;
     metadataOrgIdField?: string;
     metadataOrgNameField?: string;
+    jobId?: string;
+    resume?: boolean | string;
+    checkpointDir?: string;
     quiet?: boolean;
   }>();
 
@@ -58,15 +85,26 @@ async function main() {
     outputPath: path.resolve(opts.output),
     pageSize: opts.pageSize,
     rateLimit: opts.rateLimit,
+    userFetchConcurrency: opts.userFetchConcurrency,
     organizationFilter: opts.orgs,
     useMetadata: opts.useMetadata,
     metadataOrgIdField: opts.metadataOrgIdField,
     metadataOrgNameField: opts.metadataOrgNameField,
+    jobId: opts.jobId,
+    resume: opts.resume,
+    checkpointDir: opts.checkpointDir,
     quiet: opts.quiet,
     onProgress: (stats) => {
+      const etaStr = stats.estimatedRemainingMs
+        ? ` - ETA: ${formatETA(stats.estimatedRemainingMs)}`
+        : stats.usersProcessed < 500
+        ? ' - ETA: calculating...'
+        : '';
+
       logger.log(
         `Progress: ${stats.usersProcessed} users, ${stats.orgsProcessed} orgs` +
-        (stats.currentOrg ? ` (current: ${stats.currentOrg})` : '')
+        (stats.currentOrg ? ` (current: ${stats.currentOrg})` : '') +
+        etaStr
       );
     }
   });
@@ -95,43 +133,16 @@ async function main() {
     logger.log("✓ Auth0 connection successful");
     logger.log("");
 
-    // Execute export
+    // Execute export (summary is displayed by exporter)
     const result = await exporter.export();
 
-    // Print summary
-    logger.log("\n" + "=".repeat(60));
-    logger.log("Export Complete");
-    logger.log("=".repeat(60));
-    logger.log(`Output: ${result.outputPath}`);
-    logger.log(`Users: ${result.summary.totalUsers}`);
-    logger.log(`Organizations: ${result.summary.totalOrgs}`);
-
-    if (result.summary.skippedUsers > 0) {
-      logger.warn(`Skipped: ${result.summary.skippedUsers} (users without email or invalid data)`);
+    // Print next steps
+    if (!opts.quiet) {
+      logger.log("Next steps:");
+      logger.log(`  1. Validate: workos-validate-csv --csv ${path.resolve(opts.output)}`);
+      logger.log(`  2. Import: workos-import-users --csv ${path.resolve(opts.output)}`);
+      logger.log("");
     }
-
-    const durationSec = (result.summary.durationMs / 1000).toFixed(2);
-    logger.log(`Duration: ${durationSec}s`);
-
-    if (result.summary.totalUsers > 0) {
-      const throughput = (result.summary.totalUsers / result.summary.durationMs) * 1000;
-      logger.log(`Throughput: ${throughput.toFixed(1)} users/sec`);
-    }
-
-    if (result.warnings.length > 0) {
-      logger.warn(`\nWarnings (${result.warnings.length}):`);
-      result.warnings.slice(0, 10).forEach(w => logger.warn(`  - ${w}`));
-
-      if (result.warnings.length > 10) {
-        logger.warn(`  ... and ${result.warnings.length - 10} more`);
-      }
-    }
-
-    logger.log("=".repeat(60) + "\n");
-
-    logger.log("Next steps:");
-    logger.log(`  1. Validate: workos-validate-csv --csv ${path.resolve(opts.output)}`);
-    logger.log(`  2. Import: workos-import-users --csv ${path.resolve(opts.output)}`);
 
     process.exit(0);
   } catch (err: any) {

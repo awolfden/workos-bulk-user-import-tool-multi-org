@@ -121,6 +121,9 @@ export async function askQuestions(
   // Question 5: Error handling
   await askErrorHandling(answers);
 
+  // Question 6: Dry run
+  await askDryRun(answers);
+
   return answers as WizardAnswers;
 }
 
@@ -213,12 +216,6 @@ async function askAuth0Credentials(
       validate: (value: string) =>
         value.trim().length > 0 || "Client Secret is required",
     },
-    {
-      type: "confirm",
-      name: "auth0UseMetadata",
-      message: "Include user metadata in export?",
-      initial: true,
-    },
   ]);
 
   if (
@@ -230,14 +227,16 @@ async function askAuth0Credentials(
 
   answers.auth0ClientId = credentialsAnswer.auth0ClientId;
   answers.auth0ClientSecret = credentialsAnswer.auth0ClientSecret;
-  answers.auth0UseMetadata = credentialsAnswer.auth0UseMetadata;
 
   console.log(chalk.green("✓ Auth0 credentials configured\n"));
 
-  // Ask about Auth0 plan tier for rate limiting
-  console.log(chalk.cyan("⚡ Rate Limiting"));
+  // Ask about Auth0 plan tier for rate limiting and organization discovery
+  console.log(chalk.cyan("⚡ Auth0 Plan & Rate Limiting"));
   console.log(
-    chalk.gray("Auth0 has different rate limits based on your plan tier.\n")
+    chalk.gray("Auth0 has different rate limits and features based on your plan tier.")
+  );
+  console.log(
+    chalk.gray("This determines both API rate limits and organization discovery method.\n")
   );
 
   const planTierAnswer = await prompts({
@@ -246,28 +245,53 @@ async function askAuth0Credentials(
     message: "What Auth0 plan tier are you on?",
     choices: [
       {
-        title: "Developer (50 requests/second)",
-        value: 50,
-        description: "Default tier for most Auth0 accounts",
+        title: "Developer (50 RPS, metadata-based orgs)",
+        value: "developer",
+        description: "Standard plan - uses user_metadata for organization discovery",
       },
       {
-        title: "Free (2 requests/second)",
-        value: 2,
-        description: "Limited rate for free accounts",
+        title: "Trial (2 RPS, Organizations API)",
+        value: "trial",
+        description: "Trial with Organizations API - uses native Auth0 organizations",
       },
       {
-        title: "Enterprise (100+ requests/second)",
-        value: 100,
-        description: "Higher rate limits for enterprise customers",
+        title: "Free (2 RPS, metadata-based orgs)",
+        value: "free",
+        description: "Free tier - limited rate, uses user_metadata for orgs",
+      },
+      {
+        title: "Enterprise (100+ RPS, Organizations API)",
+        value: "enterprise",
+        description: "Enterprise plan - uses native Auth0 organizations",
       },
     ],
     initial: 0, // Developer as default
   });
 
-  answers.auth0RateLimit = planTierAnswer.planTier || 50;
+  const planTier = planTierAnswer.planTier || "developer";
+  answers.auth0PlanTier = planTier;
+
+  // Set rate limit based on plan
+  if (planTier === "free" || planTier === "trial") {
+    answers.auth0RateLimit = 2;
+  } else if (planTier === "developer") {
+    answers.auth0RateLimit = 50;
+  } else if (planTier === "enterprise") {
+    answers.auth0RateLimit = 100;
+  }
+
+  // Set organization discovery method based on plan
+  // Developer and Free plans use metadata (no Organizations API)
+  // Trial and Enterprise plans use Organizations API
+  if (planTier === "developer" || planTier === "free") {
+    answers.auth0UseMetadata = true;
+  } else if (planTier === "trial" || planTier === "enterprise") {
+    answers.auth0UseMetadata = false;
+  }
+
   console.log(
     chalk.green(
-      `✓ Rate limit set to ${answers.auth0RateLimit} requests/second\n`
+      `✓ Plan: ${planTier} (${answers.auth0RateLimit} RPS, ${answers.auth0UseMetadata ? 'metadata-based' : 'Organizations API'})\n`
     )
   );
 
@@ -470,21 +494,23 @@ async function askScaleAndPerformance(
   answers.enableCheckpointing =
     checkpointAnswer.enableCheckpointing ?? recommendCheckpoint;
 
-  // Ask about workers for large migrations
-  if (answers.scale === "large" && answers.enableCheckpointing) {
+  // Ask about workers for medium and large migrations
+  if ((answers.scale === "medium" || answers.scale === "large") && answers.enableCheckpointing) {
     const workersAnswer = await prompts([
       {
         type: "confirm",
         name: "enableWorkers",
         message: "Enable multi-worker processing for faster imports?",
-        initial: true,
-        hint: "(recommended for large migrations)",
+        initial: answers.scale === "large", // Recommend for large, optional for medium
+        hint: answers.scale === "large"
+          ? "(recommended for large migrations)"
+          : "(can improve performance for medium migrations)",
       },
       {
         type: (prev: boolean) => (prev ? "number" : null),
         name: "workerCount",
         message: "How many workers?",
-        initial: 4,
+        initial: answers.scale === "large" ? 4 : 2, // Fewer workers for medium scale
         min: 2,
         max: 8,
         validate: (value: number) =>
@@ -553,6 +579,31 @@ async function askErrorHandling(
 
   answers.logErrors = errorAnswer.logErrors ?? true;
   answers.errorsPath = errorAnswer.errorsPath || "errors.jsonl";
+
+  console.log();
+}
+
+/**
+ * Ask about dry run
+ */
+async function askDryRun(answers: Partial<WizardAnswers>): Promise<void> {
+  console.log(chalk.cyan("🧪 Dry Run"));
+  console.log(
+    chalk.gray(
+      "A dry run validates your import without creating any users in WorkOS.\n" +
+      "This helps verify configuration, CSV format, and organization resolution.\n"
+    )
+  );
+
+  const dryRunAnswer = await prompts({
+    type: "confirm",
+    name: "runDryRunFirst",
+    message: "Run a dry-run test before the live import?",
+    initial: true,
+    hint: "(recommended for first-time migrations)",
+  });
+
+  answers.runDryRunFirst = dryRunAnswer.runDryRunFirst ?? true;
 
   console.log();
 }

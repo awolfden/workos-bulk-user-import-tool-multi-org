@@ -168,10 +168,23 @@ async function main() {
       process.exit(1);
     } else {
       console.log(chalk.green(`✓ Analysis complete: ${report.summary.retryableErrors} error(s) can be retried`));
-      if (opts.retryCsv) {
+
+      // Detect checkpoint mode by parsing errors path
+      const checkpointMatch = opts.errors.match(/\.workos-checkpoints[\/\\]([^\/\\]+)[\/\\]errors\.jsonl/);
+
+      if (checkpointMatch) {
+        // Checkpoint mode detected
+        const jobId = checkpointMatch[1];
+        console.log(chalk.gray(`\nTo retry failed imports from checkpoint, run:`));
+        console.log(chalk.cyan(`  npx tsx bin/orchestrate-migration.ts --csv <your-csv> --resume ${jobId}`));
+        console.log(chalk.gray('\nNote: Replace <your-csv> with your original CSV path.'));
+        console.log(chalk.gray('      Fix any data validation issues in your CSV before retrying.'));
+      } else if (opts.retryCsv) {
+        // Non-checkpoint mode with retry CSV
         console.log(chalk.gray(`\nTo retry failed imports, run:`));
         console.log(chalk.cyan(`  npx tsx bin/import-users.ts --csv ${opts.retryCsv}`));
       }
+
       process.exit(0);
     }
   } catch (err) {

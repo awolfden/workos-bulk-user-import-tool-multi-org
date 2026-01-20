@@ -257,13 +257,68 @@ async function runExecutionMode(
       console.log(`\n${chalk.yellow('⚠️  Some imports failed')}`);
       console.log('\nNext steps:');
       if (result.errorsPath) {
-        console.log(chalk.gray(`  • Review failures: ${result.errorsPath}`));
-        console.log(chalk.gray(`  • Analyze errors: npx tsx bin/analyze-errors.ts --errors ${result.errorsPath} --retry-csv retry.csv`));
-        console.log(chalk.gray(`  • Retry failed imports: npx tsx bin/import-users.ts --csv retry.csv`));
+        console.log(chalk.gray(`  1. Review errors: cat ${result.errorsPath}`));
+        console.log(chalk.gray(`  2. Analyze errors: npx tsx bin/analyze-errors.ts --errors ${result.errorsPath}`));
+        console.log(chalk.gray('  3. Fix issues and retry\n'));
       }
+
+      // Display retry commands
+      console.log(chalk.bold('Retry Commands:\n'));
+
       if (result.checkpoint) {
-        console.log(chalk.gray(`  • Resume from checkpoint: --resume ${result.checkpoint.jobId}`));
+        // Checkpoint mode - show resume command
+        console.log(chalk.cyan('  # Resume from checkpoint (retries failed records):'));
+        let resumeCmd = `  npx tsx bin/orchestrate-migration.ts --csv ${options.csvPath} --resume ${result.checkpoint.jobId}`;
+
+        // Add org configuration
+        if (options.orgId) {
+          resumeCmd += ` --org-id ${options.orgId}`;
+        } else if (options.orgExternalId) {
+          resumeCmd += ` --org-external-id ${options.orgExternalId}`;
+          if (options.orgName) {
+            resumeCmd += ` --org-name "${options.orgName}"`;
+          }
+          if (options.createOrgIfMissing) {
+            resumeCmd += ' --create-org-if-missing';
+          }
+        }
+
+        // Add workers if parallel mode
+        if (options.workers && options.workers > 1) {
+          resumeCmd += ` --workers ${options.workers}`;
+        }
+
+        console.log(chalk.white(resumeCmd));
+        console.log('');
+      } else {
+        // Non-checkpoint mode - show full retry
+        console.log(chalk.cyan('  # Retry import (full re-run):'));
+        let retryCmd = `  npx tsx bin/import-users.ts --csv ${options.csvPath}`;
+
+        // Add org configuration
+        if (options.orgId) {
+          retryCmd += ` --org-id ${options.orgId}`;
+        } else if (options.orgExternalId) {
+          retryCmd += ` --org-external-id ${options.orgExternalId}`;
+          if (options.orgName) {
+            retryCmd += ` --org-name "${options.orgName}"`;
+          }
+          if (options.createOrgIfMissing) {
+            retryCmd += ' --create-org-if-missing';
+          }
+        }
+
+        // Add concurrency
+        if (options.concurrency) {
+          retryCmd += ` --concurrency ${options.concurrency}`;
+        }
+
+        console.log(chalk.white(retryCmd));
+        console.log('');
       }
+
+      console.log(chalk.gray('  Note: Fix data issues in your CSV before retrying if errors are validation-related.'));
+      console.log('');
     } else {
       console.log(`\n${chalk.green('✓ Import completed successfully')}`);
     }

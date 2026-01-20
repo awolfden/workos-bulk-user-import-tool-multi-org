@@ -127,6 +127,7 @@ async function main() {
       if (hasErrors && answers.logErrors) {
         // Construct correct error path (checkpointed or not)
         let errorsPath = answers.errorsPath || 'errors.jsonl';
+        let jobId: string | undefined;
 
         // If checkpointing was enabled, extract job ID from import step
         if (answers.enableCheckpointing) {
@@ -136,6 +137,7 @@ async function main() {
               importStep.args[i - 1] === '--job-id'
             );
             if (jobIdArg) {
+              jobId = jobIdArg;
               const checkpointDir = answers.checkpointDir || '.workos-checkpoints';
               errorsPath = `${checkpointDir}/${jobIdArg}/errors.jsonl`;
             }
@@ -146,6 +148,72 @@ async function main() {
         console.log(chalk.gray(`  1. Review errors: cat ${errorsPath}`));
         console.log(chalk.gray(`  2. Analyze errors: npx tsx bin/analyze-errors.ts --errors ${errorsPath}`));
         console.log(chalk.gray('  3. Fix issues and retry\n'));
+
+        // Display retry commands
+        console.log(chalk.bold('Retry Commands:\n'));
+
+        // Build CSV path for retry
+        const csvPath = answers.customCsvPath ||
+                        (answers.source === 'auth0' ? 'auth0-export.csv' : 'users.csv');
+
+        if (jobId) {
+          // Checkpoint mode - resume from checkpoint
+          console.log(chalk.cyan('  # Resume from checkpoint (retries failed records):'));
+          let resumeCmd = `  npx tsx bin/orchestrate-migration.ts --csv ${csvPath} --resume ${jobId}`;
+
+          // Add org configuration if in single-org mode
+          if (answers.importMode === 'single-org') {
+            if (answers.orgId) {
+              resumeCmd += ` --org-id ${answers.orgId}`;
+            } else if (answers.orgExternalId) {
+              resumeCmd += ` --org-external-id ${answers.orgExternalId}`;
+              if (answers.orgName) {
+                resumeCmd += ` --org-name "${answers.orgName}"`;
+              }
+              if (answers.createOrgIfMissing) {
+                resumeCmd += ' --create-org-if-missing';
+              }
+            }
+          }
+
+          // Add workers if parallel mode was enabled
+          if (answers.enableCheckpointing && answers.useParallelWorkers && answers.numWorkers) {
+            resumeCmd += ` --workers ${answers.numWorkers}`;
+          }
+
+          console.log(chalk.white(resumeCmd));
+        } else {
+          // Non-checkpoint mode - retry from scratch
+          console.log(chalk.cyan('  # Retry import (full re-run):'));
+          let retryCmd = `  npx tsx bin/import-users.ts --csv ${csvPath}`;
+
+          // Add org configuration if in single-org mode
+          if (answers.importMode === 'single-org') {
+            if (answers.orgId) {
+              retryCmd += ` --org-id ${answers.orgId}`;
+            } else if (answers.orgExternalId) {
+              retryCmd += ` --org-external-id ${answers.orgExternalId}`;
+              if (answers.orgName) {
+                retryCmd += ` --org-name "${answers.orgName}"`;
+              }
+              if (answers.createOrgIfMissing) {
+                retryCmd += ' --create-org-if-missing';
+              }
+            }
+          } else {
+            // Multi-org mode
+            retryCmd += ' --multi-org-mode';
+          }
+
+          // Add concurrency
+          if (answers.concurrency) {
+            retryCmd += ` --concurrency ${answers.concurrency}`;
+          }
+
+          console.log(chalk.white(retryCmd));
+        }
+
+        console.log(chalk.gray('\n  Note: Fix data issues in your CSV before retrying if errors are validation-related.\n'));
       }
 
       process.exit(1);

@@ -12,6 +12,7 @@ export class Auth0Client {
   private credentials: Auth0Credentials;
   private tokenExpiry?: number;
   private rateLimiter: RateLimiter;
+  private accessToken?: string;
 
   constructor(credentials: Auth0Credentials, rateLimit: number = 50) {
     this.credentials = credentials;
@@ -26,6 +27,93 @@ export class Auth0Client {
 
     // Initialize rate limiter (default 50 rps for Auth0 Developer tier)
     this.rateLimiter = new RateLimiter(rateLimit);
+  }
+
+  /**
+   * Get Management API access token
+   * Caches token and refreshes when expired
+   */
+  async getAccessToken(): Promise<string> {
+    // Check if we have a valid cached token
+    if (this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry) {
+      return this.accessToken;
+    }
+
+    // Fetch new token from Auth0
+    const tokenUrl = `https://${this.credentials.domain}/oauth/token`;
+    const audience = this.credentials.audience || `https://${this.credentials.domain}/api/v2/`;
+
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        client_id: this.credentials.clientId,
+        client_secret: this.credentials.clientSecret,
+        audience,
+        grant_type: 'client_credentials'
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to get access token: ${error}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.access_token) {
+      throw new Error('No access token in response');
+    }
+
+    this.accessToken = data.access_token;
+
+    // Set expiry with 5 minute buffer
+    const expiresIn = data.expires_in || 86400; // Default 24 hours
+    this.tokenExpiry = Date.now() + (expiresIn - 300) * 1000;
+
+    return this.accessToken!;
+  }
+
+  /**
+   * Make a rate-limited API call to Auth0 Management API
+   * Automatically handles rate limiting and retries on 429 errors
+   */
+  async makeApiCall(
+    path: string,
+    options: RequestInit = {}
+  ): Promise<Response> {
+    const url = `https://${this.credentials.domain}${path}`;
+    const token = await this.getAccessToken();
+
+    return this.retryWithRateLimit(
+      async () => {
+        const response = await fetch(url, {
+          ...options,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            ...options.headers
+          }
+        });
+
+        // Throw error for rate limits so retry logic can handle it
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          const error: any = new Error('Rate limit exceeded');
+          error.statusCode = 429;
+          error.response = {
+            headers: { 'retry-after': retryAfter }
+          };
+          throw error;
+        }
+
+        return response;
+      },
+      5, // Max 5 retries for 429 errors
+      2000 // Start with 2 second delay
+    );
   }
 
   /**

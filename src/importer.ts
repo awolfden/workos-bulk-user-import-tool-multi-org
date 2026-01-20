@@ -348,15 +348,12 @@ async function importUsersStreamingMode(options: ImportOptions): Promise<{
     parser.on("error", (err) => reject(err));
     parser.on("end", () => resolve());
 
-    parser.on("readable", async () => {
+    parser.on("readable", () => {
       let row: CSVRow | null;
       // eslint-disable-next-line no-cond-assign
       while ((row = parser.read()) !== null) {
-        // If we've reached batch limit, wait for current batch to complete
-        if (inFlight.length >= MAX_INFLIGHT_BATCH) {
-          await Promise.allSettled(inFlight);
-          inFlight.length = 0; // Clear completed batch
-        }
+        // Note: Removed batch limiting await here to fix async handler issue
+        // The semaphore already provides backpressure control
 
         const rowData = row as CSVRow; // capture per-iteration to avoid closure over mutable 'row'
         if (!headerHandled) {
@@ -524,10 +521,10 @@ async function importUsersStreamingMode(options: ImportOptions): Promise<{
               summary.failures += 1;
               logger.stepFailure(currentRecord);
               const statusStr = status != null ? String(status) : "?";
-              const codeStr = workosCode ?? "?";
+              const errorDetails = formatWorkosError(workosCode, workosErrors);
               const reqStr = requestId ?? "?";
               // Print additional non-PII failure context
-              logger.warn(`Record #${currentRecord} failed: status=${statusStr} code=${codeStr} requestId=${reqStr} message=${message}`);
+              logger.warn(`Record #${currentRecord} failed: status=${statusStr} error=${errorDetails} requestId=${reqStr}`);
               return;
             }
           }
@@ -586,9 +583,9 @@ async function importUsersStreamingMode(options: ImportOptions): Promise<{
                   summary.failures += 1;
                   logger.stepFailure(currentRecord);
                   const statusStr = status != null ? String(status) : "?";
-                  const codeStr = workosCode ?? "?";
+                  const errorDetails = formatWorkosError(workosCode, workosErrors);
                   const reqStr = requestId ?? "?";
-                  logger.warn(`Record #${currentRecord} membership failed: status=${statusStr} code=${codeStr} requestId=${reqStr} message=${message}`);
+                  logger.warn(`Record #${currentRecord} membership failed: status=${statusStr} error=${errorDetails} requestId=${reqStr}`);
                   return;
                 }
               }
@@ -766,7 +763,7 @@ async function processChunk(
   const inFlight: Promise<void>[] = [];
 
   await new Promise<void>((resolve, reject) => {
-    parser.on("readable", async () => {
+    parser.on("readable", () => {
       let row: CSVRow | null;
       while ((row = parser.read()) !== null) {
         recordNumber++;
@@ -809,7 +806,9 @@ async function processChunk(
             let resolvedOrgId = orgId;
             if (!orgId && built.orgInfo && orgCache) {
               try {
-                await limiter.acquire();
+                if (!dryRun) {
+                  await limiter.acquire();
+                }
                 resolvedOrgId = await orgCache.resolve({
                   orgId: built.orgInfo.orgId,
                   orgExternalId: built.orgInfo.orgExternalId,
@@ -995,6 +994,31 @@ async function importUsersWorkerMode(options: ImportOptions): Promise<{
   const summary = await coordinator.start();
 
   return { summary, errors: [] }; // Errors streamed to checkpoint dir
+}
+
+/**
+ * Helper: Format WorkOS error details for logging
+ * Extracts both error code and message from workosErrors array
+ */
+function formatWorkosError(workosCode: string | undefined, workosErrors: unknown): string {
+  if (!workosErrors) {
+    return workosCode ?? "unknown_error";
+  }
+
+  // workosErrors is typically an array of {code: string, message: string} objects
+  if (Array.isArray(workosErrors) && workosErrors.length > 0) {
+    const errorDetails = workosErrors
+      .map((err: any) => {
+        const code = err?.code ?? "unknown";
+        const message = err?.message ?? "";
+        return message ? `${code}: ${message}` : code;
+      })
+      .join("; ");
+    return errorDetails;
+  }
+
+  // Fallback to just the code if errors array is empty or malformed
+  return workosCode ?? "unknown_error";
 }
 
 /**
