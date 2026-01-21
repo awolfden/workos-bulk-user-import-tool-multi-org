@@ -1,0 +1,50 @@
+{
+  "summary": {
+    "totalRows": 15003,
+    "validRows": 15001,
+    "invalidRows": 0,
+    "warningRows": 2,
+    "duplicateEmails": 15001,
+    "duplicateExternalIds": 15002,
+    "mode": "multi-org",
+    "autoFixApplied": true,
+    "fixedIssues": 0
+  },
+  "issues": [
+    {
+      "severity": "info",
+      "category": "header",
+      "message": "Detected mode: multi-org",
+      "ruleId": "mode-detection"
+    },
+    {
+      "severity": "warning",
+      "category": "duplicate",
+      "recordNumber": 2,
+      "field": "email",
+      "email": "zac.burrage@gmail.com",
+      "message": "Duplicate email: zac.burrage@gmail.com",
+      "ruleId": "duplicate-email"
+    },
+    {
+      "severity": "warning",
+      "category": "duplicate",
+      "recordNumber": 5,
+      "field": "email",
+      "email": "zac.burrage@gmail.com",
+      "message": "Duplicate email: zac.burrage@gmail.com",
+      "ruleId": "duplicate-email"
+    },
+    {
+      "severity": "warning",
+      "category": "duplicate",
+      "recordNumber": 5,
+      "field": "external_id",
+      "email": "zac.burrage@gmail.com",
+      "message": "Duplicate external_id: google-oauth2|107240131177615826171",
+      "ruleId": "duplicate-external-id"
+    }
+  ],
+  "timestamp": "2026-01-20T23:35:36.278Z",
+  "csvHash": "fe3ae09d980ded839c873c47c75f91fc5ee844bd18e560b1c43a3b59ff424891"
+}

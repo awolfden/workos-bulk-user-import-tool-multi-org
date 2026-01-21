@@ -78,8 +78,13 @@ function generateExportStep(answers: WizardAnswers): MigrationStep {
     args.push('--client-secret', answers.auth0ClientSecret!);
     args.push('--output', 'auth0-export.csv');
 
-    if (answers.auth0UseMetadata) {
-      args.push('--use-metadata');
+    // Add organization flags if organizations are included
+    if (answers.auth0IncludeOrgs !== false) {
+      // Use new auth0OrgMethod field, fallback to deprecated auth0UseMetadata
+      const useMetadata = answers.auth0OrgMethod === 'metadata' || answers.auth0UseMetadata;
+      if (useMetadata) {
+        args.push('--use-metadata');
+      }
     }
 
     if (answers.auth0RateLimit) {
@@ -426,8 +431,8 @@ function generateRecommendations(answers: WizardAnswers): string[] {
     recommendations.push('Workers may not improve performance for small migrations');
   }
 
-  if (answers.source === 'auth0' && !answers.auth0UseMetadata) {
-    recommendations.push('Consider including metadata for complete user profiles');
+  if (answers.source === 'auth0' && answers.auth0OrgMethod === 'api') {
+    recommendations.push('Organizations API selected - ensure your Auth0 plan supports this feature');
   }
 
   if (answers.source === 'auth0' && !answers.auth0HasPasswords) {

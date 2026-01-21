@@ -64,9 +64,11 @@ export interface WizardAnswers {
   auth0Domain?: string;
   auth0ClientId?: string;
   auth0ClientSecret?: string;
-  auth0PlanTier?: 'free' | 'developer' | 'trial' | 'enterprise';
-  auth0UseMetadata?: boolean;
-  auth0RateLimit?: number;
+  auth0PlanTier?: 'free' | 'developer' | 'trial' | 'enterprise'; // Deprecated - kept for backward compatibility
+  auth0IncludeOrgs?: boolean; // Whether to include organizations in export
+  auth0OrgMethod?: 'api' | 'metadata'; // Organization discovery method
+  auth0UseMetadata?: boolean; // Deprecated - use auth0OrgMethod instead
+  auth0RateLimit?: number; // Rate limit in requests per second
   auth0HasPasswords?: boolean;
   auth0PasswordsPath?: string;
 

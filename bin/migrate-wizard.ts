@@ -177,8 +177,8 @@ async function main() {
           }
 
           // Add workers if parallel mode was enabled
-          if (answers.enableCheckpointing && answers.useParallelWorkers && answers.numWorkers) {
-            resumeCmd += ` --workers ${answers.numWorkers}`;
+          if (answers.enableCheckpointing && answers.enableWorkers && answers.workerCount) {
+            resumeCmd += ` --workers ${answers.workerCount}`;
           }
 
           console.log(chalk.white(resumeCmd));

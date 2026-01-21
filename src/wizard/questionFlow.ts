@@ -230,68 +230,98 @@ async function askAuth0Credentials(
 
   console.log(chalk.green("✓ Auth0 credentials configured\n"));
 
-  // Ask about Auth0 plan tier for rate limiting and organization discovery
-  console.log(chalk.cyan("⚡ Auth0 Plan & Rate Limiting"));
+  // Ask about organization export
+  console.log(chalk.cyan("🏢 Organization Export"));
   console.log(
-    chalk.gray("Auth0 has different rate limits and features based on your plan tier.")
-  );
-  console.log(
-    chalk.gray("This determines both API rate limits and organization discovery method.\n")
+    chalk.gray("Organizations can be exported from Auth0 using different methods.\n")
   );
 
-  const planTierAnswer = await prompts({
-    type: "select",
-    name: "planTier",
-    message: "What Auth0 plan tier are you on?",
-    choices: [
-      {
-        title: "Developer (50 RPS, metadata-based orgs)",
-        value: "developer",
-        description: "Standard plan - uses user_metadata for organization discovery",
-      },
-      {
-        title: "Trial (2 RPS, Organizations API)",
-        value: "trial",
-        description: "Trial with Organizations API - uses native Auth0 organizations",
-      },
-      {
-        title: "Free (2 RPS, metadata-based orgs)",
-        value: "free",
-        description: "Free tier - limited rate, uses user_metadata for orgs",
-      },
-      {
-        title: "Enterprise (100+ RPS, Organizations API)",
-        value: "enterprise",
-        description: "Enterprise plan - uses native Auth0 organizations",
-      },
-    ],
-    initial: 0, // Developer as default
+  const includeOrgsAnswer = await prompts({
+    type: "confirm",
+    name: "includeOrgs",
+    message: "Should this export include Organizations?",
+    initial: true,
   });
 
-  const planTier = planTierAnswer.planTier || "developer";
-  answers.auth0PlanTier = planTier;
+  answers.auth0IncludeOrgs = includeOrgsAnswer.includeOrgs ?? true;
 
-  // Set rate limit based on plan
-  if (planTier === "free" || planTier === "trial") {
-    answers.auth0RateLimit = 2;
-  } else if (planTier === "developer") {
-    answers.auth0RateLimit = 50;
-  } else if (planTier === "enterprise") {
-    answers.auth0RateLimit = 100;
+  if (answers.auth0IncludeOrgs) {
+    const orgMethodAnswer = await prompts({
+      type: "select",
+      name: "orgMethod",
+      message: "How should organizations be discovered?",
+      choices: [
+        {
+          title: "Organizations API",
+          value: "api",
+          description: "Uses Auth0 Organizations API (requires Enterprise or Trial plan)",
+        },
+        {
+          title: "User metadata",
+          value: "metadata",
+          description: "Derives organizations from user_metadata fields",
+        },
+      ],
+      initial: 1, // Default to metadata as it's more common
+    });
+
+    answers.auth0OrgMethod = orgMethodAnswer.orgMethod || "metadata";
+
+    // Set deprecated flag for backward compatibility
+    answers.auth0UseMetadata = answers.auth0OrgMethod === "metadata";
+
+    console.log(
+      chalk.green(
+        `✓ Organizations: ${answers.auth0OrgMethod === 'api' ? 'Organizations API' : 'User metadata'}\n`
+      )
+    );
+  } else {
+    console.log(chalk.gray("Organizations will not be exported\n"));
   }
 
-  // Set organization discovery method based on plan
-  // Developer and Free plans use metadata (no Organizations API)
-  // Trial and Enterprise plans use Organizations API
-  if (planTier === "developer" || planTier === "free") {
-    answers.auth0UseMetadata = true;
-  } else if (planTier === "trial" || planTier === "enterprise") {
-    answers.auth0UseMetadata = false;
-  }
+  // Ask about rate limiting
+  console.log(chalk.cyan("⚡ Rate Limiting"));
+  console.log(
+    chalk.gray("Auth0 has different rate limits based on your plan tier.")
+  );
+  console.log(
+    chalk.gray("Choose the rate limit that matches your Auth0 plan.\n")
+  );
+
+  const rateLimitAnswer = await prompts({
+    type: "select",
+    name: "rateLimit",
+    message: "What is your Auth0 API rate limit?",
+    choices: [
+      {
+        title: "2 RPS (Free tier)",
+        value: 2,
+        description: "Free tier or Trial plan",
+      },
+      {
+        title: "4 RPS (Custom tier)",
+        value: 4,
+        description: "Custom configuration",
+      },
+      {
+        title: "50 RPS (Developer tier)",
+        value: 50,
+        description: "Standard Developer plan",
+      },
+      {
+        title: "100 RPS (Enterprise tier)",
+        value: 100,
+        description: "Enterprise plan",
+      },
+    ],
+    initial: 2, // Default to 50 RPS (Developer tier)
+  });
+
+  answers.auth0RateLimit = rateLimitAnswer.rateLimit || 50;
 
   console.log(
     chalk.green(
-      `✓ Plan: ${planTier} (${answers.auth0RateLimit} RPS, ${answers.auth0UseMetadata ? 'metadata-based' : 'Organizations API'})\n`
+      `✓ Rate limit: ${answers.auth0RateLimit} requests per second\n`
     )
   );
 
