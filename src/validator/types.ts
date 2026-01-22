@@ -16,6 +16,9 @@ export interface ValidationOptions {
   fixedCsvPath?: string;
   reportPath?: string;
   checkApi?: boolean;
+  dedupe?: boolean;
+  dedupedCsvPath?: string;
+  dedupeReportPath?: string;
   quiet?: boolean;
 }
 

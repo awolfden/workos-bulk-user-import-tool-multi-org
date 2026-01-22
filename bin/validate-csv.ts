@@ -27,6 +27,9 @@ program
   .requiredOption('--csv <path>', 'CSV file to validate')
   .option('--auto-fix', 'Auto-fix common issues (whitespace, booleans)')
   .option('--fixed-csv <path>', 'Output path for fixed CSV (requires --auto-fix)')
+  .option('--dedupe', 'Deduplicate rows with same email address')
+  .option('--deduped-csv <path>', 'Output path for deduplicated CSV (requires --dedupe)')
+  .option('--dedupe-report <path>', 'Deduplication report path (default: deduplication-report.json)', 'deduplication-report.json')
   .option('--report <path>', 'JSON report path (default: validation-report.json)', 'validation-report.json')
   .option('--check-api', 'Check WorkOS API for conflicts (requires WORKOS_SECRET_KEY)')
   .option('--quiet', 'Suppress progress output')
@@ -59,11 +62,24 @@ async function main() {
     process.exit(2);
   }
 
+  if (opts.dedupe && !opts.dedupedCsv) {
+    console.error(chalk.red('Error: --dedupe requires --deduped-csv <path>'));
+    process.exit(2);
+  }
+
+  if (opts.dedupedCsv && !opts.dedupe) {
+    console.error(chalk.red('Error: --deduped-csv requires --dedupe'));
+    process.exit(2);
+  }
+
   // Build validation options
   const options: ValidationOptions = {
     csvPath: opts.csv,
     autoFix: opts.autoFix,
     fixedCsvPath: opts.fixedCsv,
+    dedupe: opts.dedupe,
+    dedupedCsvPath: opts.dedupedCsv,
+    dedupeReportPath: opts.dedupeReport,
     reportPath: opts.report,
     checkApi: opts.checkApi,
     quiet: opts.quiet
@@ -103,11 +119,30 @@ async function main() {
       console.log(chalk.yellow(`⚠️  Found ${warningCount} warning(s)`));
     }
 
+    // Display deduplication results if enabled
+    if (opts.dedupe && opts.dedupeReport && fs.existsSync(opts.dedupeReport)) {
+      const dedupeReport = JSON.parse(fs.readFileSync(opts.dedupeReport, 'utf-8'));
+      console.log('');
+      console.log(chalk.cyan('============================================================'));
+      console.log(chalk.cyan('DEDUPLICATION SUMMARY'));
+      console.log(chalk.cyan('============================================================'));
+      console.log(`Input rows:          ${dedupeReport.summary.totalInputRows}`);
+      console.log(`Unique rows:         ${chalk.green(String(dedupeReport.summary.uniqueRows))}`);
+      console.log(`Duplicates found:    ${dedupeReport.summary.duplicatesFound > 0 ? chalk.yellow(String(dedupeReport.summary.duplicatesFound)) : '0'}`);
+      console.log(`Rows removed:        ${dedupeReport.summary.rowsRemoved > 0 ? chalk.yellow(String(dedupeReport.summary.rowsRemoved)) : '0'}`);
+      console.log(chalk.cyan('============================================================'));
+      console.log('');
+    }
+
     // Display file paths
     console.log('');
     console.log(`Full report: ${report.summary.autoFixApplied ? chalk.cyan(opts.report) : opts.report}`);
     if (opts.fixedCsv && report.summary.autoFixApplied) {
       console.log(`Fixed CSV:   ${chalk.green(opts.fixedCsv)}`);
+    }
+    if (opts.dedupedCsv && opts.dedupe) {
+      console.log(`Deduped CSV: ${chalk.green(opts.dedupedCsv)}`);
+      console.log(`Dedupe report: ${chalk.cyan(opts.dedupeReport)}`);
     }
     console.log('');
 

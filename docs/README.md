@@ -22,6 +22,7 @@ Follow these phases in order for a complete migration:
 
 - **[CSV Format Reference](guides/CSV-FORMAT.md)** - Complete column reference
 - **[Multi-Organization Imports](guides/MULTI-ORG.md)** - Import across multiple organizations
+- **[Email Deduplication](guides/DEDUPLICATION.md)** - Merge duplicate email addresses
 - **[Password Migration](guides/PASSWORD-MIGRATION.md)** - Migrate password hashes
 - **[Metadata Guide](guides/METADATA.md)** - WorkOS metadata best practices
 - **[Troubleshooting](guides/TROUBLESHOOTING.md)** - Common errors and solutions

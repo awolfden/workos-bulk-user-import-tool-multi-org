@@ -60,6 +60,7 @@ WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/import-users.ts --csv users.csv
 - ✅ **Wizard-Driven** - Interactive guidance through entire process
 - ✅ **Multi-Organization** - Import users across 1000+ organizations in one CSV
 - ✅ **Password Migration** - Bcrypt, Auth0, Okta formats supported
+- ✅ **Email Deduplication** - Intelligently merge duplicate emails (common with Auth0)
 - ✅ **Resumable** - Checkpoint large imports, resume on failure
 - ✅ **Parallel Processing** - 4x faster with worker pool (100K users in ~20 minutes)
 - ✅ **Error Recovery** - Detailed analysis, automatic retry CSV generation

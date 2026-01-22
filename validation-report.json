@@ -1,20 +1,20 @@
 {
   "summary": {
-    "totalRows": 15003,
-    "validRows": 15001,
+    "totalRows": 7,
+    "validRows": 4,
     "invalidRows": 0,
-    "warningRows": 2,
-    "duplicateEmails": 15001,
-    "duplicateExternalIds": 15002,
-    "mode": "multi-org",
-    "autoFixApplied": true,
+    "warningRows": 3,
+    "duplicateEmails": 4,
+    "duplicateExternalIds": 7,
+    "mode": "user-only",
+    "autoFixApplied": false,
     "fixedIssues": 0
   },
   "issues": [
     {
       "severity": "info",
       "category": "header",
-      "message": "Detected mode: multi-org",
+      "message": "Detected mode: user-only",
       "ruleId": "mode-detection"
     },
     {
@@ -22,8 +22,8 @@
       "category": "duplicate",
       "recordNumber": 2,
       "field": "email",
-      "email": "zac.burrage@gmail.com",
-      "message": "Duplicate email: zac.burrage@gmail.com",
+      "email": "alice@example.com",
+      "message": "Duplicate email: alice@example.com",
       "ruleId": "duplicate-email"
     },
     {
@@ -31,20 +31,20 @@
       "category": "duplicate",
       "recordNumber": 5,
       "field": "email",
-      "email": "zac.burrage@gmail.com",
-      "message": "Duplicate email: zac.burrage@gmail.com",
+      "email": "charlie@example.com",
+      "message": "Duplicate email: charlie@example.com",
       "ruleId": "duplicate-email"
     },
     {
       "severity": "warning",
       "category": "duplicate",
-      "recordNumber": 5,
-      "field": "external_id",
-      "email": "zac.burrage@gmail.com",
-      "message": "Duplicate external_id: google-oauth2|107240131177615826171",
-      "ruleId": "duplicate-external-id"
+      "recordNumber": 6,
+      "field": "email",
+      "email": "charlie@example.com",
+      "message": "Duplicate email: charlie@example.com",
+      "ruleId": "duplicate-email"
     }
   ],
-  "timestamp": "2026-01-20T23:35:36.278Z",
-  "csvHash": "fe3ae09d980ded839c873c47c75f91fc5ee844bd18e560b1c43a3b59ff424891"
+  "timestamp": "2026-01-21T18:49:06.743Z",
+  "csvHash": "ce0efcafbc92daa0c11de3f5309f39b886b07b140be222fd9c742fa07e59d361"
 }

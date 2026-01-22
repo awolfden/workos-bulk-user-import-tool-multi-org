@@ -49,6 +49,34 @@ npx tsx bin/validate-csv.ts \
   --report validation-report.json
 ```
 
+### Deduplicate Emails
+
+**New in v2.1**: Merge duplicate email addresses (common with Auth0 exports):
+
+```bash
+npx tsx bin/validate-csv.ts \
+  --csv users.csv \
+  --dedupe \
+  --deduped-csv users-deduplicated.csv
+```
+
+This intelligently merges duplicate emails by combining metadata and resolving field conflicts.
+
+**Why this is needed**: Auth0 can have multiple users with the same email (different auth methods), but WorkOS requires unique emails. See the [Deduplication Guide](../guides/DEDUPLICATION.md) for details.
+
+### Complete Workflow
+
+Validate, fix, and deduplicate in one command:
+
+```bash
+npx tsx bin/validate-csv.ts \
+  --csv users.csv \
+  --auto-fix \
+  --fixed-csv users-fixed.csv \
+  --dedupe \
+  --deduped-csv users-ready.csv
+```
+
 ---
 
 ## CLI Options
@@ -58,6 +86,9 @@ npx tsx bin/validate-csv.ts \
 | `--csv <path>` | CSV file to validate | ✅ Yes |
 | `--auto-fix` | Auto-fix common issues | No |
 | `--fixed-csv <path>` | Output path for fixed CSV (requires --auto-fix) | No |
+| `--dedupe` | Deduplicate rows with same email address | No |
+| `--deduped-csv <path>` | Output path for deduplicated CSV (requires --dedupe) | No |
+| `--dedupe-report <path>` | Deduplication report path (default: deduplication-report.json) | No |
 | `--report <path>` | JSON report path (default: validation-report.json) | No |
 | `--check-api` | Check WorkOS API for conflicts (requires WORKOS_SECRET_KEY) | No |
 | `--quiet` | Suppress progress output | No |

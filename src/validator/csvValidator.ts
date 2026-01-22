@@ -14,6 +14,8 @@ import { calculateCsvHash } from '../checkpoint/csvUtils.js';
 import { isBlank } from '../boolean.js';
 import { createLogger } from '../logger.js';
 import { DuplicateDetector } from './duplicateDetector.js';
+import { EmailDeduplicator } from './emailDeduplicator.js';
+import type { DeduplicationResult } from './emailDeduplicator.js';
 import { HEADER_RULES, ROW_RULES, getAutoFixRules } from './rules.js';
 import type {
   ValidationOptions,
@@ -65,6 +67,11 @@ export class CSVValidator {
     if (this.options.checkApi) {
       this.logger.log('API conflict checking not yet implemented');
       // TODO: Implement in Phase 2.3
+    }
+
+    // Pass 4: Optional deduplication (if enabled)
+    if (this.options.dedupe) {
+      await this.deduplicateRows(headers);
     }
 
     // Generate final report
@@ -230,6 +237,93 @@ export class CSVValidator {
 
       input.pipe(parser);
     });
+  }
+
+  /**
+   * Pass 4: Deduplicate rows by email
+   */
+  private async deduplicateRows(headers: string[]): Promise<void> {
+    this.logger.log('Pass 4: Deduplicating rows...');
+
+    // Read all rows from CSV (use fixed CSV if available, otherwise original)
+    const csvPath = this.options.fixedCsvPath || this.options.csvPath;
+    const rows: CSVRow[] = [];
+
+    await new Promise<void>((resolve, reject) => {
+      const input = fs.createReadStream(csvPath);
+      const parser = parse({
+        columns: true,
+        bom: true,
+        skip_empty_lines: true,
+        trim: true
+      });
+
+      parser.on('readable', () => {
+        let row: CSVRow | null;
+        while ((row = parser.read()) !== null) {
+          rows.push(row);
+        }
+      });
+
+      parser.on('end', () => resolve());
+      parser.on('error', (err) => reject(err));
+
+      input.pipe(parser);
+    });
+
+    // Deduplicate
+    const deduplicator = new EmailDeduplicator();
+    const result: DeduplicationResult = deduplicator.deduplicate(rows, 2); // Start at row 2 (after header)
+
+    this.logger.log(`Found ${result.duplicatesFound} duplicate emails`);
+    this.logger.log(`Removed ${result.rowsRemoved} duplicate rows`);
+    this.logger.log(`Output: ${result.deduplicatedRows.length} unique rows`);
+
+    // Write deduplicated CSV
+    if (this.options.dedupedCsvPath) {
+      await new Promise<void>((resolve, reject) => {
+        const output = fs.createWriteStream(this.options.dedupedCsvPath!);
+        const stringifier = stringify({ header: true, columns: headers });
+
+        stringifier.pipe(output);
+
+        for (const row of result.deduplicatedRows) {
+          stringifier.write(row);
+        }
+
+        stringifier.end();
+
+        output.on('finish', () => {
+          this.logger.log(`Deduplicated CSV written to: ${this.options.dedupedCsvPath}`);
+          resolve();
+        });
+
+        output.on('error', (err) => reject(err));
+        stringifier.on('error', (err) => reject(err));
+      });
+    }
+
+    // Write deduplication report
+    if (this.options.dedupeReportPath) {
+      const report = {
+        timestamp: new Date().toISOString(),
+        csvPath,
+        summary: {
+          totalInputRows: rows.length,
+          uniqueRows: result.deduplicatedRows.length,
+          duplicatesFound: result.duplicatesFound,
+          rowsRemoved: result.rowsRemoved
+        },
+        mergeDetails: result.mergeDetails
+      };
+
+      fs.writeFileSync(
+        this.options.dedupeReportPath,
+        JSON.stringify(report, null, 2)
+      );
+
+      this.logger.log(`Deduplication report written to: ${this.options.dedupeReportPath}`);
+    }
   }
 
   /**
