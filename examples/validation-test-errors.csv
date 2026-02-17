@@ -1,0 +1,6 @@
+email,first_name,last_name,email_verified,external_id,metadata,org_id,org_external_id,org_name,password_hash
+,Alice,Smith,true,user-001,,,,Acme Corp,
+invalid-email,Bob,Jones,false,user-002,,,,Beta Inc,
+charlie@example.com,Charlie,Brown,invalid,user-003,{invalid json},,,Gamma LLC,
+dana@example.com,Dana,White,true,user-004,,org_001,dana-org,Delta Co,
+eve@example.com,Eve,Green,true,user-005,,,eve-org,Eve Inc,hash123

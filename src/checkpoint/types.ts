@@ -26,6 +26,9 @@ export interface ChunkMetadata {
   successes: number;
   failures: number;
   membershipsCreated: number;
+  usersCreated: number;
+  duplicateUsers: number;
+  duplicateMemberships: number;
   startedAt?: number; // timestamp (ms)
   completedAt?: number; // timestamp (ms)
   durationMs?: number;
@@ -36,6 +39,9 @@ export interface CheckpointSummary {
   successes: number;
   failures: number;
   membershipsCreated: number;
+  usersCreated: number;
+  duplicateUsers: number;
+  duplicateMemberships: number;
   startedAt: number;
   endedAt: number | null;
   warnings: string[];
@@ -73,6 +79,9 @@ export interface ChunkSummary {
   successes: number;
   failures: number;
   membershipsCreated: number;
+  usersCreated: number;
+  duplicateUsers: number;
+  duplicateMemberships: number;
   durationMs: number;
 }
 

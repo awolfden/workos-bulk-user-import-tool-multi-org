@@ -18,8 +18,8 @@ export class RateLimiter {
       }
       this.drain();
     }, this.intervalMs);
-    // Do not keep the event loop alive just for the limiter
-    (this.timer as any).unref?.();
+    // NOTE: Keep event loop alive during active operations
+    // (this.timer as any).unref?.();
   }
 
   async acquire(): Promise<void> {

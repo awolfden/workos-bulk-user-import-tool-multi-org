@@ -1,1460 +1,219 @@
-## WorkOS Multi-Org User Importer (Enterprise)
+# WorkOS Multi-Org Migration Toolkit
 
-> **Note:** This is the **enterprise multi-org version** for importing users across multiple organizations at scale.
-> For single-org imports, see: [workos-bulk-user-import-tool](https://github.com/awolfden/workos-bulk-user-import-tool)
+Migrate users from Auth0 (or any IdP) to WorkOS with support for multi-organization setups, password migration, and million+ user scale.
 
-Import users from a CSV file into WorkOS User Management with support for **multiple organizations**, **organization caching**, and **million+ user scale**.
+## What Is This?
 
-### Key Differences from Single-Org Tool
-- ✅ Multiple organizations in one CSV file
-- ✅ Organization caching for performance
-- ✅ Parallel processing with worker pool 
-- ✅ Checkpointing and resumability for large imports
-- ✅ Designed for 1M+ users across 1K+ organizations
+A comprehensive toolkit for migrating users to WorkOS User Management:
 
----
+- **Multi-Organization**: Import users across 1000+ organizations in a single CSV
+- **Password Migration**: Migrate bcrypt, Auth0, and Okta password hashes
+- **Wizard-Driven**: Interactive step-by-step guidance through the entire process
+- **Large Scale**: Built for 1M+ users with checkpointing and parallel processing
+- **Error Recovery**: Detailed error analysis and automatic retry generation
 
-### What you need before you start
+## Quick Start
 
-- Node.js 18+ installed on your computer
-- Your WorkOS Secret Key (found in your WorkOS Dashboard under API Keys)
+### Option 1: Wizard (Recommended)
 
-Do not share or hardcode your Secret Key. You will paste it into your command or store it in a `.env` file on your machine.
-
----
-
-### Quick Start (recommended)
-
-Pick one of the two simple ways to run the importer.
-
-1. One‑off run (paste your key inline)
+Interactive guided migration from start to finish:
 
 ```bash
-WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/import-users.ts --csv path/to/users.csv
+WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/migrate-wizard.ts
 ```
 
-2. Reuse your key with a `.env` file
+The wizard walks you through export, validation, and import with automatic error handling.
+
+👉 **[Wizard Guide](docs/getting-started/WIZARD.md)** - Complete walkthrough
+
+### Option 2: Direct Import
+
+If you already have a CSV file ready:
 
 ```bash
-echo 'WORKOS_SECRET_KEY=sk_test_123' > .env
-npx tsx bin/import-users.ts --csv path/to/users.csv
+WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/import-users.ts --csv users.csv
 ```
 
-Optional: Save any failed rows to a file so you can fix and re‑try:
+👉 **[Quick Start Guide](docs/getting-started/QUICK-START.md)** - Direct command usage
+
+## Migration Workflow
+
+```
+┌────────────┐   ┌──────────┐   ┌─────────┐   ┌──────────┐   ┌────────┐
+│ 1. Export  │ → │ 2. Map   │ → │ 3. Fix  │ → │ 4. Test  │ → │ 5. Go! │
+│  from Auth0│   │  Fields  │   │  Errors │   │  Dry Run│   │  Import│
+└────────────┘   └──────────┘   └─────────┘   └──────────┘   └────────┘
+```
+
+## Phases Overview
+
+| Phase | What It Does | Command | Documentation |
+|-------|--------------|---------|---------------|
+| **1. Export** | Download users from Auth0 | `bin/export-auth0.ts` | [Export Guide](docs/phases/01-EXPORT.md) |
+| **2. Validate** | Check CSV for errors | `bin/validate-csv.ts` | [Validation Guide](docs/phases/02-VALIDATE.md) |
+| **3. Map** | Transform fields | `bin/map-fields.ts` | [Mapping Guide](docs/phases/03-MAP.md) |
+| **4. Analyze** | Review errors, plan fixes | `bin/analyze-errors.ts` | [Analysis Guide](docs/phases/04-ANALYZE.md) |
+| **5. Import** | Migrate to WorkOS | `bin/import-users.ts` | [Import Guide](docs/phases/05-IMPORT.md) |
+
+## Key Features
+
+- ✅ **Wizard-Driven** - Interactive guidance through entire process
+- ✅ **Multi-Organization** - Import users across 1000+ organizations in one CSV
+- ✅ **Password Migration** - Bcrypt, Auth0, Okta formats supported
+- ✅ **Email Deduplication** - Intelligently merge duplicate emails (common with Auth0)
+- ✅ **Resumable** - Checkpoint large imports, resume on failure
+- ✅ **Parallel Processing** - 4x faster with worker pool (100K users in ~20 minutes)
+- ✅ **Error Recovery** - Detailed analysis, automatic retry CSV generation
+- ✅ **Pre-Warming** - Eliminate race conditions for multi-org imports
+
+## Common Use Cases
+
+### Migrating from Auth0
+
+Use the wizard for guided migration:
 
 ```bash
-npx tsx bin/import-users.ts --csv path/to/users.csv --errors-out errors.csv
+WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/migrate-wizard.ts
 ```
 
----
+👉 **[Wizard Guide](docs/getting-started/WIZARD.md)**
 
-### Choose how to import: with or without an Organization
+### Multi-Organization Import
 
-- No org flags: Creates users only. No memberships are created.
-- `--org-id <id>`: Creates each user and adds them to an existing Organization (by its WorkOS ID).
-- `--org-external-id <externalId>`: Looks up an Organization by your own external ID. Combine with:
-  - `--create-org-if-missing --org-name "<name>"` to create the Organization if it doesn’t exist.
-- Add `--require-membership` if you want the tool to delete any newly created user whose membership could not be created (keeps things tidy).
-
-Examples
-
-User‑only:
+CSV with `org_external_id` column for automatic multi-org mode:
 
 ```bash
 WORKOS_SECRET_KEY=sk_test_123 \
-  npx tsx bin/import-users.ts --csv examples/example-input.csv
+  npx tsx bin/import-users.ts --csv multi-org-users.csv --workers 4
 ```
 
-Single‑org (existing org by ID):
+👉 **[Multi-Org Guide](docs/guides/MULTI-ORG.md)**
 
-```bash
-WORKOS_SECRET_KEY=sk_test_123 \
-  npx tsx bin/import-users.ts --csv examples/example-input.csv --org-id org_123
-```
+### Large Scale (100K+ users)
 
-Single‑org (by external_id, create if missing):
+Chunked mode with workers for optimal performance:
 
 ```bash
 WORKOS_SECRET_KEY=sk_test_123 \
   npx tsx bin/import-users.ts \
-    --csv examples/example-input.csv \
-    --org-external-id acme-123 \
-    --create-org-if-missing \
-    --org-name "Acme Inc."
+    --csv users.csv \
+    --job-id prod-migration \
+    --workers 4 \
+    --chunk-size 1000
 ```
 
----
+👉 **[Large Scale Guide](docs/advanced/CHUNKING-RESUMABILITY.md)**
 
-### Multi-Organization Mode (NEW in v2.0)
+## Installation
 
-Import users across **multiple organizations in a single CSV file** with intelligent caching for optimal performance.
+```bash
+git clone <repo-url>
+cd workos-bulk-user-import-tool-multi-org
+npm install
+```
 
-#### When to Use Multi-Org Mode
+**Requirements:** Node.js 18+
 
-- Importing users from multiple customer organizations
-- Migrating data from a multi-tenant system
-- Bulk onboarding across different companies
-- Testing with diverse organization structures
+## CSV Format
 
-#### CSV Format for Multi-Org
+Minimal example:
 
-Add organization columns to your CSV to enable multi-org mode:
+```csv
+email,first_name,last_name,email_verified
+alice@example.com,Alice,Smith,true
+bob@example.com,Bob,Jones,yes
+```
+
+Multi-org example:
 
 ```csv
 email,first_name,last_name,org_external_id,org_name
 alice@acme.com,Alice,Smith,acme-corp,Acme Corporation
-bob@acme.com,Bob,Jones,acme-corp,Acme Corporation
-charlie@beta.com,Charlie,Brown,beta-inc,Beta Inc
-dana@beta.com,Dana,White,beta-inc,Beta Inc
-eve@gamma.com,Eve,Green,gamma-llc,Gamma LLC
+bob@beta.com,Bob,Jones,beta-inc,Beta Inc
 ```
 
-**Organization Columns:**
-- `org_id` - Direct WorkOS organization ID (fastest, no API lookup needed)
-- `org_external_id` - Your external organization identifier (cached API lookup)
-- `org_name` - Organization name (only used when creating new organizations)
+👉 **[CSV Format Reference](docs/guides/CSV-FORMAT.md)** - Complete column reference
 
-**Important:** Each row can specify its own organization. Users will be added to the organization specified in their row.
+## Troubleshooting
 
-#### Organization Resolution Priority
+**Errors during import?**
+→ See [Troubleshooting Guide](docs/guides/TROUBLESHOOTING.md)
 
-When processing each row, the tool resolves organizations in this order:
+**Password migration questions?**
+→ See [Password Migration Guide](docs/guides/PASSWORD-MIGRATION.md)
 
-1. **`org_id` provided** → Use directly (cached for subsequent rows)
-2. **`org_external_id` provided** → Lookup via WorkOS API (cached)
-3. **Organization not found + `org_name` provided** → Create new organization
-4. **Organization not found + no `org_name`** → Error (row fails)
+**Multi-org setup?**
+→ See [Multi-Org Guide](docs/guides/MULTI-ORG.md)
 
-#### How Multi-Org Mode Works
+**Performance optimization?**
+→ See [Worker Pool Guide](docs/advanced/WORKER-POOL.md)
 
-**Automatic Mode Detection:**
-```
-┌─────────────────────────────────────────────────┐
-│ CLI Flags Present?                              │
-│ (--org-id or --org-external-id)                 │
-├─────────────────────────────────────────────────┤
-│ YES → Single-Org Mode (v1.x compatible)         │
-│  ↳ All users added to same organization         │
-│                                                  │
-│ NO → Check CSV Headers                          │
-│  ↳ Has org_id or org_external_id columns?       │
-│     • YES → Multi-Org Mode                      │
-│     • NO  → User-Only Mode (no memberships)     │
-└─────────────────────────────────────────────────┘
-```
+## Documentation
 
-**Cache Performance:**
-- 10,000 organization cache capacity
-- 99%+ hit rate for typical workloads
-- Request coalescing prevents duplicate API calls
-- Statistics displayed in summary
+- **[Getting Started](docs/getting-started/)** - Quick start and wizard guides
+- **[Phases](docs/phases/)** - Detailed phase-by-phase documentation
+- **[Guides](docs/guides/)** - How-to guides for specific scenarios
+- **[Advanced](docs/advanced/)** - Technical deep-dives and optimization
 
-#### Multi-Org Examples
+👉 **[Full Documentation](docs/README.md)**
 
-**Example 1: Basic Multi-Org Import**
-```bash
-WORKOS_SECRET_KEY=sk_test_123 \
-  npx tsx bin/import-users.ts --csv multi-org-users.csv
-```
+## Performance
 
-The tool automatically detects org columns and enables multi-org mode.
+| Users | Duration* | Memory | Recommended Config |
+|-------|-----------|--------|-------------------|
+| 1K | ~30-40s | <50 MB | Default settings |
+| 10K | ~3-4 min | ~50 MB | Default settings |
+| 50K | ~15-20 min | ~75 MB | `--workers 2` |
+| 100K | ~20-30 min | ~100 MB | `--workers 4 --job-id migration` |
+| 1M+ | ~3-4 hours | ~100 MB | `--workers 4 --chunk-size 5000` |
 
-**Example 2: Multi-Org with Existing Organizations**
-```csv
-email,first_name,org_external_id
-alice@acme.com,Alice,acme-corp
-bob@beta.com,Bob,beta-inc
-charlie@acme.com,Charlie,acme-corp
-```
+\* With 4 workers and WorkOS 50 req/sec limit
 
-Expected behavior:
-- Looks up `acme-corp` and `beta-inc` via API
-- Caches both organizations after first lookup
-- Third row uses cached `acme-corp` (no API call)
-
-**Example 3: Multi-Org with Organization Creation**
-```csv
-email,first_name,org_external_id,org_name
-alice@newco.com,Alice,newco-2024,NewCo Inc
-bob@newco.com,Bob,newco-2024,NewCo Inc
-```
-
-Expected behavior:
-- First row: Creates `NewCo Inc` with external_id `newco-2024`
-- Second row: Uses cached organization (no API call)
-
-**Example 4: Mixed Strategies**
-```csv
-email,org_id,org_external_id,org_name
-alice@acme.com,org_01ABC,,,
-bob@beta.com,,beta-corp,Beta Inc
-charlie@gamma.com,,gamma-llc,
-```
-
-- Row 1: Direct org_id (fastest)
-- Row 2: Lookup by external_id, create if missing
-- Row 3: Lookup by external_id only (error if not found)
-
-#### Performance Characteristics
-
-**Cache Effectiveness:**
-
-| Scenario | Orgs | Users | Cache Hits | Cache Misses | API Calls | Time Saved |
-|----------|------|-------|------------|--------------|-----------|------------|
-| 100 users, 5 orgs | 5 | 100 | 95 | 5 | 5 | 95% |
-| 1K users, 50 orgs | 50 | 1,000 | 950 | 50 | 50 | 95% |
-| 10K users, 100 orgs | 100 | 10,000 | 9,900 | 100 | 100 | 99% |
-| 100K users, 1K orgs | 1,000 | 100,000 | 99,000 | 1,000 | 1,000 | 99% |
-
-**Memory Usage:**
-- Constant memory regardless of CSV size
-- ~5-10MB for 10K cached organizations
-- Streaming CSV processing (no full file load)
-
-**Example Summary with Cache Stats:**
-```
-┌────────────────────────┐
-│ SUMMARY                │
-│ Status: Success        │
-│ Users imported: 100/100│
-│ Memberships created: 100│
-│ Duration: 12.3 s       │
-│ Warnings: 0            │
-│ Errors: 0              │
-│ Cache hits: 95         │
-│ Cache misses: 5        │
-│ Cache hit rate: 95.0%  │
-└────────────────────────┘
-```
-
-#### Mode Conflict Handling
-
-**What happens if you provide both CLI flags AND org columns in CSV?**
-
-CLI flags take precedence (backward compatibility):
+## Example Commands
 
 ```bash
-npx tsx bin/import-users.ts \
-  --csv multi-org-users.csv \
-  --org-id org_123
-```
+# Wizard (recommended for first-time users)
+npx tsx bin/migrate-wizard.ts
 
-Result:
-- ⚠️ Warning displayed: "CSV contains org columns but CLI flags provided"
-- All users added to `org_123` (single-org mode)
-- Org columns in CSV are ignored
-- This prevents accidental multi-org mode in existing scripts
+# Export from Auth0
+npx tsx bin/export-auth0.ts \
+  --domain dev-example.us.auth0.com \
+  --client-id <id> \
+  --client-secret <secret>
 
-#### Error Handling
+# Validate CSV
+npx tsx bin/validate-csv.ts --csv users.csv --auto-fix
 
-**New Error Type: `org_resolution`**
-
-When organization resolution fails, errors include full context:
-
-```json
-{
-  "recordNumber": 5,
-  "email": "user@example.com",
-  "errorType": "org_resolution",
-  "errorMessage": "Organization not found: acme-corp",
-  "orgExternalId": "acme-corp",
-  "httpStatus": 404,
-  "timestamp": "2025-12-31T10:15:30Z"
-}
-```
-
-**Common Org Resolution Errors:**
-- Organization not found (404)
-- Organization external_id already exists (when creating)
-- Both org_id and org_external_id specified in same row (validation error)
-- Missing org_name when creating new organization
-
-#### Migration from Single-Org to Multi-Org
-
-**Step 1:** Add org columns to your CSV
-```bash
-# Before (single-org)
-email,first_name,last_name
-alice@acme.com,Alice,Smith
-
-# After (multi-org)
-email,first_name,last_name,org_external_id
-alice@acme.com,Alice,Smith,acme-corp
-```
-
-**Step 2:** Remove CLI org flags
-```bash
-# Before
-npx tsx bin/import-users.ts --csv users.csv --org-id org_123
-
-# After (automatic multi-org detection)
+# Simple import
 npx tsx bin/import-users.ts --csv users.csv
-```
 
-**Step 3:** Verify with dry-run
-```bash
-npx tsx bin/import-users.ts --csv users.csv --dry-run
-```
-
-Look for: "Multi-org mode: Organizations will be resolved per-row from CSV"
-
-#### Advanced: Cache Configuration
-
-The organization cache is automatically optimized for your workload. Default settings:
-
-- **Capacity:** 10,000 organizations
-- **Eviction:** LRU (Least Recently Used)
-- **TTL:** Disabled (import workloads are one-shot)
-- **Coalescing:** Enabled (prevents duplicate API calls)
-
-These defaults work for 99%+ of use cases (100-1,000 organizations).
-
----
-
-### Chunking & Resumability
-
-For very large imports (10K+ users), enable **chunked processing** with automatic checkpointing and resume capability. This provides constant memory usage (~100MB), crash recovery, and progress tracking with ETA.
-
-#### When to Use Chunking
-
-**Use chunked mode for:**
-- Imports with 10,000+ users
-- Long-running imports (>10 minutes)
-- Unreliable network environments
-- Multi-hour migrations where progress must be preserved
-
-**Don't use chunked mode for:**
-- Small imports (<5K users)
-- One-off quick imports
-- When simplicity is preferred over recoverability
-
-#### How Chunking Works
-
-```
-┌──────────────────────────────────────────────────┐
-│ CSV File (100K rows)                             │
-└─────────────┬────────────────────────────────────┘
-              │
-              ▼
-     ┌────────────────────┐
-     │ Split into Chunks  │
-     │ (1000 rows each)   │
-     └────────┬───────────┘
-              │
-              ▼
-┌─────────────────────────────────────────────────┐
-│ Chunk 1  → Process → Checkpoint → Save          │
-│ Chunk 2  → Process → Checkpoint → Save          │
-│ Chunk 3  → Process → Checkpoint → Save          │
-│ ...                                              │
-│ Chunk 100 → Process → Checkpoint → Complete     │
-└─────────────────────────────────────────────────┘
-         │
-         └─→ If crash: Resume from last checkpoint
-```
-
-**Benefits:**
-- **Constant Memory**: ~100MB regardless of CSV size
-- **Crash Recovery**: Resume from last completed chunk
-- **Progress Tracking**: Real-time ETA and percentage complete
-- **Cache Persistence**: Organization cache survives restarts
-
-#### Starting a Chunked Job
-
-Use `--job-id` to enable chunked mode with checkpointing:
-
-```bash
-WORKOS_SECRET_KEY=sk_test_123 \
-  npx tsx bin/import-users.ts \
-    --csv large-import.csv \
-    --job-id prod-migration-2024-01-15
-```
-
-**Job ID Guidelines:**
-- Choose descriptive, unique IDs (e.g., `migration-acme-2024-01-15`)
-- Use date stamps for easy identification
-- Avoid spaces or special characters (use hyphens/underscores)
-
-**What Happens:**
-1. Tool analyzes CSV (counts rows, calculates hash)
-2. Creates checkpoint directory: `.workos-checkpoints/{job-id}/`
-3. Splits import into chunks (default: 1000 rows per chunk)
-4. Processes chunks sequentially
-5. Saves checkpoint after each chunk
-6. Displays progress: `Progress: 45/100 chunks (45%) - ETA: 12m 30s`
-
-#### Resuming a Job
-
-If your import is interrupted (crash, Ctrl+C, network failure), resume with `--resume`:
-
-```bash
-# Resume specific job
-WORKOS_SECRET_KEY=sk_test_123 \
-  npx tsx bin/import-users.ts --resume prod-migration-2024-01-15
-
-# Resume most recent job (auto-detect)
-WORKOS_SECRET_KEY=sk_test_123 \
-  npx tsx bin/import-users.ts --resume
-```
-
-**Resume Behavior:**
-- Loads checkpoint from `.workos-checkpoints/{job-id}/`
-- Validates CSV hasn't changed (SHA-256 hash)
-- Restores organization cache (maintains 99%+ hit rate)
-- Continues from next pending chunk
-- Accumulates statistics across resume sessions
-
-**CSV Change Detection:**
-If the CSV file has been modified since the checkpoint:
-```
-WARNING: CSV file has changed since checkpoint was created!
-Resuming with a modified CSV may produce unexpected results.
-```
-
-The tool continues anyway (you can Ctrl+C to abort). Modified CSV rows may cause unexpected behavior.
-
-#### Chunk Configuration
-
-Customize chunk size based on your needs:
-
-```bash
-# Larger chunks (faster, more memory)
---chunk-size 5000    # 5K rows per chunk
-
-# Smaller chunks (slower, less risk)
---chunk-size 500     # 500 rows per chunk
-```
-
-**Chunk Size Trade-offs:**
-
-| Chunk Size | Checkpoints | Lost Work on Crash | Memory | Recommended For |
-|------------|-------------|-------------------|---------|-----------------|
-| 500 | More frequent | <30 seconds | Lower | Unstable networks |
-| 1000 (default) | Balanced | ~30-60 seconds | Medium | Most use cases |
-| 5000 | Less frequent | ~2-5 minutes | Higher | Fast, stable networks |
-
-**Default (1000 rows):** Good balance between checkpoint overhead and crash recovery.
-
-#### Checkpoint Directory
-
-Checkpoints are stored in `.workos-checkpoints/` by default. Customize with:
-
-```bash
---checkpoint-dir /path/to/checkpoints
-```
-
-**Checkpoint Structure:**
-```
-.workos-checkpoints/
-└── prod-migration-2024-01-15/
-    ├── checkpoint.json       # Job state and progress
-    └── errors.jsonl          # Error records (streamed)
-```
-
-**checkpoint.json contents:**
-```json
-{
-  "jobId": "prod-migration-2024-01-15",
-  "csvPath": "/path/to/large-import.csv",
-  "csvHash": "a3f5e9c2...",
-  "createdAt": 1705324800000,
-  "updatedAt": 1705328400000,
-  "chunkSize": 1000,
-  "concurrency": 10,
-  "totalRows": 100000,
-  "chunks": [
-    { "chunkId": 0, "startRow": 1, "endRow": 1000, "status": "completed", ... },
-    { "chunkId": 1, "startRow": 1001, "endRow": 2000, "status": "completed", ... },
-    { "chunkId": 2, "startRow": 2001, "endRow": 3000, "status": "pending", ... }
-  ],
-  "summary": { "total": 2000, "successes": 1995, "failures": 5, ... },
-  "orgCache": { "entries": [...], "stats": { "hits": 1990, "misses": 10 } }
-}
-```
-
-#### Progress Tracking
-
-Real-time progress displayed after each chunk:
-
-```
-Progress: 15/100 chunks (15%) - ETA: 45m 20s
-Progress: 16/100 chunks (16%) - ETA: 44m 10s
-Progress: 17/100 chunks (17%) - ETA: 43m 5s
-```
-
-**ETA Calculation:**
-- Based on moving average of last 5 chunks
-- Becomes accurate after ~5-10 chunks
-- Adapts to changing API performance
-
-**Final Summary (Chunked Mode):**
-```
-┌─────────────────────────────────┐
-│ SUMMARY                         │
-│ Status: Success                 │
-│ Users imported: 100000/100000   │
-│ Memberships created: 100000     │
-│ Duration: 3242.5 s              │
-│ Warnings: 0                     │
-│ Errors: 0                       │
-│ Cache hits: 99000               │
-│ Cache misses: 1000              │
-│ Cache hit rate: 99.0%           │
-│ Chunk progress: 100/100 (100%) │
-└─────────────────────────────────┘
-```
-
-#### Error Handling in Chunked Mode
-
-Errors are always streamed to checkpoint directory in chunked mode:
-
-```bash
-# Errors automatically written to:
-.workos-checkpoints/{job-id}/errors.jsonl
-```
-
-**Error Format (JSONL):**
-```json
-{"recordNumber":1523,"email":"bad@example.com","errorType":"user_create","errorMessage":"Invalid email format","timestamp":"2024-01-15T10:30:15Z"}
-{"recordNumber":2891,"email":"conflict@example.com","errorType":"user_create","errorMessage":"Email already exists","httpStatus":409,"timestamp":"2024-01-15T10:35:22Z"}
-```
-
-**Crash Recovery:**
-- If crash occurs mid-chunk, entire chunk is re-processed on resume
-- Duplicate user attempts result in 409 errors (WorkOS handles gracefully)
-- Max duplicate work: 1 chunk (~30-60 seconds with default 1000 rows)
-
-#### Memory Guarantees
-
-Chunked mode provides **constant memory usage** regardless of CSV size:
-
-| CSV Size | Memory (Chunked) | Memory (Streaming) |
-|----------|------------------|-------------------|
-| 10K rows | ~75 MB | ~50 MB |
-| 100K rows | ~100 MB | ~75 MB |
-| 500K rows | ~100 MB | ~150 MB |
-| 1M+ rows | ~100 MB | ~300 MB+ |
-
-**Why Chunked Mode Uses Constant Memory:**
-- Processes 1 chunk at a time (bounded batch size)
-- Closes CSV stream after each chunk
-- Errors streamed to disk (not accumulated)
-- Organization cache bounded at 10K entries (LRU eviction)
-
-#### Complete Examples
-
-**Example 1: Large Multi-Org Import with Checkpointing**
-```bash
-# Start new job
-WORKOS_SECRET_KEY=sk_test_123 \
-  npx tsx bin/import-users.ts \
-    --csv migration-100k-users.csv \
-    --job-id migration-acme-jan-2024 \
-    --chunk-size 1000 \
-    --concurrency 20 \
-    --quiet
-
-# Output:
-# Analyzing CSV file...
-# CSV analysis complete: 100000 rows, hash: a3f5e9c2...
-# Checkpoint created: .workos-checkpoints/migration-acme-jan-2024
-# Multi-org mode: Organizations will be resolved per-row from CSV
-# Progress: 1/100 chunks (1%) - ETA: 52m 15s
-# Progress: 2/100 chunks (2%) - ETA: 51m 10s
-# ...
-```
-
-**Example 2: Resume After Crash**
-```bash
-# Job was interrupted at chunk 45/100
-WORKOS_SECRET_KEY=sk_test_123 \
-  npx tsx bin/import-users.ts --resume migration-acme-jan-2024
-
-# Output:
-# Resuming job: migration-acme-jan-2024
-# Checkpoint loaded: 45/100 chunks completed (45%)
-# Restored organization cache: 250 entries
-# Progress: 46/100 chunks (46%) - ETA: 28m 40s
-# ...
-```
-
-**Example 3: Single-Org with Chunking**
-```bash
-# Start job with explicit org
-WORKOS_SECRET_KEY=sk_test_123 \
-  npx tsx bin/import-users.ts \
-    --csv large-company-users.csv \
-    --org-id org_01ABC123 \
-    --job-id acme-corp-import \
-    --chunk-size 2000
-```
-
-#### Best Practices
-
-**1. Choose appropriate chunk size:**
-- Default (1000): Good for most cases
-- Larger (5000): Fast, stable networks
-- Smaller (500): Unstable networks or cautious migrations
-
-**2. Use descriptive job IDs:**
-```bash
-# Good
---job-id migration-acme-corp-2024-01-15
---job-id prod-100k-users-attempt-2
-
-# Avoid
---job-id job1
---job-id test
-```
-
-**3. Monitor progress:**
-- Watch ETA stabilize after 5-10 chunks
-- Check `.workos-checkpoints/{job-id}/errors.jsonl` for ongoing errors
-
-**4. Clean up old checkpoints:**
-```bash
-# After successful completion, remove checkpoint
-rm -rf .workos-checkpoints/old-job-id
-```
-
-**5. Test with dry-run first:**
-```bash
-# Validate before starting large job
+# Multi-org import with workers
 npx tsx bin/import-users.ts \
-  --csv large-import.csv \
-  --dry-run
-```
+  --csv users.csv \
+  --job-id migration-prod \
+  --workers 4
 
-#### Backward Compatibility
+# Resume interrupted import
+npx tsx bin/import-users.ts --resume migration-prod
 
-**No breaking changes:**
-- Existing scripts continue to work (streaming mode)
-- Chunking is opt-in via `--job-id` or `--resume`
-- No performance impact when not using chunking
-
-**Streaming vs Chunked Mode:**
-
-| Feature | Streaming (default) | Chunked (--job-id) |
-|---------|--------------------|--------------------|
-| Memory | Low-Medium | Constant (~100MB) |
-| Resumable | No | Yes |
-| Progress | Row count | Chunks + ETA |
-| Checkpoints | None | Every chunk |
-| Best For | <10K users | 10K+ users |
-
----
-
-### Worker Pool & Parallel Processing
-
-**NEW in v2.1**: Process imports in parallel using multiple worker threads for 4x faster throughput.
-
-#### When to Use Worker Pool
-
-Use `--workers` for large imports where speed matters:
-- ✅ Imports with **50K+ users** (significant time savings)
-- ✅ Time-sensitive migrations
-- ✅ Multi-core machines (2-8 CPUs recommended)
-- ✅ Production imports where downtime is costly
-
-**Not recommended for**:
-- Small imports (<10K users) - overhead outweighs benefits
-- Single-core machines - no parallelization benefit
-- Local development/testing - streaming mode is simpler
-
-#### Basic Usage
-
-Add `--workers <n>` to enable parallel processing (requires `--job-id`):
-
-```bash
-# 4 workers (recommended for most large imports)
-WORKOS_SECRET_KEY=sk_test_123 \
-  npx tsx bin/import-users.ts \
-    --csv users.csv \
-    --job-id large-import \
-    --workers 4
-
-# 2 workers (good for medium imports)
-WORKOS_SECRET_KEY=sk_test_123 \
-  npx tsx bin/import-users.ts \
-    --csv users.csv \
-    --job-id medium-import \
-    --workers 2
-```
-
-#### Performance Comparison
-
-| Workers | Throughput      | Time (100K users) | Time (1M users) |
-|---------|-----------------|-------------------|-----------------|
-| 1       | ~20 users/sec   | 1.4 hours         | 13.9 hours      |
-| 2       | ~40 users/sec   | 42 minutes        | 6.9 hours       |
-| 4       | ~80 users/sec   | 21 minutes        | 3.5 hours       |
-
-**Note**: Throughput is limited by WorkOS API rate limits (50 req/sec). Beyond 4 workers provides diminishing returns.
-
-#### How It Works
-
-1. **Coordinator Process**: Main thread manages worker pool and checkpoints
-2. **Worker Threads**: Each processes chunks in parallel
-3. **Distributed Rate Limiting**: Coordinator ensures API limits respected
-4. **Cache Merging**: Organization caches merged from all workers
-
-```
-┌─────────────────────┐
-│    Coordinator      │
-│  - Chunk Queue      │
-│  - Rate Limiter     │
-│  - Checkpoint Save  │
-└──────┬──────────────┘
-       │
-   ┌───┴───┬───────┬────────┐
-   ▼       ▼       ▼        ▼
-Worker 1 Worker 2 ... Worker N
-(chunk 0)(chunk 1)    (chunk N)
-```
-
-#### Resuming with Workers
-
-Resume works seamlessly with worker pool:
-
-```bash
-# Start import with 4 workers
-npx tsx bin/import-users.ts --csv users.csv --job-id job1 --workers 4
-
-# Resume with same or different worker count
-npx tsx bin/import-users.ts --resume job1 --workers 2
-```
-
-**You can change worker count on resume!** The tool will continue from the last completed chunk.
-
-#### Optimal Configuration
-
-**Recommended settings by import size:**
-
-```bash
-# Small (10K-50K users) - use single worker
---workers 1 --chunk-size 1000
-
-# Medium (50K-200K users) - use 2 workers
---workers 2 --chunk-size 1000
-
-# Large (200K-1M users) - use 4 workers
---workers 4 --chunk-size 1000
-
-# Very large (1M+ users) - use 4 workers with larger chunks
---workers 4 --chunk-size 5000
-```
-
-#### Worker Count Guidelines
-
-- **1 worker**: Sequential processing (standard chunked mode)
-- **2 workers**: 2x speedup, good for medium imports
-- **4 workers**: 4x speedup, optimal for large imports
-- **6-8 workers**: Marginal gains, rate limit becomes bottleneck
-
-**Rule of thumb**: Use `min(4, CPU_count / 2)` workers.
-
-#### Memory Usage
-
-Each worker uses ~60-90MB of memory:
-
-| Workers | Total Memory | Recommendation              |
-|---------|--------------|-----------------------------|
-| 1       | ~150MB       | Any machine                 |
-| 2       | ~270MB       | 512MB+ RAM                  |
-| 4       | ~480MB       | 1GB+ RAM                    |
-| 8       | ~900MB       | 2GB+ RAM (rarely needed)    |
-
-Memory usage is **constant** regardless of import size.
-
-#### Validation & Safety
-
-- ✓ Checkpoint saves are thread-safe (no data corruption)
-- ✓ Cache merging prevents duplicates
-- ✓ Worker crashes don't lose progress (chunks requeued)
-- ✓ Backward compatible (standard chunked mode still available)
-
-#### Troubleshooting Workers
-
-**"Worker exited with code 1"**
-- Check available memory (each worker needs ~60-90MB)
-- Reduce worker count if system is resource-constrained
-
-**Slower than expected**
-- Verify `--job-id` is provided (required for worker pool)
-- Check CPU count: `node -e "console.log(require('os').cpus().length)"`
-- For <50K users, single worker may be faster (less overhead)
-
-**Worker warning: "exceeds CPU count"**
-- This is informational only - tool will still work
-- Consider reducing to CPU count for optimal performance
-
----
-
-### Debugging & Troubleshooting
-
-When imports fail or encounter errors, use these debugging techniques to identify and resolve issues.
-
-#### Viewing Errors
-
-All errors are logged to `errors.jsonl` in your checkpoint directory. Use `jq` to parse and analyze them:
-
-**Find your checkpoint directory:**
-```bash
-# List all checkpoints
-ls -la .workos-checkpoints/
-
-# View errors from specific job
-cat .workos-checkpoints/{job-id}/errors.jsonl
-```
-
-**View all errors (formatted):**
-```bash
-# Pretty-print all errors
-cat .workos-checkpoints/{job-id}/errors.jsonl | jq .
-
-# View first 10 errors
-head -10 .workos-checkpoints/{job-id}/errors.jsonl | jq .
-
-# View last 10 errors
-tail -10 .workos-checkpoints/{job-id}/errors.jsonl | jq .
-```
-
-**Count errors by type:**
-```bash
-# Count each error type
-cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r .errorType | sort | uniq -c
-
-# Example output:
-#   150 user_create
-#    25 org_resolution
-#     8 membership_create
-```
-
-**Count errors by message:**
-```bash
-# See most common error messages
-cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r .errorMessage | sort | uniq -c | sort -rn
-
-# Example output:
-# 2423 The external_id provided has already been assigned to another organization.
-#   86 Internal Server Error
-#   12 Email already exists
-```
-
-**Filter specific error types:**
-```bash
-# View only org_resolution errors
-cat .workos-checkpoints/{job-id}/errors.jsonl | jq 'select(.errorType == "org_resolution")'
-
-# View only user_create errors
-cat .workos-checkpoints/{job-id}/errors.jsonl | jq 'select(.errorType == "user_create")'
-
-# View errors with specific HTTP status
-cat .workos-checkpoints/{job-id}/errors.jsonl | jq 'select(.httpStatus == 409)'
-```
-
-**View specific fields:**
-```bash
-# Just email addresses that failed
-cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r .email
-
-# Record numbers and messages
-cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r '[.recordNumber, .errorMessage] | @tsv'
-
-# Errors with timestamps
-cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r '[.timestamp, .email, .errorMessage] | @tsv'
-```
-
-#### Common Errors & Solutions
-
-**Error: "Internal Server Error"**
-
-**What it means:** WorkOS API is experiencing issues or rate limiting.
-
-**Solutions:**
-```bash
-# 1. Resume the import to retry failed chunks
-npx tsx bin/import-users.ts --resume {job-id}
-
-# 2. Use fewer workers to reduce API load
-npx tsx bin/import-users.ts --resume {job-id} --workers 2
-
-# 3. Reduce concurrency
-npx tsx bin/import-users.ts --resume {job-id} --concurrency 5
-
-# 4. If persistent, wait a few minutes and retry
-```
-
-**When this happens:**
-- High API load or rate limiting
-- Temporary WorkOS service issues
-- Too many concurrent workers overwhelming the API
-
-**Error: "The external_id provided has already been assigned to another organization"**
-
-**What it means:** You're trying to import users with external_ids that already exist in WorkOS from previous test runs.
-
-**Solutions:**
-
-**Option 1: Generate fresh test data (recommended)**
-```bash
-# Create new CSV with unique IDs
-node -e "
-const fs = require('fs');
-const timestamp = Date.now();
-const lines = ['email,first_name,last_name,email_verified,external_id,org_external_id,org_name'];
-for (let i = 0; i < 1000; i++) {
-  const org = i % 50;
-  lines.push(\`user\${i}_\${timestamp}@org\${org}.test.com,User\${i},Last\${i},true,usr_\${i}_\${timestamp},org-\${String(org).padStart(6,'0')}_\${timestamp},TestOrg \${org}\`);
-}
-fs.writeFileSync('/tmp/fresh-test.csv', lines.join('\\n'));
-console.log('Created /tmp/fresh-test.csv');
-"
-
-# Import with fresh data
-npx tsx bin/import-users.ts --csv /tmp/fresh-test.csv --job-id fresh-import
-```
-
-**Option 2: Clean up existing test data**
-- Log into WorkOS dashboard
-- Delete test users/organizations manually
-- Re-run the import
-
-**Option 3: Use dry-run for testing**
-```bash
-# Test without making API calls
-npx tsx bin/import-users.ts --csv users.csv --dry-run --workers 4
-```
-
-**When this happens:**
-- Running the same test CSV multiple times
-- Testing with data that conflicts with production data
-- Previous import was partially successful
-
-**Error: "Email already exists"**
-
-**What it means:** A user with this email already exists in WorkOS.
-
-**Solutions:**
-```bash
-# Skip duplicate emails by filtering your CSV first
-# Or use unique emails in your test data
-
-# View which emails are duplicates
-cat .workos-checkpoints/{job-id}/errors.jsonl | jq 'select(.errorMessage | contains("Email already exists")) | .email'
-```
-
-**Error: "Organization not found"**
-
-**What it means:** Organization lookup failed (org_external_id doesn't exist).
-
-**Solutions:**
-```bash
-# Option 1: Add org_name column to auto-create orgs
-# CSV should have: org_external_id,org_name
-# acme-corp,Acme Corporation
-
-# Option 2: Pre-create organizations in WorkOS
-# Option 3: Use org_id instead of org_external_id (direct ID, no lookup)
-```
-
-#### Recovery Workflows
-
-**Workflow 1: Resume a Failed Import**
-
-When an import fails partway through (network issues, API errors, etc.):
-
-```bash
-# 1. Check what failed
-cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r .errorMessage | sort | uniq -c
-
-# 2. Resume from where it stopped
-npx tsx bin/import-users.ts --resume {job-id}
-
-# 3. Monitor progress
-# The tool will retry failed chunks automatically
-```
-
-**Workflow 2: Test Before Production**
-
-Always validate with dry-run before importing real data:
-
-```bash
-# 1. Dry-run to validate CSV and logic
-npx tsx bin/import-users.ts --csv users.csv --dry-run --workers 4
-
-# 2. Check for any validation errors
-# Look for: "Multi-org mode detected", "X users would be imported"
-
-# 3. Run actual import
-npx tsx bin/import-users.ts --csv users.csv --job-id prod-import --workers 4
-
-# 4. Monitor errors during import
-tail -f .workos-checkpoints/prod-import/errors.jsonl | jq .
-```
-
-**Workflow 3: Handle Duplicate Data**
-
-When you have duplicate external_ids from previous runs:
-
-```bash
-# 1. Check how many duplicates
-cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r .errorMessage | grep "already been assigned" | wc -l
-
-# 2. Generate fresh test data with timestamps
-timestamp=$(date +%s)
-# Use script from "Option 1" above with $timestamp
-
-# 3. Import with new data
-npx tsx bin/import-users.ts --csv /tmp/fresh-test.csv --job-id test-$timestamp
-```
-
-**Workflow 4: Debug Specific Records**
-
-When specific rows are failing:
-
-```bash
-# 1. Find failing record numbers
-cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r .recordNumber | sort -n
-
-# 2. View details for specific record
-cat .workos-checkpoints/{job-id}/errors.jsonl | jq 'select(.recordNumber == 1523)'
-
-# 3. Check the raw CSV row
-sed -n '1524p' users.csv  # recordNumber + 1 (for header row)
-
-# 4. Fix the CSV and re-import just that section
-# Create a new CSV with just the fixed rows
-```
-
-#### Debugging Commands Cheat Sheet
-
-**Quick diagnostics:**
-```bash
-# Count total errors
-cat .workos-checkpoints/{job-id}/errors.jsonl | wc -l
-
-# Group errors by type
-cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r .errorType | sort | uniq -c
-
-# Most common error messages
-cat .workos-checkpoints/{job-id}/errors.jsonl | jq -r .errorMessage | sort | uniq -c | sort -rn | head -5
-
-# Check checkpoint status
-cat .workos-checkpoints/{job-id}/checkpoint.json | jq '.summary'
-
-# View cache statistics
-cat .workos-checkpoints/{job-id}/checkpoint.json | jq '.orgCache.stats'
-```
-
-**Resume and retry:**
-```bash
-# Resume with same config
-npx tsx bin/import-users.ts --resume {job-id}
-
-# Resume with fewer workers
-npx tsx bin/import-users.ts --resume {job-id} --workers 2
-
-# Resume with lower concurrency
-npx tsx bin/import-users.ts --resume {job-id} --concurrency 5
-```
-
-**Generate test data:**
-```bash
-# Multi-org test data (1000 users, 50 orgs)
-npx tsx scripts/generate-multi-org-csv.ts 1000 50 /tmp/test.csv
-
-# With unique timestamp to avoid duplicates
-npx tsx scripts/generate-multi-org-csv.ts 1000 50 /tmp/test-$(date +%s).csv
-```
-
-**Dry-run testing:**
-```bash
-# Test without API calls (multi-org)
+# Dry-run (test without API calls)
 npx tsx bin/import-users.ts --csv users.csv --dry-run
-
-# Test with workers
-npx tsx bin/import-users.ts --csv users.csv --dry-run --workers 4 --job-id test
-
-# Test with specific chunk size
-npx tsx bin/import-users.ts --csv users.csv --dry-run --chunk-size 100
 ```
 
-**Clean up:**
-```bash
-# Remove old checkpoints
-rm -rf .workos-checkpoints/{old-job-id}
+## Support
 
-# Remove all test checkpoints
-rm -rf .workos-checkpoints/test-*
+- **Issues**: [GitHub Issues](../../issues)
+- **Questions**: [GitHub Discussions](../../discussions)
+- **Docs**: [Full Documentation](docs/README.md)
 
-# View disk usage
-du -sh .workos-checkpoints/*
-```
+## Related Repositories
 
-#### Understanding Error Types
+- **[Single-Org Tool](https://github.com/awolfden/workos-bulk-user-import-tool)** - Simpler version for single-organization imports
 
-**Error types and what they mean:**
+## License
 
-| Error Type | What Failed | Common Causes |
-|------------|-------------|---------------|
-| `user_create` | Creating the WorkOS user | Invalid email, email exists, API error |
-| `org_resolution` | Finding/creating organization | Org not found, invalid external_id, org creation failed |
-| `membership_create` | Adding user to organization | User already member, org doesn't exist, API error |
-
-**HTTP Status Codes:**
-
-| Status | Meaning | Common Causes |
-|--------|---------|---------------|
-| 400 | Bad Request | Invalid data format, missing required fields |
-| 404 | Not Found | Organization doesn't exist |
-| 409 | Conflict | Email/external_id already exists |
-| 429 | Rate Limit | Too many requests (auto-retried) |
-| 500 | Server Error | WorkOS API issue (retry recommended) |
+MIT
 
 ---
 
-### CSV format at a glance
-
-Required column:
-
-- `email`
-
-Optional columns:
-
-- `first_name`
-- `last_name`
-- `password`
-- `password_hash`
-- `password_hash_type`
-- `email_verified` (true/false, 1/0, yes/no; case‑insensitive)
-- `external_id`
-- `metadata` (JSON text; blank is ignored, invalid JSON will cause that row to fail)
-- `org_id` (WorkOS organization ID for multi-org mode)
-- `org_external_id` (External organization ID for multi-org mode)
-- `org_name` (Organization name for multi-org mode, used when creating orgs)
-
-Small example
-
-```csv
-email,first_name,last_name,email_verified,metadata
-ada@example.com,Ada,Lovelace,true,{"role":"admin"}
-grace@example.com,Grace,Hopper,yes,{"team":"eng"}
-```
-
-Notes
-
-- Column names in the CSV are snake_case and map to WorkOS fields:
-  - `password_hash` → `passwordHash`
-  - `password_hash_type` → `passwordHashType`
-  - `first_name` → `firstName`
-  - `last_name` → `lastName`
-  - `email_verified` → `emailVerified`
-  - `external_id` → `externalId`
-  - `metadata` (JSON) → `metadata` object
-- Unknown columns are ignored (you’ll see one warning).
-- If both plaintext `password` and `password_hash/password_hash_type` are present, the importer prefers the hash values and ignores `password`.
-
----
-
-### Running options (flags)
-
-- `--csv <path>`: Required. Path to your CSV file.
-- `--errors-out <path>`: Optional. Save detailed errors to a file. If the file ends with `.csv`, writes CSV; otherwise writes JSON.
-- `--quiet`: Optional. Hides per‑row messages but still prints the final summary.
-- `--concurrency <n>`: Optional. Speeds up or slows down the number of parallel requests (default: 10).
-- `--org-id <id>`: Optional. Add users to an existing Organization by WorkOS ID.
-- `--org-external-id <externalId>`: Optional. Add users to an Organization resolved by your own external ID.
-- `--create-org-if-missing`: Optional. Used with `--org-external-id`; creates the org if it doesn’t exist (requires `--org-name`).
-- `--org-name <name>`: Required with `--create-org-if-missing`. Name of the new Organization.
-- `--require-membership`: Optional. If membership creation fails, delete the user created in this run and count it as a failure.
-- `--dry-run`: Optional. Validate and show what would happen, but don't call WorkOS APIs or create anything.
-- `--job-id <id>`: Optional. Job identifier for checkpoint/resume (enables chunked mode).
-- `--resume [job-id]`: Optional. Resume from checkpoint (auto-detects last job if no ID provided).
-- `--chunk-size <n>`: Optional. Rows per chunk for checkpointing (default: 1000).
-- `--checkpoint-dir <path>`: Optional. Checkpoint storage directory (default: .workos-checkpoints).
-- `--workers <n>`: Optional. Number of worker threads for parallel processing (default: 1, requires --job-id).
-- `--user-export <path>`: Deprecated alias for `--csv`.
-
----
-
-### What happens when you run it
-
-For each row in your CSV, the tool:
-
-- Checks that `email` exists
-- Converts `email_verified` into true/false
-- Parses `metadata` if present
-- Calls WorkOS to create the user (and membership if you chose an org mode)
-- Shows each row’s result (unless `--quiet`) and then a final summary
-
-It also retries rate‑limited requests (HTTP 429) with exponential backoff, up to 3 attempts.
-
-Exit codes
-
-- 0 when all rows that were processed succeeded (at least one success and zero failures)
-- Non‑zero when any errors occur, or on fatal errors
-
-Summary example
-
-```
-┌──────────────────────────────────────┐
-│ SUMMARY                              │
-│ Status: Completed with errors        │
-│ Users imported: 42/50                │
-│ Duration: 3.2 s                      │
-│ Warnings: 0                          │
-│ Errors: 8                            │
-└──────────────────────────────────────┘
-```
-
-Status rules
-
-- Success: errors === 0 and successes > 0
-- Completed with errors: errors > 0 and successes > 0
-- Failed: errors > 0 and successes === 0
-
----
-
-### Saving and reviewing errors (`--errors-out`)
-
-- If your output file ends with `.csv`, it writes columns:
-  `recordNumber,email,userId,errorMessage,httpStatus,workosCode,workosRequestId,timestamp,rawRow`
-- Otherwise, it writes a JSON array with the same fields.
-
-You can open the CSV in a spreadsheet, fix the problematic rows, and re‑run the importer on just those rows.
-
----
-
-### Troubleshooting
-
-- “WORKOS_SECRET_KEY is missing”  
-  Make sure you included `WORKOS_SECRET_KEY=...` before the command, or created a `.env` file in the same folder.
-
-- “Cannot find CSV file”  
-  Double‑check the path after `--csv`. If your file is on your Desktop, for example: `--csv ~/Desktop/users.csv`
-
-- “metadata is invalid JSON”  
-  Ensure the `metadata` cell contains valid JSON, such as `{"role":"admin"}` (use double quotes).
-
-- “Membership failed” (when using org mode)  
-  Add `--require-membership` to automatically delete users created in this run if membership creation fails.
-
----
-
-### Example CSVs
-
-**Single-Org / User-Only Examples:**
-See `examples/example-input.csv` for samples including:
-
-- Just email
-- With first/last name and email_verified
-- With plaintext password
-- With password_hash + password_hash_type
-- With metadata JSON
-
-**Multi-Org Examples:**
-See `examples/multi-org-simple.csv` for multi-organization import example:
-
-- 10 users across 4 different organizations
-- Demonstrates org_external_id and org_name columns
-- Shows cache effectiveness (4 misses, 6 hits = 60% hit rate)
-
----
-
-### Performance & Memory Usage
-
-This tool is optimized for large-scale imports with bounded memory usage:
-
-**Memory Characteristics:**
-
-- Streams CSV files (no full file load into memory)
-- Errors streamed to disk in JSONL format by default
-- Constant memory usage regardless of CSV size
-- Processes in batches to prevent memory exhaustion
-
-**Performance Benchmarks:**
-
-| Users | Duration\*     | Memory Usage | Recommended Flags          |
-| ----- | -------------- | ------------ | -------------------------- |
-| 1K    | ~30-40 seconds | <50 MB       | Default settings           |
-| 10K   | ~3-4 minutes   | ~50 MB       | Default settings           |
-| 50K   | ~15-20 minutes | ~75 MB       | `--concurrency 20`         |
-| 100K  | ~30-40 minutes | ~100 MB      | `--concurrency 20 --quiet` |
-| 500K+ | ~2.5-3.5 hours | ~150 MB      | `--concurrency 20 --quiet` |
-
-\* Assumes 50 req/sec rate limit, 200ms avg API latency, with organization membership
-
-**Best Practices for Large Imports:**
-
-1. **Use JSONL for error output** (default):
-
-   ```bash
-   --errors-out errors.jsonl  # Streamed to disk, bounded memory
-   ```
-
-2. **Avoid CSV error output for large imports**:
-
-   ```bash
-   --errors-out errors.csv    # Loads all errors in memory (not recommended for >10K rows)
-   ```
-
-3. **Increase concurrency for faster imports**:
-
-   ```bash
-   --concurrency 20           # Default is 10, increase if API allows
-   ```
-
-4. **Use quiet mode to reduce logging overhead**:
-
-   ```bash
-   --quiet                    # Suppresses per-record logging
-   ```
-
-5. **Test with dry-run first**:
-   ```bash
-   --dry-run                  # Validates CSV without API calls
-   ```
-
-**Memory Optimization (v1.1.0+):**
-
-- WorkOS client singleton (prevents connection exhaustion)
-- Bounded in-flight promise array (constant memory)
-- Error streaming (no accumulation in memory)
-- Rate limiter cleanup (proper resource management)
-
----
-
-### Testing & Development
-
-Generate test CSV files:
-
-```bash
-# Generate 100K users
-npx tsx scripts/generate-test-csv.ts 100000 examples/hundred-thousand-users.csv
-
-# Generate with intentional errors (for testing)
-npx tsx scripts/generate-test-csv.ts 50000 examples/test-with-errors.csv --with-errors
-```
-
-Run memory usage test:
-
-```bash
-# Test memory usage with large CSV (dry-run mode, no API calls)
-npx tsx scripts/memory-test.ts examples/hundred-thousand-users.csv
-```
-
-Verify rate limiting:
-
-```bash
-# Quick verification (recommended - runs in ~5 seconds)
-npx tsx scripts/rate-limit-quick-test.ts
-
-# Visual demonstration
-npx tsx scripts/rate-limit-demo.ts
-
-# Comprehensive test suite (slower - takes ~1 minute)
-npx tsx scripts/rate-limit-test.ts
-```
-
-**Rate Limit Configuration:**
-
-- WorkOS limit: 500 requests per 10 seconds (50 req/sec)
-- Tool configuration: 50 req/sec with 50 burst capacity
-- ✅ Guaranteed to never exceed limits at any scale
-
-**Multi-Org Scale Testing:**
-
-Generate multi-org test CSVs at various scales:
-
-```bash
-# Small scale: 100 users across 10 orgs (90% hit rate)
-npx tsx scripts/generate-multi-org-csv.ts 100 10 examples/test-100-10.csv
-
-# Medium scale: 1K users across 50 orgs (95% hit rate)
-npx tsx scripts/generate-multi-org-csv.ts 1000 50 examples/test-1k-50.csv
-
-# Large scale: 10K users across 100 orgs (99% hit rate)
-npx tsx scripts/generate-multi-org-csv.ts 10000 100 examples/test-10k-100.csv
-
-# Very large scale: 100K users across 1K orgs (realistic enterprise)
-npx tsx scripts/generate-multi-org-csv.ts 100000 1000 examples/test-100k-1k.csv
-
-# Skewed distribution (80/20 rule - realistic workload)
-npx tsx scripts/generate-multi-org-csv.ts 10000 100 examples/test-skewed.csv --distribution skewed
-```
-
-Run comprehensive cache performance tests:
-
-```bash
-# Generates 7 test CSVs and validates cache performance
-npx tsx scripts/multi-org-cache-test.ts
-```
-
-**Scale Test Results (Validated):**
-
-All tests passed ✅ with the following results:
-
-| Scale | Users | Orgs | Cache Hit Rate | API Calls | Memory |
-|-------|-------|------|----------------|-----------|--------|
-| Small | 100 | 10 | 90.0% | 10 | <0.01 MB |
-| Medium | 1K | 50 | 95.0% | 50 | ~0.01 MB |
-| Large | 10K | 100 | 99.0% | 100 | ~0.02 MB |
-| Very Large | 10K | 1K | 90.0% | 1,000 | ~0.19 MB |
-
-**Key Findings:**
-- Cache hit rate increases with more users per org (90-99%)
-- Memory usage depends only on unique org count, not user count
-- Constant memory profile regardless of CSV size (streaming)
-- Request coalescing prevents duplicate API calls at high concurrency
-- LRU eviction ensures bounded memory even with 10K+ orgs
-
-**Testing Multi-Org Imports:**
-
-Test with generated CSV (no API calls):
-```bash
-# Validate CSV structure and mode detection
-npx tsx bin/import-users.ts --csv examples/test-1k-50.csv --dry-run
-```
-
-Real import test (requires WorkOS credentials):
-```bash
-# Import and verify cache statistics in summary
-WORKOS_SECRET_KEY=sk_test_123 \
-  npx tsx bin/import-users.ts --csv examples/test-1k-50.csv
-```
-
-Expected summary output:
-```
-┌────────────────────────┐
-│ SUMMARY                │
-│ Status: Success        │
-│ Users imported: 1000   │
-│ Memberships created: 1000
-│ Duration: 25.3 s       │
-│ Warnings: 0            │
-│ Errors: 0              │
-│ Cache hits: 950        │
-│ Cache misses: 50       │
-│ Cache hit rate: 95.0%  │
-└────────────────────────┘
-```
-
-Install dependencies:
-
-```bash
-pnpm i # or npm i / yarn
-```
-
-Run locally:
-
-```bash
-WORKOS_SECRET_KEY=sk_test_123 \
-  pnpm start --csv examples/example-input.csv
-```
-
-Type‑check:
-
-```bash
-pnpm run typecheck
-```
+**New to this tool?** Start with the **[Wizard Guide](docs/getting-started/WIZARD.md)** for interactive step-by-step guidance.

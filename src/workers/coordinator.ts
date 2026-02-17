@@ -28,6 +28,7 @@ import { CheckpointManager } from '../checkpoint/manager.js';
 import { OrganizationCache } from '../cache/organizationCache.js';
 import { createLogger } from '../logger.js';
 import { ProgressUI } from '../ui/progressUI.js';
+import { extractUniqueOrganizations } from '../utils/csvScanner.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -79,10 +80,139 @@ export class WorkerCoordinator {
   }
 
   /**
+   * Pre-warm organization cache by scanning CSV and resolving all unique organizations
+   *
+   * This eliminates race conditions by resolving/creating all organizations single-threaded
+   * before workers start processing. Workers then benefit from 100% cache hit rate.
+   *
+   * @private
+   */
+  private async prewarmOrganizations(): Promise<void> {
+    if (!this.orgCache) {
+      return; // No cache to warm (single-org or user-only mode)
+    }
+
+    const csvPath = this.importOptions.csvPath;
+
+    this.logger.log('Pre-warming organization cache...');
+
+    // Step 1: Scan CSV for unique organizations
+    let uniqueOrgs;
+    try {
+      uniqueOrgs = await extractUniqueOrganizations(csvPath);
+    } catch (err: any) {
+      throw new Error(`Failed to scan CSV for organizations: ${err.message}`);
+    }
+
+    if (uniqueOrgs.length === 0) {
+      this.logger.log('No organizations found in CSV (user-only mode)');
+      return;
+    }
+
+    this.logger.log(`Found ${uniqueOrgs.length} unique organizations to pre-warm`);
+
+    // Step 2: Resolve each organization sequentially (no race conditions)
+    let resolved = 0;
+    let created = 0;
+    let failed = 0;
+    const errors: Array<{ orgExternalId: string; error: string }> = [];
+
+    const startTime = Date.now();
+
+    for (let i = 0; i < uniqueOrgs.length; i++) {
+      const org = uniqueOrgs[i];
+
+      try {
+        // Track cache size before resolution to detect new creations
+        const cacheSizeBefore = this.orgCache.getStats().size;
+
+        const orgId = await this.orgCache.resolve({
+          orgExternalId: org.orgExternalId,
+          createIfMissing: Boolean(org.orgName),
+          orgName: org.orgName || undefined
+        });
+
+        if (orgId) {
+          resolved++;
+
+          // Check if this was a new creation
+          const cacheSizeAfter = this.orgCache.getStats().size;
+          if (cacheSizeAfter > cacheSizeBefore) {
+            created++;
+          }
+        } else {
+          // Org not found and no name provided for creation
+          failed++;
+          errors.push({
+            orgExternalId: org.orgExternalId,
+            error: 'Organization not found and no org_name provided for creation'
+          });
+        }
+
+        // Progress update every 10 orgs or on last org
+        if ((resolved + failed) % 10 === 0 || i === uniqueOrgs.length - 1) {
+          const progress = Math.round(((i + 1) / uniqueOrgs.length) * 100);
+          this.logger.log(
+            `Pre-warming progress: ${i + 1}/${uniqueOrgs.length} (${progress}%) - ` +
+            `${resolved} resolved, ${created} created, ${failed} failed`
+          );
+        }
+
+      } catch (err: any) {
+        failed++;
+        errors.push({
+          orgExternalId: org.orgExternalId,
+          error: err.message || String(err)
+        });
+
+        this.logger.warn(
+          `Failed to resolve organization ${org.orgExternalId}: ${err.message}`
+        );
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    const durationSec = (duration / 1000).toFixed(1);
+
+    this.logger.log(
+      `Pre-warming complete in ${durationSec}s: ` +
+      `${resolved} resolved, ${created} created, ${failed} failed`
+    );
+
+    // Abort if too many failures (likely systematic issue)
+    if (failed > uniqueOrgs.length * 0.1) {
+      throw new Error(
+        `Pre-warming failed for ${failed}/${uniqueOrgs.length} organizations (${Math.round(failed/uniqueOrgs.length*100)}%). ` +
+        `This may indicate a systematic issue. First error: ${errors[0]?.error || 'unknown'}`
+      );
+    }
+
+    if (failed > 0) {
+      this.logger.warn(
+        `Warning: ${failed} organizations could not be pre-warmed. ` +
+        `Users for these orgs may fail during import.`
+      );
+    }
+
+    // Display cache statistics
+    const stats = this.orgCache.getStats();
+    this.logger.log(
+      `Organization cache ready: ${stats.size} organizations cached ` +
+      `(hit rate will be ~100% during import)`
+    );
+  }
+
+  /**
    * Start the coordinator and process all chunks
    */
   async start(): Promise<ImportSummary> {
     this.startTime = Date.now();
+
+    // Pre-warm organization cache before starting workers
+    // This eliminates race conditions by resolving all orgs single-threaded
+    if (this.orgCache) {
+      await this.prewarmOrganizations();
+    }
 
     await this.initializeWorkers();
     this.loadChunkQueue();

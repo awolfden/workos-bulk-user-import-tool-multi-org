@@ -182,7 +182,10 @@ async function runTest() {
       status: 'pending',
       successes: 0,
       failures: 0,
-      membershipsCreated: 0
+      membershipsCreated: 0,
+      usersCreated: 0,
+      duplicateUsers: 0,
+      duplicateMemberships: 0
     };
 
     await coordinator.processChunk(testChunk);

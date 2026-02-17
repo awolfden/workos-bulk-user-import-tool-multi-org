@@ -147,3 +147,6 @@ examples/fifty-thousand-users.csv
 *.jsonl
 errors-*.csv
 errors-*.json
+
+# Checkpoint files
+.workos-checkpoints/

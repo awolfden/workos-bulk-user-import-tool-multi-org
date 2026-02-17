@@ -1,0 +1,52 @@
+{
+  "timestamp": "2026-01-21T00:03:40.173Z",
+  "source": "auth0",
+  "importMode": "multi-org",
+  "result": {
+    "success": false,
+    "totalSteps": 4,
+    "completedSteps": 3,
+    "failedSteps": 1,
+    "skippedSteps": 0,
+    "totalDuration": 11458338,
+    "summary": {}
+  },
+  "steps": [
+    {
+      "stepId": "export",
+      "success": true,
+      "duration": 7505152,
+      "skipped": false
+    },
+    {
+      "stepId": "validate",
+      "success": true,
+      "duration": 2445,
+      "skipped": false
+    },
+    {
+      "stepId": "plan",
+      "success": true,
+      "duration": 1129,
+      "skipped": false
+    },
+    {
+      "stepId": "import",
+      "success": false,
+      "duration": 993826,
+      "skipped": false,
+      "error": "Command exited with code 1"
+    }
+  ],
+  "plan": {
+    "warnings": [],
+    "recommendations": [
+      "Organizations API selected - ensure your Auth0 plan supports this feature",
+      "Users will need to reset passwords on first login (no password hashes provided)",
+      "To include passwords: Request password export from Auth0 support",
+      "Checkpoint directory: .workos-checkpoints/",
+      "You can resume this migration with --resume flag",
+      "Multi-org mode uses organization caching for performance"
+    ]
+  }
+}

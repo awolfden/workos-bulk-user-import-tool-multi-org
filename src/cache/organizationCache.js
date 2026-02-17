@@ -125,7 +125,44 @@ export class OrganizationCache {
                 resolvedOrgId = await getOrganizationByExternalId(orgExternalId);
                 // Create if not found and requested
                 if (!resolvedOrgId && createIfMissing && orgName) {
-                    resolvedOrgId = await createOrganization(orgName, orgExternalId);
+                    try {
+                        resolvedOrgId = await createOrganization(orgName, orgExternalId);
+                    }
+                    catch (err) {
+                        // Check if error is due to external_id conflict (race condition)
+                        // This happens when multiple workers try to create the same org simultaneously
+                        const errorMsg = err?.message || '';
+                        const isExternalIdConflict = errorMsg.includes('external_id') &&
+                            errorMsg.includes('already been assigned');
+                        if (isExternalIdConflict) {
+                            // Another worker created this org - retry lookup with backoff
+                            // API may have eventual consistency delay
+                            const maxRetries = 3;
+                            const retryDelayMs = 500;
+                            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                                // Wait before retry (except first attempt)
+                                if (attempt > 1) {
+                                    await new Promise(resolve => setTimeout(resolve, retryDelayMs * attempt));
+                                }
+                                resolvedOrgId = await getOrganizationByExternalId(orgExternalId);
+                                if (resolvedOrgId) {
+                                    // Successfully found after retry
+                                    break;
+                                }
+                            }
+                            if (!resolvedOrgId) {
+                                // Still not found after retries - API inconsistency or other issue
+                                throw new Error(`Organization with external_id "${orgExternalId}" reported as ` +
+                                    `existing but could not be retrieved after ${maxRetries} retries. ` +
+                                    `Original error: ${errorMsg}`);
+                            }
+                            // Successfully resolved via retry - continue to cache it below
+                        }
+                        else {
+                            // Different error - re-throw
+                            throw err;
+                        }
+                    }
                 }
             }
             // Cache the result if found

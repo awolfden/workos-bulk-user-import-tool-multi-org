@@ -1,0 +1,10 @@
+email,first_name,last_name,email_verified,external_id,metadata,org_external_id,org_name
+alice@example.com,Alice,Smith,true,user-001,"{""department"":""Engineering""}",acme-corp,Acme Corporation
+alice@example.com,Alice,Smith,true,user-001,"{""department"":""Engineering""}",beta-inc,Beta Inc
+alice@example.com,Alice,Smith,true,user-001,"{""department"":""Engineering""}",gamma-llc,Gamma LLC
+bob@example.com,Bob,Jones,true,user-002,"{""department"":""Sales""}",acme-corp,Acme Corporation
+bob@example.com,Bob,Jones,true,user-002,"{""department"":""Sales""}",beta-inc,Beta Inc
+charlie@example.com,Charlie,Brown,true,user-003,,gamma-llc,Gamma LLC
+dana@example.com,Dana,White,false,user-004,,delta-co,Delta Company
+eve@example.com,Eve,Green,true,user-005,"{""role"":""admin""}",acme-corp,Acme Corporation
+eve@example.com,Eve,Green,true,user-005,"{""role"":""admin""}",delta-co,Delta Company

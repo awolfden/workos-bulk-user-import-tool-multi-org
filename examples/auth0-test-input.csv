@@ -1,0 +1,4 @@
+user_id,email,given_name,family_name,email_verified,user_metadata,app_metadata,org_id,org_name,created_at,updated_at
+auth0|123,alice@acme.com,Alice,Smith,true,"{""department"":""Engineering"",""team"":""Backend""}","{""role"":""admin"",""permissions"":[""read"",""write""]}",org_001,Acme Corporation,2024-01-01T00:00:00.000Z,2024-01-15T12:00:00.000Z
+auth0|456,bob@beta.com,Bob,Jones,false,"{""department"":""Sales""}","{""role"":""user""}",org_002,Beta Inc,2024-02-01T00:00:00.000Z,2024-02-10T08:00:00.000Z
+auth0|789,charlie@acme.com,Charlie,Brown,true,"{""department"":""Engineering"",""team"":""Frontend""}","{""role"":""user"",""permissions"":[""read""]}",org_001,Acme Corporation,2024-03-01T00:00:00.000Z,2024-03-05T14:30:00.000Z

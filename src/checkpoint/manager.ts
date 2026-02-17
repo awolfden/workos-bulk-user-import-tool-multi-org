@@ -63,7 +63,10 @@ export class CheckpointManager {
         status: 'pending',
         successes: 0,
         failures: 0,
-        membershipsCreated: 0
+        membershipsCreated: 0,
+        usersCreated: 0,
+        duplicateUsers: 0,
+        duplicateMemberships: 0
       });
     }
 
@@ -84,6 +87,9 @@ export class CheckpointManager {
         successes: 0,
         failures: 0,
         membershipsCreated: 0,
+        usersCreated: 0,
+        duplicateUsers: 0,
+        duplicateMemberships: 0,
         startedAt: now,
         endedAt: null,
         warnings: []
@@ -153,6 +159,13 @@ export class CheckpointManager {
    */
   getState(): Readonly<CheckpointState> {
     return this.state;
+  }
+
+  /**
+   * Get job ID
+   */
+  getJobId(): string {
+    return this.jobId;
   }
 
   /**
@@ -237,6 +250,9 @@ export class CheckpointManager {
     this.state.summary.successes += chunkSummary.successes;
     this.state.summary.failures += chunkSummary.failures;
     this.state.summary.membershipsCreated += chunkSummary.membershipsCreated;
+    this.state.summary.usersCreated += chunkSummary.usersCreated;
+    this.state.summary.duplicateUsers += chunkSummary.duplicateUsers;
+    this.state.summary.duplicateMemberships += chunkSummary.duplicateMemberships;
   }
 
   /**
@@ -250,6 +266,9 @@ export class CheckpointManager {
       successes: this.state.summary.successes,
       failures: this.state.summary.failures,
       membershipsCreated: this.state.summary.membershipsCreated,
+      usersCreated: this.state.summary.usersCreated,
+      duplicateUsers: this.state.summary.duplicateUsers,
+      duplicateMemberships: this.state.summary.duplicateMemberships,
       startedAt: this.state.summary.startedAt,
       endedAt: Date.now(),
       warnings: this.state.summary.warnings,
