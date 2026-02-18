@@ -1,6 +1,6 @@
 # Migration Wizard Guide
 
-Interactive step-by-step tool for migrating users from Auth0 to WorkOS.
+Interactive step-by-step tool for migrating users from Auth0, Clerk, or a custom CSV to WorkOS.
 
 ## Overview
 
@@ -28,6 +28,7 @@ Before starting:
 1. **WorkOS API Key**: Set `WORKOS_SECRET_KEY` environment variable
 2. **Node.js 18+**: Required for execution
 3. **Auth0 Credentials** (if migrating from Auth0): M2M application credentials
+4. **Clerk CSV Export** (if migrating from Clerk): User export CSV from Clerk dashboard
 
 The wizard will check prerequisites and help you set them up if missing.
 
@@ -37,6 +38,7 @@ The wizard will check prerequisites and help you set them up if missing.
 
 **Migration Source:**
 - Auth0 (guided export)
+- Clerk (transform from Clerk CSV export)
 - Custom CSV (you have a file ready)
 
 **Auth0 Credentials** (if Auth0):
@@ -224,6 +226,21 @@ npx tsx bin/migrate-wizard.ts \
 
 **Result:** Skips export step, goes straight to validation and import
 
+### Scenario 4: Clerk Migration
+
+**Answers:**
+- Source: Clerk
+- Clerk CSV path: `clerk-export.csv`
+- Org mapping: Yes → `clerk-org-mapping.csv`
+- Import mode: Multi-org (auto-set from org mapping)
+- Scale: Less than 10,000
+- Checkpointing: No
+- Workers: No
+
+**Result:** Transforms Clerk CSV → validates → imports with org memberships. Bcrypt passwords are migrated automatically.
+
+See [Clerk Migration Guide](../guides/CLERK-MIGRATION.md) for full details.
+
 ## Resuming Interrupted Migrations
 
 If the wizard is interrupted (Ctrl+C, crash, etc.):
@@ -241,7 +258,7 @@ The wizard will:
 ## When to Use the Wizard vs. Direct Tools
 
 ### Use the Wizard When:
-✅ First time migrating from Auth0
+✅ First time migrating from Auth0 or Clerk
 ✅ Want guided step-by-step process
 ✅ Prefer interactive prompts
 ✅ Don't want to remember command syntax
@@ -324,6 +341,7 @@ After wizard completes:
 ## Related Documentation
 
 - [Quick Start Guide](QUICK-START.md) - Direct tool usage
+- [Clerk Migration Guide](../guides/CLERK-MIGRATION.md) - Clerk-specific details
 - [Phase 1: Export](../phases/01-EXPORT.md) - Auth0 export details
 - [Phase 2: Validate](../phases/02-VALIDATE.md) - Validation rules
 - [Phase 5: Import](../phases/05-IMPORT.md) - Import options
