@@ -12,7 +12,7 @@ Complete documentation for the WorkOS Multi-Org Migration Toolkit.
 
 Follow these phases in order for a complete migration:
 
-1. **[Export](phases/01-EXPORT.md)** - Download users from Auth0
+1. **[Export](phases/01-EXPORT.md)** - Download users from Auth0 (or [transform from Clerk](guides/CLERK-MIGRATION.md))
 2. **[Validate](phases/02-VALIDATE.md)** - Check CSV for errors before importing
 3. **[Map](phases/03-MAP.md)** - Transform fields (optional)
 4. **[Analyze](phases/04-ANALYZE.md)** - Review and fix errors (if needed)
@@ -25,6 +25,7 @@ Follow these phases in order for a complete migration:
 - **[Email Deduplication](guides/DEDUPLICATION.md)** - Merge duplicate email addresses
 - **[Password Migration](guides/PASSWORD-MIGRATION.md)** - Migrate password hashes
 - **[Metadata Guide](guides/METADATA.md)** - WorkOS metadata best practices
+- **[Clerk Migration](guides/CLERK-MIGRATION.md)** - Migrate users from Clerk
 - **[Troubleshooting](guides/TROUBLESHOOTING.md)** - Common errors and solutions
 
 ## Advanced Topics
@@ -47,6 +48,11 @@ npx tsx bin/export-auth0.ts \
   --domain <domain> \
   --client-id <id> \
   --client-secret <secret>
+
+# Transform Clerk export to WorkOS format
+npx tsx bin/transform-clerk.ts \
+  --clerk-csv clerk-export.csv \
+  --output workos-users.csv
 
 # Validate CSV
 npx tsx bin/validate-csv.ts --csv users.csv
@@ -71,6 +77,9 @@ npx tsx bin/import-users.ts --csv users.csv --dry-run
 
 **Migrating from Auth0**
 → Start with [Wizard Guide](getting-started/WIZARD.md) or [Export Phase](phases/01-EXPORT.md)
+
+**Migrating from Clerk**
+→ See [Clerk Migration Guide](guides/CLERK-MIGRATION.md)
 
 **Already have a CSV file**
 → See [Quick Start Guide](getting-started/QUICK-START.md)
@@ -104,6 +113,7 @@ docs/
 │
 ├── guides/               # How-to guides
 │   ├── CSV-FORMAT.md    # CSV column reference
+│   ├── CLERK-MIGRATION.md # Clerk migration guide
 │   ├── MULTI-ORG.md     # Multi-org imports
 │   ├── PASSWORD-MIGRATION.md
 │   ├── METADATA.md

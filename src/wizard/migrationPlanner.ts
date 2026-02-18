@@ -19,9 +19,14 @@ export function generateMigrationPlan(answers: WizardAnswers): MigrationPlan {
   // Generate job ID once for consistency across all steps
   const jobId = answers.enableCheckpointing ? `migration-${Date.now()}` : undefined;
 
-  // Step 1: Export (if not custom CSV)
-  if (answers.source !== 'custom') {
+  // Step 1: Export (if not custom CSV and not Clerk — Clerk users provide their own export)
+  if (answers.source !== 'custom' && answers.source !== 'clerk') {
     steps.push(generateExportStep(answers));
+  }
+
+  // Step 1.5: Transform Clerk export (if Clerk source)
+  if (answers.source === 'clerk') {
+    steps.push(generateClerkTransformStep(answers));
   }
 
   // Step 2: Merge password hashes (if Auth0 and user has passwords)
@@ -129,6 +134,29 @@ function generatePasswordMergeStep(answers: WizardAnswers): MigrationStep {
 }
 
 /**
+ * Generate Clerk transform step
+ */
+function generateClerkTransformStep(answers: WizardAnswers): MigrationStep {
+  const args: string[] = [
+    '--clerk-csv', answers.clerkCsvPath!,
+    '--output', 'clerk-transformed.csv',
+  ];
+
+  if (answers.clerkOrgMappingPath) {
+    args.push('--org-mapping', answers.clerkOrgMappingPath);
+  }
+
+  return {
+    id: 'clerk-transform',
+    name: 'Transform Clerk Export',
+    description: 'Transform Clerk CSV to WorkOS format (field mapping, passwords, metadata)',
+    command: 'npx tsx bin/transform-clerk.ts',
+    args,
+    optional: false
+  };
+}
+
+/**
  * Generate validation step
  */
 function generateValidationStep(answers: WizardAnswers): MigrationStep {
@@ -136,6 +164,8 @@ function generateValidationStep(answers: WizardAnswers): MigrationStep {
   let inputCsv: string;
   if (answers.source === 'custom') {
     inputCsv = answers.customCsvPath!;
+  } else if (answers.source === 'clerk') {
+    inputCsv = 'clerk-transformed.csv';
   } else if (answers.source === 'auth0' && answers.auth0HasPasswords) {
     inputCsv = 'auth0-export-with-passwords.csv';
   } else {
@@ -384,6 +414,11 @@ function getImportCsvPath(answers: WizardAnswers): string {
     return 'users-validated.csv';
   }
 
+  // If Clerk, use the transformed CSV
+  if (answers.source === 'clerk') {
+    return 'clerk-transformed.csv';
+  }
+
   // If Auth0 passwords were merged, use the merged CSV
   if (answers.source === 'auth0' && answers.auth0HasPasswords) {
     return 'auth0-export-with-passwords.csv';
@@ -418,6 +453,10 @@ function generateWarnings(answers: WizardAnswers): string[] {
     warnings.push('No organization specified for single-org mode');
   }
 
+  if (answers.source === 'clerk' && !answers.clerkOrgMappingPath) {
+    warnings.push('No org mapping file provided - users will be imported without organization memberships');
+  }
+
   return warnings;
 }
 
@@ -443,6 +482,15 @@ function generateRecommendations(answers: WizardAnswers): string[] {
   if (answers.enableCheckpointing) {
     recommendations.push('Checkpoint directory: .workos-checkpoints/');
     recommendations.push('You can resume this migration with --resume flag');
+  }
+
+  if (answers.source === 'clerk') {
+    recommendations.push('Clerk passwords (bcrypt) will be migrated - users keep their existing passwords');
+    if (answers.clerkOrgMappingPath) {
+      recommendations.push('Organization mapping will be applied during transformation');
+      recommendations.push('Organizations referenced by org_name will be auto-created in WorkOS if they do not already exist');
+      recommendations.push('The import uses organization caching and pre-warming to efficiently handle org creation');
+    }
   }
 
   if (answers.importMode === 'multi-org') {

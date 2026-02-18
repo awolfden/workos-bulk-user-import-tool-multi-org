@@ -150,3 +150,6 @@ errors-*.json
 
 # Checkpoint files
 .workos-checkpoints/
+
+#Ideation files
+docs/ideation/

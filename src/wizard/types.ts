@@ -7,7 +7,7 @@
 /**
  * Migration source provider
  */
-export type MigrationSource = 'auth0' | 'okta' | 'cognito' | 'custom';
+export type MigrationSource = 'auth0' | 'okta' | 'cognito' | 'clerk' | 'custom';
 
 /**
  * Import mode
@@ -71,6 +71,10 @@ export interface WizardAnswers {
   auth0RateLimit?: number; // Rate limit in requests per second
   auth0HasPasswords?: boolean;
   auth0PasswordsPath?: string;
+
+  // Provider configuration (Clerk)
+  clerkCsvPath?: string;
+  clerkOrgMappingPath?: string;
 
   // Advanced options
   concurrency?: number;

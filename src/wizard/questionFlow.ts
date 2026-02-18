@@ -46,6 +46,7 @@ export async function askQuestions(
       message: "What are you migrating from?",
       choices: [
         { title: "Auth0", value: "auth0" },
+        { title: "Clerk", value: "clerk" },
         { title: "Okta (coming soon)", value: "okta", disabled: true },
         { title: "Cognito (coming soon)", value: "cognito", disabled: true },
         { title: "Custom CSV (I already have a CSV file)", value: "custom" },
@@ -81,31 +82,44 @@ export async function askQuestions(
     await askAuth0Credentials(answers, options);
   }
 
-  // Question 2: Import mode
-  const modeAnswer = await prompts({
-    type: "select",
-    name: "importMode",
-    message: "How do you want to import users?",
-    choices: [
-      {
-        title: "Single organization (all users go to one org)",
-        value: "single-org",
-        description: "All users will be added to the same WorkOS organization",
-      },
-      {
-        title: "Multiple organizations (CSV has org columns)",
-        value: "multi-org",
-        description:
-          "CSV contains org_id, org_external_id, or org_name columns",
-      },
-    ],
-  });
-
-  if (!modeAnswer.importMode) {
-    throw new Error("Import mode is required");
+  // If Clerk, ask for file paths
+  if (answers.source === "clerk") {
+    await askClerkConfiguration(answers);
   }
 
-  answers.importMode = modeAnswer.importMode;
+  // Question 2: Import mode
+  // Auto-set to multi-org for Clerk with org mapping
+  if (answers.source === "clerk" && answers.clerkOrgMappingPath) {
+    answers.importMode = "multi-org";
+    console.log(
+      chalk.gray("Import mode: multi-org (auto-set from org mapping file)\n")
+    );
+  } else {
+    const modeAnswer = await prompts({
+      type: "select",
+      name: "importMode",
+      message: "How do you want to import users?",
+      choices: [
+        {
+          title: "Single organization (all users go to one org)",
+          value: "single-org",
+          description: "All users will be added to the same WorkOS organization",
+        },
+        {
+          title: "Multiple organizations (CSV has org columns)",
+          value: "multi-org",
+          description:
+            "CSV contains org_id, org_external_id, or org_name columns",
+        },
+      ],
+    });
+
+    if (!modeAnswer.importMode) {
+      throw new Error("Import mode is required");
+    }
+
+    answers.importMode = modeAnswer.importMode;
+  }
 
   // If single-org, ask for org specification
   if (answers.importMode === "single-org") {
@@ -377,6 +391,101 @@ async function askAuth0Credentials(
       chalk.gray("Users will need to reset their passwords on first login.\n")
     );
   }
+}
+
+/**
+ * Ask Clerk configuration (file paths)
+ */
+async function askClerkConfiguration(
+  answers: Partial<WizardAnswers>
+): Promise<void> {
+  console.log(chalk.cyan("\n📋 Clerk Configuration"));
+  console.log(
+    chalk.gray(
+      "We'll transform your Clerk user export into WorkOS format.\n" +
+      "The standard Clerk CSV export includes: id, first_name, last_name, username,\n" +
+      "primary_email_address, phone numbers, password_digest, password_hasher, etc.\n"
+    )
+  );
+
+  // Prompt for Clerk CSV export path
+  const csvAnswer = await prompts({
+    type: "text",
+    name: "clerkCsvPath",
+    message: "Path to your Clerk CSV export file:",
+    validate: (value: string) => {
+      if (!value.trim()) return "Clerk CSV path is required";
+      if (!value.endsWith(".csv")) return "File should be a .csv file";
+      return true;
+    },
+  });
+
+  if (!csvAnswer.clerkCsvPath) {
+    throw new Error("Clerk CSV path is required");
+  }
+
+  answers.clerkCsvPath = csvAnswer.clerkCsvPath;
+  console.log(chalk.green("✓ Clerk CSV configured\n"));
+
+  // Ask about org mapping file
+  const orgMappingAnswer = await prompts({
+    type: "confirm",
+    name: "hasOrgMapping",
+    message: "Do you have a user-to-organization mapping CSV?",
+    initial: false,
+  });
+
+  if (orgMappingAnswer.hasOrgMapping) {
+    const mappingPathAnswer = await prompts({
+      type: "text",
+      name: "clerkOrgMappingPath",
+      message: "Path to organization mapping CSV:",
+      validate: (value: string) => {
+        if (!value.trim()) return "Org mapping CSV path is required";
+        if (!value.endsWith(".csv")) return "File should be a .csv file";
+        return true;
+      },
+    });
+
+    if (!mappingPathAnswer.clerkOrgMappingPath) {
+      throw new Error("Org mapping CSV path is required");
+    }
+
+    answers.clerkOrgMappingPath = mappingPathAnswer.clerkOrgMappingPath;
+
+    console.log(
+      chalk.cyan("\n🏢 Organization Mapping")
+    );
+    console.log(
+      chalk.gray(
+        "Organizations will be created in WorkOS if they don't already exist.\n" +
+        "Your org mapping CSV should have a 'clerk_user_id' column plus one or more of:\n" +
+        "  org_id, org_external_id, org_name\n" +
+        "Including 'org_name' alongside 'org_external_id' allows new organizations\n" +
+        "to be auto-created during import.\n"
+      )
+    );
+    console.log(chalk.green("✓ Organization mapping configured\n"));
+  } else {
+    console.log(
+      chalk.gray(
+        "\nUsers will be imported without organization memberships.\n" +
+        "You can add org memberships later.\n"
+      )
+    );
+  }
+
+  // Display transform info
+  console.log(
+    chalk.gray(
+      "The Clerk transform step will:\n" +
+      "  • Map Clerk fields to WorkOS format (email, name, external_id)\n" +
+      "  • Migrate bcrypt password hashes for seamless authentication\n" +
+      "  • Store extra Clerk fields (username, phones, TOTP) in metadata\n"
+    )
+  );
+
+  console.log(chalk.green("✓ Clerk configuration complete\n"));
 }
 
 /**
