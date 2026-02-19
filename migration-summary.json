@@ -1,0 +1,74 @@
+{
+  "timestamp": "2026-02-19T16:33:51.721Z",
+  "source": "clerk",
+  "importMode": "multi-org",
+  "result": {
+    "success": true,
+    "totalSteps": 7,
+    "completedSteps": 7,
+    "failedSteps": 0,
+    "skippedSteps": 2,
+    "totalDuration": 43814,
+    "summary": {
+      "retries": 1
+    }
+  },
+  "steps": [
+    {
+      "stepId": "clerk-transform",
+      "success": true,
+      "duration": 861,
+      "skipped": false
+    },
+    {
+      "stepId": "process-role-definitions",
+      "success": true,
+      "duration": 14676,
+      "skipped": false
+    },
+    {
+      "stepId": "validate",
+      "success": true,
+      "duration": 890,
+      "skipped": false
+    },
+    {
+      "stepId": "plan",
+      "success": true,
+      "duration": 839,
+      "skipped": false
+    },
+    {
+      "stepId": "import",
+      "success": true,
+      "duration": 2857,
+      "skipped": false
+    },
+    {
+      "stepId": "analyze-errors",
+      "success": true,
+      "duration": 0,
+      "skipped": true
+    },
+    {
+      "stepId": "retry",
+      "success": true,
+      "duration": 0,
+      "skipped": true
+    }
+  ],
+  "plan": {
+    "warnings": [],
+    "recommendations": [
+      "Checkpoint directory: .workos-checkpoints/",
+      "You can resume this migration with --resume flag",
+      "Clerk passwords (bcrypt) will be migrated - users keep their existing passwords",
+      "Organization mapping will be applied during transformation",
+      "Organizations referenced by org_name will be auto-created in WorkOS if they do not already exist",
+      "The import uses organization caching and pre-warming to efficiently handle org creation",
+      "Multi-org mode uses organization caching for performance",
+      "Role assignments will be applied during membership creation",
+      "Roles will be created before import — existing roles with different permissions will be preserved with a warning"
+    ]
+  }
+}

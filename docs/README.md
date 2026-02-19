@@ -26,6 +26,7 @@ Follow these phases in order for a complete migration:
 - **[Password Migration](guides/PASSWORD-MIGRATION.md)** - Migrate password hashes
 - **[Metadata Guide](guides/METADATA.md)** - WorkOS metadata best practices
 - **[Clerk Migration](guides/CLERK-MIGRATION.md)** - Migrate users from Clerk
+- **[Role Mapping](guides/ROLE-MAPPING.md)** - Migrate roles and permissions
 - **[Troubleshooting](guides/TROUBLESHOOTING.md)** - Common errors and solutions
 
 ## Advanced Topics
@@ -92,6 +93,9 @@ npx tsx bin/import-users.ts --csv users.csv --dry-run
 
 **Errors during import**
 → See [Troubleshooting Guide](guides/TROUBLESHOOTING.md)
+
+**Migrating roles & permissions**
+→ See [Role Mapping Guide](guides/ROLE-MAPPING.md)
 
 **Password migration**
 → See [Password Migration Guide](guides/PASSWORD-MIGRATION.md)

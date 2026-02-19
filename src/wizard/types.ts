@@ -76,6 +76,12 @@ export interface WizardAnswers {
   clerkCsvPath?: string;
   clerkOrgMappingPath?: string;
 
+  // Role mapping (universal — applies to all sources)
+  hasRoleMapping?: boolean;
+  hasRoleDefinitions?: boolean;
+  roleDefinitionsPath?: string;
+  roleMappingPath?: string;
+
   // Advanced options
   concurrency?: number;
   chunkSize?: number;

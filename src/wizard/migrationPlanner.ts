@@ -34,6 +34,11 @@ export function generateMigrationPlan(answers: WizardAnswers): MigrationPlan {
     steps.push(generatePasswordMergeStep(answers));
   }
 
+  // Step 2.5: Process role definitions (if provided)
+  if (answers.hasRoleDefinitions && answers.roleDefinitionsPath) {
+    steps.push(generateRoleDefinitionsStep(answers));
+  }
+
   // Step 3: Validate CSV (if enabled)
   if (answers.validateCsv) {
     steps.push(generateValidationStep(answers));
@@ -134,6 +139,30 @@ function generatePasswordMergeStep(answers: WizardAnswers): MigrationStep {
 }
 
 /**
+ * Generate role definitions processing step
+ */
+function generateRoleDefinitionsStep(answers: WizardAnswers): MigrationStep {
+  const args: string[] = [
+    '--definitions', answers.roleDefinitionsPath!,
+    '--report', 'role-definitions-report.json',
+  ];
+
+  // Add org mapping for resolving org_external_id in role definitions
+  if (answers.clerkOrgMappingPath) {
+    args.push('--org-mapping', answers.clerkOrgMappingPath);
+  }
+
+  return {
+    id: 'process-role-definitions',
+    name: 'Process Role Definitions',
+    description: 'Create roles and permissions in WorkOS from definitions CSV',
+    command: 'npx tsx bin/process-role-definitions.ts',
+    args,
+    optional: false,
+  };
+}
+
+/**
  * Generate Clerk transform step
  */
 function generateClerkTransformStep(answers: WizardAnswers): MigrationStep {
@@ -146,10 +175,15 @@ function generateClerkTransformStep(answers: WizardAnswers): MigrationStep {
     args.push('--org-mapping', answers.clerkOrgMappingPath);
   }
 
+  // Add role mapping for Clerk transform (merges role_slugs into output CSV)
+  if (answers.roleMappingPath && answers.source === 'clerk') {
+    args.push('--role-mapping', answers.roleMappingPath);
+  }
+
   return {
     id: 'clerk-transform',
     name: 'Transform Clerk Export',
-    description: 'Transform Clerk CSV to WorkOS format (field mapping, passwords, metadata)',
+    description: 'Transform Clerk CSV to WorkOS format (field mapping, passwords, metadata, roles)',
     command: 'npx tsx bin/transform-clerk.ts',
     args,
     optional: false
@@ -226,6 +260,11 @@ function generatePlanStep(answers: WizardAnswers, jobId?: string): MigrationStep
     args.push('--concurrency', '15');
   }
 
+  // Add role mapping for non-Clerk sources (Clerk embeds roles in transformed CSV)
+  if (answers.roleMappingPath && answers.source !== 'clerk') {
+    args.push('--role-mapping', answers.roleMappingPath);
+  }
+
   return {
     id: 'plan',
     name: 'Plan Import',
@@ -269,6 +308,11 @@ function generateDryRunStep(answers: WizardAnswers, jobId?: string): MigrationSt
     args.push('--concurrency', '15');
   }
 
+  // Add role mapping for non-Clerk sources (Clerk embeds roles in transformed CSV)
+  if (answers.roleMappingPath && answers.source !== 'clerk') {
+    args.push('--role-mapping', answers.roleMappingPath);
+  }
+
   return {
     id: 'dry-run',
     name: 'Test Import (Dry Run)',
@@ -310,6 +354,11 @@ function generateImportStep(answers: WizardAnswers, jobId?: string): MigrationSt
     args.push('--concurrency', '20');
   } else if (answers.scale === 'medium') {
     args.push('--concurrency', '15');
+  }
+
+  // Add role mapping for non-Clerk sources (Clerk embeds roles in transformed CSV)
+  if (answers.roleMappingPath && answers.source !== 'clerk') {
+    args.push('--role-mapping', answers.roleMappingPath);
   }
 
   // Add error logging (only if checkpointing is disabled)
@@ -457,6 +506,10 @@ function generateWarnings(answers: WizardAnswers): string[] {
     warnings.push('No org mapping file provided - users will be imported without organization memberships');
   }
 
+  if (answers.hasRoleMapping && !answers.hasRoleDefinitions) {
+    warnings.push('User-role mapping provided without role definitions — roles must already exist in WorkOS');
+  }
+
   return warnings;
 }
 
@@ -495,6 +548,13 @@ function generateRecommendations(answers: WizardAnswers): string[] {
 
   if (answers.importMode === 'multi-org') {
     recommendations.push('Multi-org mode uses organization caching for performance');
+  }
+
+  if (answers.hasRoleMapping) {
+    recommendations.push('Role assignments will be applied during membership creation');
+    if (answers.hasRoleDefinitions) {
+      recommendations.push('Roles will be created before import — existing roles with different permissions will be preserved with a warning');
+    }
   }
 
   return recommendations;

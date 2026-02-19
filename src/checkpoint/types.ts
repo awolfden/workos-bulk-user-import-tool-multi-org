@@ -29,6 +29,7 @@ export interface ChunkMetadata {
   usersCreated: number;
   duplicateUsers: number;
   duplicateMemberships: number;
+  rolesAssigned?: number;
   startedAt?: number; // timestamp (ms)
   completedAt?: number; // timestamp (ms)
   durationMs?: number;
@@ -42,6 +43,8 @@ export interface CheckpointSummary {
   usersCreated: number;
   duplicateUsers: number;
   duplicateMemberships: number;
+  rolesAssigned?: number;
+  roleAssignmentFailures?: number;
   startedAt: number;
   endedAt: number | null;
   warnings: string[];
@@ -82,7 +85,9 @@ export interface ChunkSummary {
   usersCreated: number;
   duplicateUsers: number;
   duplicateMemberships: number;
+  rolesAssigned: number;
   durationMs: number;
+  warnings?: string[];
 }
 
 export interface ProgressStats {

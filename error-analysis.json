@@ -1,0 +1,137 @@
+{
+  "summary": {
+    "totalErrors": 20,
+    "retryableErrors": 0,
+    "nonRetryableErrors": 20,
+    "uniqueEmails": 20,
+    "uniqueErrorPatterns": 1,
+    "errorsByType": {
+      "membership_create": 20
+    },
+    "errorsByStatus": {
+      "422": 20
+    }
+  },
+  "groups": [
+    {
+      "id": "582f5185ea14",
+      "pattern": "Multiple roles is not enabled for this environment.",
+      "errorType": "membership_create",
+      "httpStatus": 422,
+      "count": 20,
+      "severity": "critical",
+      "retryable": false,
+      "examples": [
+        {
+          "recordNumber": 1,
+          "email": "alice.johnson@acme.com",
+          "userId": "user_01KHSXFBRAW0BPB6SGW76Q3VP1",
+          "errorType": "membership_create",
+          "errorMessage": "Multiple roles is not enabled for this environment.",
+          "httpStatus": 422,
+          "workosCode": "multiple_roles_not_enabled",
+          "timestamp": "2026-02-19T03:00:40.911Z",
+          "rawRow": {
+            "email": "alice.johnson@acme.com",
+            "first_name": "Alice",
+            "last_name": "Johnson",
+            "email_verified": "true",
+            "external_id": "user_01",
+            "password_hash": "$2a$10$fgPOubgdJs90F1GK2u.Qye7Xyyi2ajrQJoB5LDG5bnITEvFR/xhZ.",
+            "password_hash_type": "bcrypt",
+            "metadata": "{\"clerk_user_id\":\"user_01\",\"username\":\"alicej\",\"primary_phone_number\":\"+15551000001\",\"verified_phone_numbers\":\"+15551000001\",\"verified_email_addresses\":\"alice.johnson@acme.com\"}",
+            "org_external_id": "acme-corp",
+            "org_name": "Acme Corporation",
+            "role_slugs": "super-admin,org-admin"
+          }
+        },
+        {
+          "recordNumber": 2,
+          "email": "bob.martinez@acme.com",
+          "userId": "user_01KHSXFBR483Q3AVQ7WEY2627X",
+          "errorType": "membership_create",
+          "errorMessage": "Multiple roles is not enabled for this environment.",
+          "httpStatus": 422,
+          "workosCode": "multiple_roles_not_enabled",
+          "timestamp": "2026-02-19T03:00:40.945Z",
+          "rawRow": {
+            "email": "bob.martinez@acme.com",
+            "first_name": "Bob",
+            "last_name": "Martinez",
+            "email_verified": "true",
+            "external_id": "user_02",
+            "password_hash": "$2a$10$fgPOubgdJs90F1GK2u.Qye7Xyyi2ajrQJoB5LDG5bnITEvFR/xhZ.",
+            "password_hash_type": "bcrypt",
+            "metadata": "{\"clerk_user_id\":\"user_02\",\"username\":\"bobm\",\"verified_email_addresses\":\"bob.martinez@acme.com\"}",
+            "org_external_id": "acme-corp",
+            "org_name": "Acme Corporation",
+            "role_slugs": "org-editor"
+          }
+        },
+        {
+          "recordNumber": 9,
+          "email": "iris.taylor@globex.io",
+          "userId": "user_01KHSXFBVC444M009C3P4CCR3D",
+          "errorType": "membership_create",
+          "errorMessage": "Multiple roles is not enabled for this environment.",
+          "httpStatus": 422,
+          "workosCode": "multiple_roles_not_enabled",
+          "timestamp": "2026-02-19T03:00:40.999Z",
+          "rawRow": {
+            "email": "iris.taylor@globex.io",
+            "first_name": "Iris",
+            "last_name": "Taylor",
+            "email_verified": "true",
+            "external_id": "user_09",
+            "password_hash": "$2a$10$fgPOubgdJs90F1GK2u.Qye7Xyyi2ajrQJoB5LDG5bnITEvFR/xhZ.",
+            "password_hash_type": "bcrypt",
+            "metadata": "{\"clerk_user_id\":\"user_09\",\"username\":\"irist\",\"primary_phone_number\":\"+15551000009\",\"verified_phone_numbers\":\"+15551000009\",\"verified_email_addresses\":\"iris.taylor@globex.io\"}",
+            "org_external_id": "globex-io",
+            "org_name": "Globex Industries",
+            "role_slugs": "org-viewer"
+          }
+        }
+      ],
+      "affectedEmails": [
+        "alice.johnson@acme.com",
+        "bob.martinez@acme.com",
+        "iris.taylor@globex.io",
+        "carol.williams@acme.com",
+        "david.brown@acme.com",
+        "grace.lee@globex.io",
+        "henry.wilson@globex.io",
+        "jack.anderson@globex.io",
+        "emma.davis@acme.com",
+        "frank.garcia@globex.io"
+      ]
+    }
+  ],
+  "retryability": {
+    "retryable": {
+      "count": 0,
+      "percentage": 0,
+      "byReason": {}
+    },
+    "nonRetryable": {
+      "count": 20,
+      "percentage": 100,
+      "byReason": {
+        "membership_validation_error": 20
+      }
+    }
+  },
+  "suggestions": [
+    {
+      "groupId": "582f5185ea14",
+      "pattern": "Multiple roles is not enabled for this environment.",
+      "severity": "critical",
+      "affectedCount": 20,
+      "suggestion": "Validation error from WorkOS API. Review error message and fix data in CSV.",
+      "actionable": true,
+      "exampleFix": "Check error examples in report for specific field issues"
+    }
+  ],
+  "timestamp": "2026-02-19T03:01:03.372Z",
+  "errorsFile": ".workos-checkpoints/migration-1771470014410/errors.jsonl",
+  "errorsFileHash": "9eb36bb41a043d1733ac14e516b3315d61d0f4673dfb203cd55b0c2bf60d0d8a"
+}

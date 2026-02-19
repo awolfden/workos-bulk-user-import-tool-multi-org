@@ -20,6 +20,7 @@ type ImportOptions = {
   multiOrgMode?: boolean; // Enables per-row org resolution with caching
   checkpointManager?: CheckpointManager; // Phase 3: Enables chunked mode with checkpoints
   numWorkers?: number; // Phase 4: Number of worker threads for parallel processing
+  userRoleMapping?: Map<string, string[]>; // Phase 2 Roles: external_id → role slugs
 };
 
 class Semaphore {
@@ -63,7 +64,9 @@ export const KNOWN_COLUMNS = new Set([
   // Organization columns (multi-org mode)
   "org_id",
   "org_external_id",
-  "org_name"
+  "org_name",
+  // Role assignment column
+  "role_slugs"
 ]);
 
 interface OrgInfo {
@@ -72,9 +75,31 @@ interface OrgInfo {
   orgName?: string;
 }
 
+function parseRoleSlugsFromCsv(raw: string | undefined): string[] {
+  if (!raw || typeof raw !== 'string') return [];
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+
+  // Try JSON array format first: ["admin","editor"]
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((s: unknown) => String(s).trim()).filter(Boolean);
+      }
+    } catch {
+      // Fall through to comma-separated
+    }
+  }
+
+  // Comma-separated format: admin,editor,viewer
+  return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+}
+
 function buildUserAndOrgFromRow(row: CSVRow): {
   userPayload?: CreateUserPayload;
   orgInfo?: OrgInfo;
+  roleSlugs?: string[];
   error?: string;
 } {
   // Extract and validate email
@@ -158,7 +183,10 @@ function buildUserAndOrgFromRow(row: CSVRow): {
     orgName
   } : undefined;
 
-  return { userPayload: payload, orgInfo };
+  // Extract role slugs from CSV row
+  const roleSlugs = parseRoleSlugsFromCsv(row.role_slugs as string | undefined);
+
+  return { userPayload: payload, orgInfo, roleSlugs: roleSlugs.length > 0 ? roleSlugs : undefined };
 }
 
 async function retryCreateUser(
@@ -201,14 +229,31 @@ async function retryCreateUser(
   }
 }
 
+interface MembershipResult {
+  /** Number of roles actually assigned (may be less than requested if multi-role not enabled) */
+  rolesAssigned: number;
+  /** Warning message if some roles couldn't be assigned */
+  warning?: string;
+}
+
 async function retryCreateOrganizationMembership(
   userId: string,
   organizationId: string,
   limiter: RateLimiter,
+  roleSlugs?: string[],
   maxRetries = 3,
   baseDelayMs = 500
-): Promise<void> {
+): Promise<MembershipResult> {
   const workos = getWorkOSClient();
+
+  // Use roleSlug (singular) for 1 role, roleSlugs (plural) for 2+
+  // roleSlugs requires "multiple roles" to be enabled in the WorkOS environment
+  const roleParams = roleSlugs?.length === 1
+    ? { roleSlug: roleSlugs[0] }
+    : roleSlugs && roleSlugs.length > 1
+      ? { roleSlugs }
+      : {};
+
   let attempt = 0;
   // eslint-disable-next-line no-constant-condition
   while (true) {
@@ -216,14 +261,55 @@ async function retryCreateOrganizationMembership(
       await limiter.acquire();
       await workos.userManagement.createOrganizationMembership({
         userId,
-        organizationId
+        organizationId,
+        ...roleParams
       } as any);
-      return;
+      return { rolesAssigned: roleSlugs?.length ?? 0 };
     } catch (err: any) {
       const status: number | undefined =
         err?.status ?? err?.httpStatus ?? err?.response?.status;
       const message: string = err?.message || "Unknown error";
+      const errorCode: string = err?.code || "";
       const isRateLimited = status === 429 || /rate.?limit/i.test(message);
+
+      // If multiple roles not enabled and we tried roleSlugs (plural),
+      // fall back to roleSlug (singular) with the first role
+      if (status === 422 && (errorCode === "multiple_roles_not_enabled" || /multiple.?roles.?not.?enabled/i.test(message))) {
+        if (roleSlugs && roleSlugs.length > 1) {
+          // Retry with just the first role
+          attempt = 0;
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            try {
+              await limiter.acquire();
+              await workos.userManagement.createOrganizationMembership({
+                userId,
+                organizationId,
+                roleSlug: roleSlugs[0]
+              } as any);
+              return {
+                rolesAssigned: 1,
+                warning: `Multiple roles not enabled — assigned "${roleSlugs[0]}" only, skipped: ${roleSlugs.slice(1).join(", ")}`
+              };
+            } catch (retryErr: any) {
+              const retryStatus: number | undefined =
+                retryErr?.status ?? retryErr?.httpStatus ?? retryErr?.response?.status;
+              const retryMsg: string = retryErr?.message || "Unknown error";
+              const retryIsRateLimited = retryStatus === 429 || /rate.?limit/i.test(retryMsg);
+              attempt += 1;
+              if (retryIsRateLimited && attempt <= maxRetries) {
+                const delay = baseDelayMs * Math.pow(2, attempt - 1);
+                await new Promise(r => setTimeout(r, delay));
+                continue;
+              }
+              throw retryErr;
+            }
+          }
+        }
+        // Single role or no roles but still got this error — re-throw
+        throw err;
+      }
+
       attempt += 1;
       if (isRateLimited && attempt <= maxRetries) {
         let delay = baseDelayMs * Math.pow(2, attempt - 1);
@@ -319,6 +405,8 @@ async function importUsersStreamingMode(options: ImportOptions): Promise<{
     usersCreated: 0,
     duplicateUsers: 0,
     duplicateMemberships: 0,
+    rolesAssigned: 0,
+    roleAssignmentFailures: 0,
     startedAt,
     endedAt: startedAt,
     warnings
@@ -529,6 +617,11 @@ async function importUsersStreamingMode(options: ImportOptions): Promise<{
             }
           }
 
+          // Merge role slugs from CSV column and role mapping option
+          const csvRoleSlugs = built.roleSlugs || [];
+          const mappingRoleSlugs = options.userRoleMapping?.get(built.userPayload!.externalId ?? '') || [];
+          const allRoleSlugs = [...new Set([...csvRoleSlugs, ...mappingRoleSlugs])];
+
           // Create membership if org is specified (single-org or multi-org mode)
           if (resolvedOrgId && createdUserId) {
             const membershipKey = `${createdUserId}:${resolvedOrgId}`;
@@ -539,11 +632,17 @@ async function importUsersStreamingMode(options: ImportOptions): Promise<{
               logger.warn(`Row ${currentRecord}: Membership already exists for ${userEmail} in org ${resolvedOrgId} - skipping`);
             } else {
               try {
+                let membershipResult: MembershipResult = { rolesAssigned: allRoleSlugs.length };
                 if (!dryRun) {
-                  await retryCreateOrganizationMembership(createdUserId!, resolvedOrgId, limiter);
+                  membershipResult = await retryCreateOrganizationMembership(createdUserId!, resolvedOrgId, limiter, allRoleSlugs.length > 0 ? allRoleSlugs : undefined);
                 }
                 createdMemberships.add(membershipKey);
                 summary.membershipsCreated += 1;
+                summary.rolesAssigned += membershipResult.rolesAssigned;
+                if (membershipResult.warning) {
+                  summary.warnings.push(`Row ${currentRecord}: ${membershipResult.warning}`);
+                  logger.warn(`Row ${currentRecord}: ${membershipResult.warning}`);
+                }
               } catch (err) {
                 const status: number | undefined =
                   (err as any)?.status ?? (err as any)?.httpStatus ?? (err as any)?.response?.status ?? (err as any)?.code;
@@ -732,6 +831,8 @@ async function processChunk(
   let chunkUsersCreated = 0;
   let chunkDuplicateUsers = 0;
   let chunkDuplicateMemberships = 0;
+  let chunkRolesAssigned = 0;
+  const chunkWarnings: string[] = [];
 
   // Track users and memberships within this chunk (for multi-org CSV support)
   const createdUsers = new Map<string, string>(); // email → userId
@@ -846,40 +947,24 @@ async function processChunk(
               }
             }
 
-            // Create user
-            if (!dryRun) {
+            // Merge role slugs from CSV column and role mapping option
+            const csvRoleSlugs = built.roleSlugs || [];
+            const mappingRoleSlugs = options.userRoleMapping?.get(payload.externalId ?? '') || [];
+            const allRoleSlugs = [...new Set([...csvRoleSlugs, ...mappingRoleSlugs])];
+
+            // Create or resolve user (handle duplicates within chunk)
+            let createdUserId: string | undefined;
+            const userEmail = payload.email.toLowerCase();
+
+            if (createdUsers.has(userEmail)) {
+              // User already created in this chunk — reuse existing userId
+              createdUserId = createdUsers.get(userEmail)!;
+              chunkDuplicateUsers += 1;
+            } else if (!dryRun) {
               try {
-                await limiter.acquire();
-                const createdUserId = await retryCreateUser(payload, limiter);
-
-                // Create membership if org specified
-                if (resolvedOrgId) {
-                  try {
-                    await limiter.acquire();
-                    await retryCreateOrganizationMembership(createdUserId, resolvedOrgId, limiter);
-                    chunkMemberships += 1;
-                  } catch (membershipErr: any) {
-                    if (requireMembership) {
-                      await deleteUserSafe(createdUserId);
-                      chunkFailures += 1;
-                      recordError({
-                        recordNumber: currentRecordNumber,
-                        email: payload.email,
-                        userId: createdUserId,
-                        errorType: "membership_create",
-                        errorMessage: membershipErr.message || String(membershipErr),
-                        httpStatus: membershipErr.status,
-                        workosCode: membershipErr.code,
-                        workosRequestId: membershipErr.requestId,
-                        timestamp: new Date().toISOString(),
-                        rawRow: currentRow
-                      });
-                      return;
-                    }
-                  }
-                }
-
-                chunkSuccesses += 1;
+                createdUserId = await retryCreateUser(payload, limiter);
+                createdUsers.set(userEmail, createdUserId);
+                chunkUsersCreated += 1;
               } catch (userErr: any) {
                 chunkFailures += 1;
                 recordError({
@@ -893,10 +978,70 @@ async function processChunk(
                   timestamp: new Date().toISOString(),
                   rawRow: currentRow
                 });
+                return;
               }
             } else {
-              chunkSuccesses += 1;
+              // Dry-run: simulate user creation
+              createdUserId = `dry-run-user-${userEmail}`;
+              createdUsers.set(userEmail, createdUserId);
+              chunkUsersCreated += 1;
             }
+
+            // Create membership if org is specified and user was created/resolved
+            if (resolvedOrgId && createdUserId) {
+              const membershipKey = `${createdUserId}:${resolvedOrgId}`;
+
+              if (createdMemberships.has(membershipKey)) {
+                chunkDuplicateMemberships += 1;
+              } else {
+                try {
+                  let membershipResult: MembershipResult = { rolesAssigned: allRoleSlugs.length };
+                  if (!dryRun) {
+                    membershipResult = await retryCreateOrganizationMembership(createdUserId, resolvedOrgId, limiter, allRoleSlugs.length > 0 ? allRoleSlugs : undefined);
+                  }
+                  createdMemberships.add(membershipKey);
+                  chunkMemberships += 1;
+                  chunkRolesAssigned += membershipResult.rolesAssigned;
+                  if (membershipResult.warning) {
+                    chunkWarnings.push(`Row ${currentRecordNumber}: ${membershipResult.warning}`);
+                  }
+                } catch (membershipErr: any) {
+                  const membershipStatus: number | undefined =
+                    (membershipErr as any)?.status ?? (membershipErr as any)?.httpStatus ?? (membershipErr as any)?.response?.status;
+
+                  // Handle 409 conflict (duplicate membership) gracefully
+                  if (membershipStatus === 409) {
+                    chunkDuplicateMemberships += 1;
+                    createdMemberships.add(membershipKey);
+                  } else {
+                    // Other errors — always record the error
+                    recordError({
+                      recordNumber: currentRecordNumber,
+                      email: payload.email,
+                      userId: createdUserId,
+                      errorType: "membership_create",
+                      errorMessage: membershipErr.message || String(membershipErr),
+                      httpStatus: membershipStatus,
+                      workosCode: membershipErr.code,
+                      workosRequestId: membershipErr.requestId,
+                      timestamp: new Date().toISOString(),
+                      rawRow: currentRow
+                    });
+
+                    if (requireMembership) {
+                      if (!dryRun) {
+                        await deleteUserSafe(createdUserId);
+                      }
+                      chunkFailures += 1;
+                      return;
+                    }
+                    // When requireMembership is false, log but still count as success
+                  }
+                }
+              }
+            }
+
+            chunkSuccesses += 1;
           } finally {
             sem.release();
           }
@@ -934,7 +1079,9 @@ async function processChunk(
     usersCreated: chunkUsersCreated,
     duplicateUsers: chunkDuplicateUsers,
     duplicateMemberships: chunkDuplicateMemberships,
-    durationMs: chunkDuration
+    rolesAssigned: chunkRolesAssigned,
+    durationMs: chunkDuration,
+    warnings: chunkWarnings.length > 0 ? chunkWarnings : undefined
   };
 }
 

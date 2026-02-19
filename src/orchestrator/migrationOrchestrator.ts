@@ -9,7 +9,6 @@ import { CheckpointManager } from '../checkpoint/manager.js';
 import { importUsersFromCsv } from '../importer.js';
 import { resolveOrganization } from '../orgs.js';
 import type { OrchestratorOptions, MigrationPlan, MigrationResult } from './types.js';
-import type { ImportOptions } from '../types.js';
 
 export class MigrationOrchestrator {
   constructor(private options: OrchestratorOptions) {}
@@ -111,7 +110,7 @@ export class MigrationOrchestrator {
     }
 
     // 5. Build import options
-    const importOptions: ImportOptions = {
+    const importOptions = {
       csvPath: this.options.csvPath,
       quiet: this.options.quiet,
       concurrency: this.options.concurrency,
@@ -121,7 +120,8 @@ export class MigrationOrchestrator {
       errorsOutPath: this.options.errorsOutPath,
       multiOrgMode: plan.summary.mode === 'multi-org',
       checkpointManager,
-      numWorkers: this.options.workers
+      numWorkers: this.options.workers,
+      userRoleMapping: this.options.userRoleMapping
     };
 
     // 6. Execute import

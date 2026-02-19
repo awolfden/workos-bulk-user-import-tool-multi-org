@@ -221,6 +221,10 @@ export class CheckpointManager {
     chunk.successes = chunkSummary.successes;
     chunk.failures = chunkSummary.failures;
     chunk.membershipsCreated = chunkSummary.membershipsCreated;
+    chunk.usersCreated = chunkSummary.usersCreated;
+    chunk.duplicateUsers = chunkSummary.duplicateUsers;
+    chunk.duplicateMemberships = chunkSummary.duplicateMemberships;
+    chunk.rolesAssigned = chunkSummary.rolesAssigned;
 
     // Update cumulative summary
     this.updateSummary(chunkSummary);
@@ -253,6 +257,10 @@ export class CheckpointManager {
     this.state.summary.usersCreated += chunkSummary.usersCreated;
     this.state.summary.duplicateUsers += chunkSummary.duplicateUsers;
     this.state.summary.duplicateMemberships += chunkSummary.duplicateMemberships;
+    this.state.summary.rolesAssigned = (this.state.summary.rolesAssigned ?? 0) + (chunkSummary.rolesAssigned ?? 0);
+    if (chunkSummary.warnings?.length) {
+      this.state.summary.warnings.push(...chunkSummary.warnings);
+    }
   }
 
   /**
@@ -269,6 +277,8 @@ export class CheckpointManager {
       usersCreated: this.state.summary.usersCreated,
       duplicateUsers: this.state.summary.duplicateUsers,
       duplicateMemberships: this.state.summary.duplicateMemberships,
+      rolesAssigned: this.state.summary.rolesAssigned ?? 0,
+      roleAssignmentFailures: this.state.summary.roleAssignmentFailures ?? 0,
       startedAt: this.state.summary.startedAt,
       endedAt: Date.now(),
       warnings: this.state.summary.warnings,

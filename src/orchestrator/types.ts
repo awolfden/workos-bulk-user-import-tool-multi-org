@@ -33,6 +33,9 @@ export interface OrchestratorOptions {
 
   // Worker options
   workers?: number;
+
+  // Role assignment options
+  userRoleMapping?: Map<string, string[]>; // external_id → role slugs
 }
 
 /**

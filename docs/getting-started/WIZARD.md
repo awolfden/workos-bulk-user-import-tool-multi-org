@@ -60,6 +60,11 @@ The wizard will check prerequisites and help you set them up if missing.
 - Or Organization external ID
 - Or Organization name (creates if missing)
 
+**Roles & Permissions:**
+- Do you have role/permission data to migrate? (Yes/No)
+- If yes: Do you have a role definitions CSV? → path
+- Path to user-role mapping CSV
+
 **Scale & Performance:**
 - How many users? (<10K, 10K-100K, >100K)
 - Enable checkpointing? (recommended for large imports)
@@ -233,11 +238,12 @@ npx tsx bin/migrate-wizard.ts \
 - Clerk CSV path: `clerk-export.csv`
 - Org mapping: Yes → `clerk-org-mapping.csv`
 - Import mode: Multi-org (auto-set from org mapping)
+- Roles: Yes → role definitions: `role-definitions.csv`, mapping: `user-role-mapping.csv`
 - Scale: Less than 10,000
 - Checkpointing: No
 - Workers: No
 
-**Result:** Transforms Clerk CSV → validates → imports with org memberships. Bcrypt passwords are migrated automatically.
+**Result:** Transforms Clerk CSV → validates → imports with org memberships and role assignments. Bcrypt passwords are migrated automatically.
 
 See [Clerk Migration Guide](../guides/CLERK-MIGRATION.md) for full details.
 

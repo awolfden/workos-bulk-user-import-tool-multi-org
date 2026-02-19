@@ -9,6 +9,7 @@ import { createLogger } from "../src/logger.js";
 import { resolveOrganization } from "../src/orgs.js";
 import { CheckpointManager, findLastJob } from "../src/checkpoint/manager.js";
 import { calculateCsvHash, countCsvRows } from "../src/checkpoint/csvUtils.js";
+import { parseUserRoleMapping } from "../src/roles/userRoleMappingParser.js";
 
 const program = new Command();
 
@@ -32,6 +33,8 @@ program
   .option("--checkpoint-dir <path>", "Checkpoint storage directory (default: .workos-checkpoints)")
   // Phase 4: Parallel processing
   .option("--workers <n>", "Number of worker threads for parallel processing (default: 1, requires --job-id)", (v) => parseInt(v, 10))
+  // Role assignment
+  .option("--role-mapping <path>", "Path to user-role mapping CSV (external_id → role_slug)")
   // Back-compat: accept --user-export as alias to --csv
   .option("--user-export <path>", "(deprecated) Use --csv instead", undefined)
   .parse(process.argv);
@@ -56,6 +59,8 @@ async function main() {
     checkpointDir?: string;
     // Phase 4: Parallel processing
     workers?: number;
+    // Role assignment
+    roleMapping?: string;
   }>();
 
   const csvPath = opts.csv ?? opts.userExport;
@@ -220,6 +225,20 @@ async function main() {
       }
     }
 
+    // Parse user-role mapping CSV if provided
+    let userRoleMapping: Map<string, string[]> | undefined;
+    if (opts.roleMapping) {
+      const roleMappingPath = path.resolve(opts.roleMapping);
+      const result = await parseUserRoleMapping({ csvPath: roleMappingPath, quiet: opts.quiet });
+      userRoleMapping = result.mapping;
+      logger.log(`Loaded ${result.totalRows} role assignments for ${result.uniqueUsers} users (${result.uniqueRoles.size} unique roles)`);
+      if (result.warnings.length > 0) {
+        for (const warning of result.warnings) {
+          logger.warn(warning);
+        }
+      }
+    }
+
     const { summary, errors } = await importUsersFromCsv({
       csvPath: absCsv,
       quiet: opts.quiet,
@@ -230,7 +249,8 @@ async function main() {
       errorsOutPath: useJsonlStreaming ? errorsOutPath : undefined,
       multiOrgMode,
       checkpointManager, // Phase 3: Enable chunked mode if checkpoint provided
-      numWorkers // Phase 4: Enable worker pool if multiple workers specified
+      numWorkers, // Phase 4: Enable worker pool if multiple workers specified
+      userRoleMapping // Role assignment mapping
     });
 
     // Handle CSV error output (legacy, memory-limited)

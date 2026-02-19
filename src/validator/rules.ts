@@ -383,7 +383,61 @@ const booleanFormat: ValidationRule = {
   }
 };
 
-/** Rule 10: password_hash requires password_hash_type */
+/** Rule 10: role_slugs format validation */
+const roleSlugsFormat: ValidationRule = {
+  id: 'role-slugs-format',
+  severity: 'error',
+  category: 'row',
+  validate: (context: ValidationContext): ValidationIssue[] => {
+    const { row, recordNumber } = context;
+    if (!row || row.role_slugs === undefined || row.role_slugs === null) return [];
+
+    const raw = String(row.role_slugs).trim();
+    if (!raw) {
+      return [{
+        severity: 'warning',
+        category: 'row',
+        recordNumber,
+        field: 'role_slugs',
+        email: String(row.email || ''),
+        message: 'role_slugs column is present but empty',
+        ruleId: 'role-slugs-format'
+      }];
+    }
+
+    // Parse role slugs (try JSON array first, then comma-separated)
+    let slugs: string[];
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        slugs = parsed.map((s: unknown) => String(s).trim()).filter(Boolean);
+      } else {
+        slugs = raw.split(',').map(s => s.trim()).filter(Boolean);
+      }
+    } catch {
+      slugs = raw.split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    const issues: ValidationIssue[] = [];
+    for (const slug of slugs) {
+      if (!/^[a-z0-9_-]+$/.test(slug)) {
+        issues.push({
+          severity: 'error',
+          category: 'row',
+          recordNumber,
+          field: 'role_slugs',
+          email: String(row.email || ''),
+          message: `Invalid role slug "${slug}" — must be lowercase alphanumeric with hyphens/underscores`,
+          ruleId: 'role-slugs-format'
+        });
+      }
+    }
+
+    return issues;
+  }
+};
+
+/** Rule 11: password_hash requires password_hash_type */
 const passwordHashComplete: ValidationRule = {
   id: 'password-hash-complete',
   severity: 'error',
@@ -437,6 +491,7 @@ export const ROW_RULES: ValidationRule[] = [
   metadataArraysObjects,
   orgIdConflict,
   booleanFormat,
+  roleSlugsFormat,
   passwordHashComplete
 ];
 

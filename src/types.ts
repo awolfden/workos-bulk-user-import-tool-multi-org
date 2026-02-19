@@ -12,6 +12,8 @@ export type CSVRow = {
   org_id?: string;
   org_external_id?: string;
   org_name?: string;
+  // Role assignment (populated from role mapping CSV or directly in CSV)
+  role_slugs?: string;  // Comma-separated role slugs or JSON array
   // Allow unknowns; they will be ignored with a once-only warning
   [key: string]: unknown;
 };
@@ -32,7 +34,7 @@ export type ErrorRecord = {
   recordNumber: number;
   email?: string;
   userId?: string;
-  errorType?: "user_create" | "membership_create" | "org_resolution";
+  errorType?: "user_create" | "membership_create" | "org_resolution" | "role_assignment";
   errorMessage: string;
   timestamp: string;
   rawRow?: Record<string, unknown>;
@@ -43,6 +45,8 @@ export type ErrorRecord = {
   // Organization context (for org_resolution and membership_create errors)
   orgId?: string;
   orgExternalId?: string;
+  // Role context (for role_assignment errors)
+  roleSlugs?: string[];
 };
 
 export type ImportSummary = {
@@ -55,6 +59,8 @@ export type ImportSummary = {
   duplicateMemberships: number;  // Track duplicate memberships (already exists)
   startedAt: number;
   endedAt: number;
+  rolesAssigned: number;        // Total role assignments made
+  roleAssignmentFailures: number; // Failed role assignments
   warnings: string[];
   // Cache statistics (multi-org mode only)
   cacheStats?: {

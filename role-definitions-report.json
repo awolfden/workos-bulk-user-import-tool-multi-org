@@ -1,0 +1,89 @@
+{
+  "total": 15,
+  "created": 15,
+  "alreadyExist": 0,
+  "skipped": 0,
+  "errors": 0,
+  "warnings": [],
+  "results": [
+    {
+      "slug": "super-admin",
+      "action": "created",
+      "warnings": []
+    },
+    {
+      "slug": "platform-editor",
+      "action": "created",
+      "warnings": []
+    },
+    {
+      "slug": "support-agent",
+      "action": "created",
+      "warnings": []
+    },
+    {
+      "slug": "org-admin",
+      "action": "created",
+      "warnings": []
+    },
+    {
+      "slug": "org-admin",
+      "action": "created",
+      "warnings": []
+    },
+    {
+      "slug": "org-admin",
+      "action": "created",
+      "warnings": []
+    },
+    {
+      "slug": "org-admin",
+      "action": "created",
+      "warnings": []
+    },
+    {
+      "slug": "org-editor",
+      "action": "created",
+      "warnings": []
+    },
+    {
+      "slug": "org-editor",
+      "action": "created",
+      "warnings": []
+    },
+    {
+      "slug": "org-editor",
+      "action": "created",
+      "warnings": []
+    },
+    {
+      "slug": "org-editor",
+      "action": "created",
+      "warnings": []
+    },
+    {
+      "slug": "org-viewer",
+      "action": "created",
+      "warnings": []
+    },
+    {
+      "slug": "org-viewer",
+      "action": "created",
+      "warnings": []
+    },
+    {
+      "slug": "org-viewer",
+      "action": "created",
+      "warnings": []
+    },
+    {
+      "slug": "org-viewer",
+      "action": "created",
+      "warnings": []
+    }
+  ],
+  "processedAt": "2026-02-19T16:33:27.549Z",
+  "durationMs": 13846,
+  "dryRun": false,
+  "inputFile": "/Users/adamwolfman/Documents/workos-bulk-user-import-tool-multi-org/examples/role-definitions.csv"
+}

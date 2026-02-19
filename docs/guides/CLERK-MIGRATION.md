@@ -104,6 +104,47 @@ When multiple org columns are present, `org_id` takes priority:
 
 An example is included at `examples/clerk-org-mapping.csv`.
 
+## Role Mapping CSV (Optional)
+
+If your users have roles or permissions to migrate, you can provide a role mapping CSV that assigns roles during import.
+
+The role mapping CSV uses `clerk_user_id` as the join key (same as the org mapping):
+
+```csv
+clerk_user_id,role_slug
+user_01,admin
+user_01,editor
+user_02,viewer
+user_03,org-admin
+```
+
+Each row is a single user-role pair. Users with multiple roles have multiple rows.
+
+### Using Role Mapping with Transform
+
+Pass `--role-mapping` to the transform step. Role slugs are merged into the output CSV as a `role_slugs` column:
+
+```bash
+npx tsx bin/transform-clerk.ts \
+  --clerk-csv clerk-export.csv \
+  --org-mapping clerk-org-mapping.csv \
+  --role-mapping user-role-mapping.csv \
+  --output workos-users.csv
+```
+
+The import step then reads role slugs from the transformed CSV and assigns them during membership creation.
+
+### Role Definitions
+
+If your roles don't already exist in WorkOS, process a role definitions CSV first:
+
+```bash
+npx tsx bin/process-role-definitions.ts \
+  --definitions role-definitions.csv
+```
+
+See [Role Mapping Guide](ROLE-MAPPING.md) for the full workflow.
+
 ## Option A: Wizard (Recommended)
 
 The wizard automates the full transform → validate → import pipeline.

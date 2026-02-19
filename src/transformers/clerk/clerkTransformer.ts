@@ -20,6 +20,7 @@ export interface TransformOptions {
   clerkCsvPath: string;
   outputPath: string;
   orgMappingPath?: string;
+  roleMappingPath?: string;
   skippedUsersPath?: string;
   quiet?: boolean;
 }
@@ -32,6 +33,7 @@ export interface TransformSummary {
   usersWithoutPasswords: number;
   usersWithOrgMapping: number;
   usersWithoutOrgMapping: number;
+  usersWithRoleMapping: number;
   skippedReasons: Record<string, number>;
 }
 
@@ -121,6 +123,82 @@ export async function loadOrgMapping(
 }
 
 /**
+ * Load role mapping CSV into a lookup Map keyed by clerk_user_id
+ *
+ * Unlike the userRoleMappingParser (which uses external_id), the Clerk role
+ * mapping uses clerk_user_id as the join key because at transform time the
+ * external_id hasn't been set yet.
+ */
+export async function loadRoleMapping(
+  filePath: string,
+  quiet?: boolean
+): Promise<Map<string, string[]>> {
+  const lookup = new Map<string, string[]>();
+
+  if (!existsSync(filePath)) {
+    throw new Error(`Role mapping file not found: ${filePath}`);
+  }
+
+  return new Promise((resolve, reject) => {
+    let headerValidated = false;
+
+    const inputStream = createReadStream(filePath);
+    const parser = parse({
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+    });
+
+    inputStream
+      .pipe(parser)
+      .on('data', (row: Record<string, string>) => {
+        if (!headerValidated) {
+          headerValidated = true;
+          const headers = Object.keys(row);
+
+          // Accept either clerk_user_id or external_id as the join key
+          const hasJoinKey = headers.includes('clerk_user_id') || headers.includes('external_id');
+          if (!hasJoinKey) {
+            reject(new Error(
+              `Role mapping CSV must have a 'clerk_user_id' or 'external_id' column. ` +
+              `Found columns: ${headers.join(', ')}`
+            ));
+            return;
+          }
+
+          if (!headers.includes('role_slug')) {
+            reject(new Error(
+              `Role mapping CSV must have a 'role_slug' column. ` +
+              `Found columns: ${headers.join(', ')}`
+            ));
+            return;
+          }
+        }
+
+        const userId = (row.clerk_user_id?.trim() || row.external_id?.trim()) ?? '';
+        const roleSlug = row.role_slug?.trim() ?? '';
+        if (!userId || !roleSlug) return;
+
+        const existing = lookup.get(userId);
+        if (existing) {
+          if (!existing.includes(roleSlug)) {
+            existing.push(roleSlug);
+          }
+        } else {
+          lookup.set(userId, [roleSlug]);
+        }
+      })
+      .on('end', () => {
+        if (!quiet) {
+          console.log(`  Loaded ${lookup.size} user role mappings`);
+        }
+        resolve(lookup);
+      })
+      .on('error', reject);
+  });
+}
+
+/**
  * Detect org mapping mode from CSV headers
  */
 function detectOrgMappingMode(headers: string[]): string {
@@ -141,7 +219,7 @@ function detectOrgMappingMode(headers: string[]): string {
 export async function transformClerkExport(
   options: TransformOptions
 ): Promise<TransformSummary> {
-  const { clerkCsvPath, outputPath, orgMappingPath, skippedUsersPath, quiet } = options;
+  const { clerkCsvPath, outputPath, orgMappingPath, roleMappingPath, skippedUsersPath, quiet } = options;
 
   // Validate Clerk CSV exists
   if (!existsSync(clerkCsvPath)) {
@@ -160,8 +238,20 @@ export async function transformClerkExport(
     }
   }
 
+  // Load role mapping if provided
+  let roleMapping: Map<string, string[]> | null = null;
+  if (roleMappingPath) {
+    if (!quiet) {
+      console.log('Loading role mapping...');
+    }
+    roleMapping = await loadRoleMapping(roleMappingPath, quiet);
+    if (!quiet) {
+      console.log('');
+    }
+  }
+
   // Determine output columns based on what data is available
-  const outputColumns = buildOutputColumns(orgMapping);
+  const outputColumns = buildOutputColumns(orgMapping, roleMapping);
 
   // Track stats
   const summary: TransformSummary = {
@@ -172,6 +262,7 @@ export async function transformClerkExport(
     usersWithoutPasswords: 0,
     usersWithOrgMapping: 0,
     usersWithoutOrgMapping: 0,
+    usersWithRoleMapping: 0,
     skippedReasons: {},
   };
 
@@ -274,6 +365,15 @@ export async function transformClerkExport(
           summary.usersWithoutOrgMapping++;
         }
 
+        // Merge role slugs if role mapping provided
+        if (roleMapping && clerkUserId) {
+          const roleSlugs = roleMapping.get(clerkUserId);
+          if (roleSlugs?.length) {
+            result.row.role_slugs = roleSlugs.join(',');
+            summary.usersWithRoleMapping++;
+          }
+        }
+
         // Write to output
         stringifier.write(result.row);
 
@@ -317,7 +417,8 @@ export async function transformClerkExport(
  * Determine output CSV columns based on available data
  */
 function buildOutputColumns(
-  orgMapping: Map<string, OrgMappingRow> | null
+  orgMapping: Map<string, OrgMappingRow> | null,
+  roleMapping?: Map<string, string[]> | null
 ): string[] {
   const columns = [
     'email',
@@ -339,6 +440,11 @@ function buildOutputColumns(
       if (firstEntry.org_external_id !== undefined) columns.push('org_external_id');
       if (firstEntry.org_name !== undefined) columns.push('org_name');
     }
+  }
+
+  // Add role_slugs column if role mapping is provided
+  if (roleMapping && roleMapping.size > 0) {
+    columns.push('role_slugs');
   }
 
   return columns;

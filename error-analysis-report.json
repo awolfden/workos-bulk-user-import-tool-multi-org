@@ -1,0 +1,72 @@
+{
+  "summary": {
+    "totalErrors": 1,
+    "retryableErrors": 1,
+    "nonRetryableErrors": 0,
+    "uniqueEmails": 1,
+    "uniqueErrorPatterns": 1,
+    "errorsByType": {
+      "user_create": 1
+    },
+    "errorsByStatus": {
+      "none": 1
+    }
+  },
+  "groups": [
+    {
+      "id": "295d1fd73a43",
+      "pattern": "Unexpected error: TypeError: fetch failed",
+      "errorType": "user_create",
+      "count": 1,
+      "severity": "low",
+      "retryable": true,
+      "retryStrategy": {
+        "type": "immediate",
+        "reason": "Unknown error (no HTTP status) - retry with caution"
+      },
+      "examples": [
+        {
+          "recordNumber": 5,
+          "email": "emma.davis@acme.com",
+          "errorType": "user_create",
+          "errorMessage": "Unexpected error: TypeError: fetch failed",
+          "timestamp": "2026-02-19T03:10:36.008Z",
+          "rawRow": {
+            "email": "emma.davis@acme.com",
+            "first_name": "Emma",
+            "last_name": "Davis",
+            "email_verified": "true",
+            "external_id": "user_05",
+            "password_hash": "$2a$10$fgPOubgdJs90F1GK2u.Qye7Xyyi2ajrQJoB5LDG5bnITEvFR/xhZ.",
+            "password_hash_type": "bcrypt",
+            "metadata": "{\"clerk_user_id\":\"user_05\",\"username\":\"emmad\",\"verified_email_addresses\":\"emma.davis@acme.com\"}",
+            "org_external_id": "acme-corp",
+            "org_name": "Acme Corporation",
+            "role_slugs": "org-viewer"
+          }
+        }
+      ],
+      "affectedEmails": [
+        "emma.davis@acme.com"
+      ]
+    }
+  ],
+  "retryability": {
+    "retryable": {
+      "count": 1,
+      "percentage": 100,
+      "byReason": {
+        "unknown_error": 1
+      }
+    },
+    "nonRetryable": {
+      "count": 0,
+      "percentage": 0,
+      "byReason": {}
+    }
+  },
+  "suggestions": [],
+  "timestamp": "2026-02-19T03:11:19.245Z",
+  "errorsFile": ".workos-checkpoints/migration-1771470612121/errors.jsonl",
+  "errorsFileHash": "2df07ee0aafa99d1e04c0689d64f1e3b2f017968ba5a17c8e2f51252a9f0015b"
+}

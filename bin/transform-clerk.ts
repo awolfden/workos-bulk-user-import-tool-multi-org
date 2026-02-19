@@ -61,6 +61,7 @@ program
   .requiredOption('--clerk-csv <path>', 'Path to Clerk CSV export file')
   .requiredOption('--output <path>', 'Path to output WorkOS CSV file')
   .option('--org-mapping <path>', 'Path to organization mapping CSV (clerk_user_id → org)')
+  .option('--role-mapping <path>', 'Path to user-role mapping CSV (clerk_user_id → role_slug)')
   .option('--skipped-users <path>', 'Path for skipped user records (JSONL)', 'clerk-skipped-users.jsonl')
   .option('--quiet', 'Suppress output messages')
   .parse(process.argv);
@@ -69,6 +70,7 @@ const opts = program.opts<{
   clerkCsv: string;
   output: string;
   orgMapping?: string;
+  roleMapping?: string;
   skippedUsers: string;
   quiet?: boolean;
 }>();
@@ -96,11 +98,22 @@ async function main() {
     }
   }
 
+  if (opts.roleMapping) {
+    const roleMappingPath = path.resolve(opts.roleMapping);
+    if (!existsSync(roleMappingPath)) {
+      console.error(`Error: Role mapping file not found: ${roleMappingPath}`);
+      process.exit(1);
+    }
+  }
+
   if (!opts.quiet) {
     console.log(`Clerk CSV:    ${clerkCsvPath}`);
     console.log(`Output:       ${path.resolve(opts.output)}`);
     if (opts.orgMapping) {
       console.log(`Org mapping:  ${path.resolve(opts.orgMapping)}`);
+    }
+    if (opts.roleMapping) {
+      console.log(`Role mapping: ${path.resolve(opts.roleMapping)}`);
     }
     console.log('');
   }
@@ -111,6 +124,7 @@ async function main() {
       clerkCsvPath,
       outputPath: path.resolve(opts.output),
       orgMappingPath: opts.orgMapping ? path.resolve(opts.orgMapping) : undefined,
+      roleMappingPath: opts.roleMapping ? path.resolve(opts.roleMapping) : undefined,
       skippedUsersPath: path.resolve(opts.skippedUsers),
       quiet: opts.quiet,
     });
@@ -128,6 +142,9 @@ async function main() {
       console.log(`Without passwords:      ${summary.usersWithoutPasswords}`);
       console.log(`With org mapping:       ${summary.usersWithOrgMapping}`);
       console.log(`Without org mapping:    ${summary.usersWithoutOrgMapping}`);
+      if (opts.roleMapping) {
+        console.log(`With role mapping:      ${summary.usersWithRoleMapping}`);
+      }
 
       if (Object.keys(summary.skippedReasons).length > 0) {
         console.log('\nSkip/Warning Reasons:');

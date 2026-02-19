@@ -75,9 +75,31 @@ interface OrgInfo {
 /**
  * Build user payload and org info from CSV row
  */
+function parseRoleSlugsFromCsv(raw: string | undefined): string[] {
+  if (!raw || typeof raw !== 'string') return [];
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+
+  // Try JSON array format first: ["admin","editor"]
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((s: unknown) => String(s).trim()).filter(Boolean);
+      }
+    } catch {
+      // Fall through to comma-separated
+    }
+  }
+
+  // Comma-separated format: admin,editor,viewer
+  return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+}
+
 function buildUserAndOrgFromRow(row: CSVRow): {
   userPayload?: CreateUserPayload;
   orgInfo?: OrgInfo;
+  roleSlugs?: string[];
   error?: string;
 } {
   // Extract and validate email
@@ -127,7 +149,10 @@ function buildUserAndOrgFromRow(row: CSVRow): {
     orgName: typeof row.org_name === 'string' ? row.org_name : undefined
   };
 
-  return { userPayload, orgInfo };
+  // Extract role slugs from CSV row
+  const roleSlugs = parseRoleSlugsFromCsv(row.role_slugs as string | undefined);
+
+  return { userPayload, orgInfo, roleSlugs: roleSlugs.length > 0 ? roleSlugs : undefined };
 }
 
 /**
@@ -178,32 +203,84 @@ async function retryCreateUser(
 /**
  * Retry organization membership creation with exponential backoff
  */
+interface MembershipResult {
+  rolesAssigned: number;
+  warning?: string;
+}
+
 async function retryCreateOrganizationMembership(
   userId: string,
   organizationId: string,
   limiter: RateLimiterLike,
+  roleSlugs?: string[],
   maxRetries = 3,
   baseDelayMs = 500
-): Promise<void> {
+): Promise<MembershipResult> {
   const workos = getWorkOSClient();
-  let attempt = 0;
 
+  // Use roleSlug (singular) for 1 role, roleSlugs (plural) for 2+
+  // roleSlugs requires "multiple roles" to be enabled in the WorkOS environment
+  const roleParams = roleSlugs?.length === 1
+    ? { roleSlug: roleSlugs[0] }
+    : roleSlugs && roleSlugs.length > 1
+      ? { roleSlugs }
+      : {};
+
+  let attempt = 0;
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
       await limiter.acquire();
       await workos.userManagement.createOrganizationMembership({
         userId,
-        organizationId
+        organizationId,
+        ...roleParams
       } as any);
-      return;
+      return { rolesAssigned: roleSlugs?.length ?? 0 };
     } catch (err: any) {
       const status: number | undefined =
         err?.status ?? err?.httpStatus ?? err?.response?.status;
       const message: string = err?.message || 'Unknown error';
+      const errorCode: string = err?.code || '';
       const isRateLimited = status === 429 || /rate.?limit/i.test(message);
-      attempt += 1;
 
+      // If multiple roles not enabled and we tried roleSlugs (plural),
+      // fall back to roleSlug (singular) with the first role
+      if (status === 422 && (errorCode === 'multiple_roles_not_enabled' || /multiple.?roles.?not.?enabled/i.test(message))) {
+        if (roleSlugs && roleSlugs.length > 1) {
+          attempt = 0;
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            try {
+              await limiter.acquire();
+              await workos.userManagement.createOrganizationMembership({
+                userId,
+                organizationId,
+                roleSlug: roleSlugs[0]
+              } as any);
+              return {
+                rolesAssigned: 1,
+                warning: `Multiple roles not enabled — assigned "${roleSlugs[0]}" only, skipped: ${roleSlugs.slice(1).join(', ')}`
+              };
+            } catch (retryErr: any) {
+              const retryStatus: number | undefined =
+                retryErr?.status ?? retryErr?.httpStatus ?? retryErr?.response?.status;
+              const retryMsg: string = retryErr?.message || 'Unknown error';
+              const retryIsRateLimited = retryStatus === 429 || /rate.?limit/i.test(retryMsg);
+              attempt += 1;
+              if (retryIsRateLimited && attempt <= maxRetries) {
+                const delay = baseDelayMs * Math.pow(2, attempt - 1);
+                await new Promise(r => setTimeout(r, delay));
+                continue;
+              }
+              throw retryErr;
+            }
+          }
+        }
+        throw err;
+      }
+
+      attempt += 1;
       if (isRateLimited && attempt <= maxRetries) {
         let delay = baseDelayMs * Math.pow(2, attempt - 1);
 
@@ -266,6 +343,12 @@ export async function processChunkInWorker(
   let chunkUsersCreated = 0;
   let chunkDuplicateUsers = 0;
   let chunkDuplicateMemberships = 0;
+  let chunkRolesAssigned = 0;
+  const chunkWarnings: string[] = [];
+
+  // Track created users and memberships within this chunk for dedup
+  const workerCreatedUsers = new Map<string, string>(); // email -> userId
+  const workerCreatedMemberships = new Set<string>(); // "userId:orgId"
 
   // Set up error streaming to checkpoint dir
   const errorPath = `${checkpointDir}/errors.jsonl`;
@@ -373,38 +456,24 @@ export async function processChunkInWorker(
               }
             }
 
-            // Create user
-            if (!dryRun) {
+            // Extract role slugs from CSV row
+            const roleSlugs = built.roleSlugs || [];
+            const allRoleSlugs = [...new Set(roleSlugs)];
+
+            // Create or resolve user (handle duplicates within chunk)
+            const createdUsers = workerCreatedUsers;
+            const createdMemberships = workerCreatedMemberships;
+            let createdUserId: string | undefined;
+            const userEmail = payload.email.toLowerCase();
+
+            if (createdUsers.has(userEmail)) {
+              createdUserId = createdUsers.get(userEmail)!;
+              chunkDuplicateUsers += 1;
+            } else if (!dryRun) {
               try {
-                const createdUserId = await retryCreateUser(payload, rateLimiter);
-
-                // Create membership if org specified
-                if (resolvedOrgId) {
-                  try {
-                    await retryCreateOrganizationMembership(createdUserId, resolvedOrgId, rateLimiter);
-                    chunkMemberships += 1;
-                  } catch (membershipErr: any) {
-                    if (requireMembership) {
-                      await deleteUserSafe(createdUserId);
-                      chunkFailures += 1;
-                      recordError({
-                        recordNumber: currentRecordNumber,
-                        email: payload.email,
-                        userId: createdUserId,
-                        errorType: 'membership_create',
-                        errorMessage: membershipErr.message || String(membershipErr),
-                        httpStatus: membershipErr.status,
-                        workosCode: membershipErr.code,
-                        workosRequestId: membershipErr.requestId,
-                        timestamp: new Date().toISOString(),
-                        rawRow: currentRow
-                      });
-                      return;
-                    }
-                  }
-                }
-
-                chunkSuccesses += 1;
+                createdUserId = await retryCreateUser(payload, rateLimiter);
+                createdUsers.set(userEmail, createdUserId);
+                chunkUsersCreated += 1;
               } catch (userErr: any) {
                 chunkFailures += 1;
                 recordError({
@@ -418,10 +487,62 @@ export async function processChunkInWorker(
                   timestamp: new Date().toISOString(),
                   rawRow: currentRow
                 });
+                return;
               }
             } else {
-              chunkSuccesses += 1;
+              createdUserId = `dry-run-user-${userEmail}`;
+              createdUsers.set(userEmail, createdUserId);
+              chunkUsersCreated += 1;
             }
+
+            // Create membership if org is specified and user was created/resolved
+            if (resolvedOrgId && createdUserId) {
+              const membershipKey = `${createdUserId}:${resolvedOrgId}`;
+              if (createdMemberships.has(membershipKey)) {
+                chunkDuplicateMemberships += 1;
+              } else {
+                try {
+                  let membershipResult: MembershipResult = { rolesAssigned: allRoleSlugs.length };
+                  if (!dryRun) {
+                    membershipResult = await retryCreateOrganizationMembership(createdUserId, resolvedOrgId, rateLimiter, allRoleSlugs.length > 0 ? allRoleSlugs : undefined);
+                  }
+                  createdMemberships.add(membershipKey);
+                  chunkMemberships += 1;
+                  chunkRolesAssigned += membershipResult.rolesAssigned;
+                  if (membershipResult.warning) {
+                    chunkWarnings.push(`Row ${currentRecordNumber}: ${membershipResult.warning}`);
+                  }
+                } catch (membershipErr: any) {
+                  const membershipStatus: number | undefined =
+                    (membershipErr as any)?.status ?? (membershipErr as any)?.httpStatus ?? (membershipErr as any)?.response?.status;
+                  if (membershipStatus === 409) {
+                    chunkDuplicateMemberships += 1;
+                    createdMemberships.add(membershipKey);
+                  } else {
+                    recordError({
+                      recordNumber: currentRecordNumber,
+                      email: payload.email,
+                      userId: createdUserId,
+                      errorType: 'membership_create',
+                      errorMessage: membershipErr.message || String(membershipErr),
+                      httpStatus: membershipStatus,
+                      workosCode: membershipErr.code,
+                      workosRequestId: membershipErr.requestId,
+                      timestamp: new Date().toISOString(),
+                      rawRow: currentRow
+                    });
+                    if (requireMembership) {
+                      if (!dryRun) {
+                        await deleteUserSafe(createdUserId);
+                      }
+                      chunkFailures += 1;
+                      return;
+                    }
+                  }
+                }
+              }
+            }
+            chunkSuccesses += 1;
           } finally {
             sem.release();
           }
@@ -457,6 +578,8 @@ export async function processChunkInWorker(
     usersCreated: chunkUsersCreated,
     duplicateUsers: chunkDuplicateUsers,
     duplicateMemberships: chunkDuplicateMemberships,
-    durationMs: chunkDuration
+    rolesAssigned: chunkRolesAssigned,
+    durationMs: chunkDuration,
+    warnings: chunkWarnings.length > 0 ? chunkWarnings : undefined
   };
 }

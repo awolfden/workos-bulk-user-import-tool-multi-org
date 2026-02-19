@@ -50,6 +50,18 @@ export function renderSummaryBox(summary: ImportSummary): string {
     `Errors: ${useColors && errorsCount > 0 ? chalk.red(errorsCount.toString()) : errorsCount}`
   ];
 
+  // Add role assignment stats if any roles were assigned
+  if (summary.rolesAssigned > 0 || summary.roleAssignmentFailures > 0) {
+    content.push(
+      `Roles assigned: ${useColors ? chalk.blue(summary.rolesAssigned.toString()) : summary.rolesAssigned}`
+    );
+    if (summary.roleAssignmentFailures > 0) {
+      content.push(
+        `Role failures: ${useColors ? chalk.red(summary.roleAssignmentFailures.toString()) : summary.roleAssignmentFailures}`
+      );
+    }
+  }
+
   // Add cache statistics if available (multi-org mode)
   if (summary.cacheStats) {
     const hitRate = summary.cacheStats.hitRate;

@@ -1,4 +1,21 @@
 clerk_user_id,org_external_id,org_name
 user_01,acme-corp,Acme Corporation
 user_02,acme-corp,Acme Corporation
-user_04,beta-inc,Beta Inc
+user_03,acme-corp,Acme Corporation
+user_04,acme-corp,Acme Corporation
+user_05,acme-corp,Acme Corporation
+user_06,globex-io,Globex Industries
+user_07,globex-io,Globex Industries
+user_08,globex-io,Globex Industries
+user_09,globex-io,Globex Industries
+user_10,globex-io,Globex Industries
+user_11,initech-co,Initech Corp
+user_12,initech-co,Initech Corp
+user_13,initech-co,Initech Corp
+user_14,initech-co,Initech Corp
+user_15,initech-co,Initech Corp
+user_16,wayne-ent,Wayne Enterprises
+user_17,wayne-ent,Wayne Enterprises
+user_18,wayne-ent,Wayne Enterprises
+user_19,wayne-ent,Wayne Enterprises
+user_20,wayne-ent,Wayne Enterprises

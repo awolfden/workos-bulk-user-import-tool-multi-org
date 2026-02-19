@@ -16,3 +16,11 @@ export function getWorkOSClient(): WorkOS {
   return _cachedClient;
 }
 
+export function getWorkOSApiKey(): string {
+  const apiKey = process.env.WORKOS_SECRET_KEY;
+  if (!apiKey || apiKey.trim() === "") {
+    throw new Error("WORKOS_SECRET_KEY environment variable is required.");
+  }
+  return apiKey;
+}
+

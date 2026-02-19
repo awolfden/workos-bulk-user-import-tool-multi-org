@@ -13,9 +13,14 @@
 import 'dotenv/config';
 import { Command } from 'commander';
 import chalk from 'chalk';
+import path from 'node:path';
 import prompts from 'prompts';
 import { MigrationOrchestrator } from '../src/orchestrator/migrationOrchestrator.js';
 import type { OrchestratorOptions } from '../src/orchestrator/types.js';
+import { parseUserRoleMapping } from '../src/roles/userRoleMappingParser.js';
+import { processRoleDefinitions } from '../src/roles/roleDefinitionsProcessor.js';
+import { RoleCache } from '../src/roles/roleCache.js';
+import { OrganizationCache } from '../src/cache/organizationCache.js';
 
 const program = new Command();
 
@@ -46,6 +51,9 @@ program
   .option('--checkpoint-dir <path>', 'Checkpoint directory (default: .workos-checkpoints)')
   // Worker options
   .option('--workers <number>', 'Number of worker processes (requires checkpoint mode)', parseInt)
+  // Role options
+  .option('--role-definitions <path>', 'Path to role definitions CSV (creates roles before import)')
+  .option('--role-mapping <path>', 'Path to user-role mapping CSV (external_id → role_slug)')
   .parse(process.argv);
 
 const opts = program.opts();
@@ -56,6 +64,50 @@ const opts = program.opts();
 async function main() {
   try {
     // Build orchestrator options from CLI flags
+    // Process role definitions if provided (before import)
+    if (opts.roleDefinitions) {
+      const definitionsPath = path.resolve(opts.roleDefinitions);
+      if (!opts.quiet) {
+        console.log(chalk.cyan('\nProcessing role definitions...'));
+      }
+
+      const roleCache = new RoleCache({ dryRun: opts.dryRun });
+      const orgCache = new OrganizationCache({ dryRun: opts.dryRun });
+
+      const roleSummary = await processRoleDefinitions({
+        csvPath: definitionsPath,
+        roleCache,
+        orgCache,
+        dryRun: opts.dryRun,
+        quiet: opts.quiet,
+      });
+
+      if (!opts.quiet) {
+        console.log(`  Created: ${roleSummary.created}, Already exist: ${roleSummary.alreadyExist}, Errors: ${roleSummary.errors}`);
+        if (roleSummary.errors > 0) {
+          console.log(chalk.yellow('  Warning: Some role definitions failed. Import will continue.'));
+        }
+        console.log('');
+      }
+    }
+
+    // Parse user-role mapping CSV if provided
+    let userRoleMapping: Map<string, string[]> | undefined;
+    if (opts.roleMapping) {
+      const roleMappingPath = path.resolve(opts.roleMapping);
+      const result = await parseUserRoleMapping({ csvPath: roleMappingPath, quiet: opts.quiet });
+      userRoleMapping = result.mapping;
+      if (!opts.quiet) {
+        console.log(`Loaded ${result.totalRows} role assignments for ${result.uniqueUsers} users (${result.uniqueRoles.size} unique roles)`);
+        if (result.warnings.length > 0) {
+          for (const warning of result.warnings) {
+            console.log(chalk.yellow(`  Warning: ${warning}`));
+          }
+        }
+        console.log('');
+      }
+    }
+
     const options: OrchestratorOptions = {
       csvPath: opts.csv,
       quiet: opts.quiet,
@@ -72,7 +124,8 @@ async function main() {
       resume: opts.resume,
       chunkSize: opts.chunkSize,
       checkpointDir: opts.checkpointDir,
-      workers: opts.workers
+      workers: opts.workers,
+      userRoleMapping
     };
 
     const orchestrator = new MigrationOrchestrator(options);

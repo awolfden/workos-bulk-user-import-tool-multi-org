@@ -126,6 +126,9 @@ export async function askQuestions(
     await askOrgSpecification(answers, options);
   }
 
+  // Role configuration (universal — all sources)
+  await askRoleConfiguration(answers);
+
   // Question 3: Scale and performance
   await askScaleAndPerformance(answers);
 
@@ -481,11 +484,84 @@ async function askClerkConfiguration(
       "The Clerk transform step will:\n" +
       "  • Map Clerk fields to WorkOS format (email, name, external_id)\n" +
       "  • Migrate bcrypt password hashes for seamless authentication\n" +
-      "  • Store extra Clerk fields (username, phones, TOTP) in metadata\n"
+      "  • Store extra Clerk fields (username, phones, TOTP) in metadata\n" +
+      "\nNote: If you provide a user-role mapping CSV later,\n" +
+      "it should use 'clerk_user_id' as the join key (same as org mapping).\n"
     )
   );
 
   console.log(chalk.green("✓ Clerk configuration complete\n"));
+}
+
+/**
+ * Ask role configuration (universal — applies to all sources)
+ */
+async function askRoleConfiguration(
+  answers: Partial<WizardAnswers>
+): Promise<void> {
+  console.log(chalk.cyan("\n🔑 Roles & Permissions"));
+  console.log(
+    chalk.gray(
+      "You can optionally map roles and permissions from your existing system.\n" +
+      "This requires two CSVs:\n" +
+      "  1. Role definitions: what roles should exist in WorkOS\n" +
+      "  2. User-role mapping: which users get which roles\n"
+    )
+  );
+
+  const hasRolesAnswer = await prompts({
+    type: "confirm",
+    name: "hasRoleMapping",
+    message: "Do you have role/permission data to migrate?",
+    initial: false,
+  });
+
+  if (!hasRolesAnswer.hasRoleMapping) {
+    console.log(chalk.gray("\nSkipping role migration.\n"));
+    return;
+  }
+
+  // Ask for role definitions CSV
+  const hasDefinitionsAnswer = await prompts({
+    type: "confirm",
+    name: "hasRoleDefinitions",
+    message:
+      "Do you have a role definitions CSV? (defines roles and their permissions)",
+    initial: true,
+  });
+
+  answers.hasRoleDefinitions = hasDefinitionsAnswer.hasRoleDefinitions;
+
+  if (hasDefinitionsAnswer.hasRoleDefinitions) {
+    const definitionsPathAnswer = await prompts({
+      type: "text",
+      name: "roleDefinitionsPath",
+      message: "Path to role definitions CSV:",
+      validate: (value: string) => {
+        if (!value.trim()) return "Path is required";
+        if (!value.endsWith(".csv")) return "File should be a .csv file";
+        return true;
+      },
+    });
+    answers.roleDefinitionsPath = definitionsPathAnswer.roleDefinitionsPath;
+    console.log(chalk.green("✓ Role definitions configured\n"));
+  }
+
+  // Ask for user-role mapping CSV
+  const mappingPathAnswer = await prompts({
+    type: "text",
+    name: "roleMappingPath",
+    message: "Path to user-role mapping CSV (external_id → role_slug):",
+    validate: (value: string) => {
+      if (!value.trim()) return "Path is required";
+      if (!value.endsWith(".csv")) return "File should be a .csv file";
+      return true;
+    },
+  });
+  answers.roleMappingPath = mappingPathAnswer.roleMappingPath;
+  answers.hasRoleMapping = true;
+
+  console.log(chalk.green("✓ Role mapping configured\n"));
 }
 
 /**
