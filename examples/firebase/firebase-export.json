@@ -1,0 +1,341 @@
+{
+  "users": [
+    {
+      "localId": "uid_01",
+      "email": "alice.johnson@acme.com",
+      "emailVerified": true,
+      "displayName": "Alice Johnson",
+      "passwordHash": "0fn2PA6FmYZynpk9cvekSgbJTXa7j0XQAwtp4XuyyuIYzX5hASd4mB4GFeaS5OiG9mENrvt+sPoZmwVjvEDZ2Q==",
+      "salt": "+mkMRRbwdwqJkA==",
+      "phoneNumber": "+15551000001",
+      "createdAt": "1648020042135",
+      "lastSignedInAt": "1700000000000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "alice.johnson@acme.com", "email": "alice.johnson@acme.com" }
+      ]
+    },
+    {
+      "localId": "uid_02",
+      "email": "bob.martinez@acme.com",
+      "emailVerified": true,
+      "displayName": "Bob Martinez",
+      "passwordHash": "Xk8mFmZ2nkwYp/q9cvekSgbJTXa7j0XQAwtp4XuyyuIYzX5hASd4mB4GFeaS5OiG9mENrvt+sPoZmwVjvEDZ2Q==",
+      "salt": "abcDEFghiJKL==",
+      "createdAt": "1648020142000",
+      "lastSignedInAt": "1700000100000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "bob.martinez@acme.com", "email": "bob.martinez@acme.com" }
+      ]
+    },
+    {
+      "localId": "uid_03",
+      "email": "carol.williams@acme.com",
+      "emailVerified": true,
+      "displayName": "Carol Williams",
+      "passwordHash": "Yk9nGnA3olxZq/r9dvflThdKUYb8k1YRBxuq5YvzzwJZAY6iCTe5nC5HGfbT6PjH0nFOswu/tQpaNxWkwFEa3R==",
+      "salt": "mnoPQRstuVWX==",
+      "phoneNumber": "+15551000003",
+      "createdAt": "1648020242000",
+      "lastSignedInAt": "1700000200000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "carol.williams@acme.com", "email": "carol.williams@acme.com" }
+      ]
+    },
+    {
+      "localId": "uid_04",
+      "email": "david.brown@acme.com",
+      "emailVerified": true,
+      "displayName": "David Brown",
+      "passwordHash": "Zl0oHoB4pmyar/s9ewgmUifLVZc9l2ZSCyvr6ZwAAxKaBZ7jDUf6oD6IHgcU7QkI1oGPtxv/uRqbOyXlxGFb4S==",
+      "salt": "yzABCDeFGHIJ==",
+      "createdAt": "1648020342000",
+      "lastSignedInAt": "1700000300000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "david.brown@acme.com", "email": "david.brown@acme.com" }
+      ]
+    },
+    {
+      "localId": "uid_05",
+      "email": "emma.davis@acme.com",
+      "emailVerified": true,
+      "displayName": "Emma Davis",
+      "passwordHash": "Am1pIpC5qnzbs/t9fxhmVjgMWad0m3aTDzws7axBByLcCa8kEVg7pE7JIhdV8RlJ2pH+uxw/vSrcPzYmyHGc5T==",
+      "salt": "KLMNopqrSTUV==",
+      "createdAt": "1648020442000",
+      "lastSignedInAt": "1700000400000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "emma.davis@acme.com", "email": "emma.davis@acme.com" }
+      ]
+    },
+    {
+      "localId": "uid_06",
+      "email": "frank.garcia@globex.io",
+      "emailVerified": true,
+      "displayName": "Frank Garcia",
+      "passwordHash": "Bn2qJqD6roAct/u9gyinWkhNXbe1n4bUEAxu8byCCzMdDb9lFWh8qF8KJieW9SmK3qI/vyxAwTsdQAZnyIHd6U==",
+      "salt": "WXYZabcdEFGH==",
+      "phoneNumber": "+15551000006",
+      "createdAt": "1648020542000",
+      "lastSignedInAt": "1700000500000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "frank.garcia@globex.io", "email": "frank.garcia@globex.io" },
+        { "providerId": "google.com", "rawId": "107234567890", "email": "frank.garcia@gmail.com", "displayName": "Frank Garcia" }
+      ]
+    },
+    {
+      "localId": "uid_07",
+      "email": "grace.lee@globex.io",
+      "emailVerified": true,
+      "displayName": "Grace Lee",
+      "passwordHash": "Co3rKrE7spBdu/v9hzjoXliOYcf2o5cVFByu9czDDANeEc0mGXi9rG9LKjfX0TnL4rJ/wzyCxUteRBaoZJIe7V==",
+      "salt": "IJKLmnopQRST==",
+      "createdAt": "1648020642000",
+      "lastSignedInAt": "1700000600000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "grace.lee@globex.io", "email": "grace.lee@globex.io" }
+      ]
+    },
+    {
+      "localId": "uid_08",
+      "email": "henry.wilson@globex.io",
+      "emailVerified": true,
+      "displayName": "Henry Wilson",
+      "passwordHash": "Dp4sLsF8tqCev/w9i0kpYmjPZdg3p6dWGCzv0dAEEBOfFd1nHYj0sH0MLkgY1UoM5sK/x0zDyVufSCbpbKJf8W==",
+      "salt": "UVWXyzabCDEF==",
+      "createdAt": "1648020742000",
+      "lastSignedInAt": "1700000700000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "henry.wilson@globex.io", "email": "henry.wilson@globex.io" }
+      ]
+    },
+    {
+      "localId": "uid_09",
+      "email": "iris.taylor@globex.io",
+      "emailVerified": true,
+      "displayName": "Iris Taylor",
+      "passwordHash": "Eq5tMtG9urDfw/x9j1lqZnkQaeh4q7eXHDAw1eBFFCPgGe2oIZk1tI1NMlhZ2VpN6tL/y1AEzWvgTDbqcLKg9X==",
+      "salt": "GHIJklmnOPQR==",
+      "phoneNumber": "+15551000009",
+      "createdAt": "1648020842000",
+      "lastSignedInAt": "1700000800000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "iris.taylor@globex.io", "email": "iris.taylor@globex.io" }
+      ]
+    },
+    {
+      "localId": "uid_10",
+      "email": "jack.anderson@globex.io",
+      "emailVerified": true,
+      "displayName": "Jack Anderson",
+      "passwordHash": "Fr6uNuH0vsEgx/y9k2mraoLRbfi5r8fYIEBx2fCGGDQhHf3pJal2uJ2ONmiA3WqO7uM/z2BF0XwhUEcsNMLh0Y==",
+      "salt": "STUVwxyzABCD==",
+      "createdAt": "1648020942000",
+      "lastSignedInAt": "1700000900000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "jack.anderson@globex.io", "email": "jack.anderson@globex.io" }
+      ]
+    },
+    {
+      "localId": "uid_11",
+      "email": "karen.thomas@initech.co",
+      "emailVerified": true,
+      "displayName": "Karen Thomas",
+      "passwordHash": "Gs7vOvI1wtFhy/z9l3nsboMScgj6s9gZJFCy3gDHHERiIg4qKbm3vK3POnjB4XrP8vN/03CG1YxiVFdtONNi1Z==",
+      "salt": "EFGHijklMNOP==",
+      "phoneNumber": "+15551000011",
+      "createdAt": "1648021042000",
+      "lastSignedInAt": "1700001000000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "karen.thomas@initech.co", "email": "karen.thomas@initech.co" }
+      ]
+    },
+    {
+      "localId": "uid_12",
+      "email": "leo.jackson@initech.co",
+      "emailVerified": true,
+      "displayName": "Leo Jackson",
+      "passwordHash": "Ht8wPwJ2xuGiz/A9m4otcpNTdhk7t0haKGDz4hEIIFSjJh5rLcn4wL4QPokC5YsQ9wO/14DH2ZyjWGeluOOj2a==",
+      "salt": "QRSTuvwxYZAB==",
+      "createdAt": "1648021142000",
+      "lastSignedInAt": "1700001100000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "leo.jackson@initech.co", "email": "leo.jackson@initech.co" }
+      ]
+    },
+    {
+      "localId": "uid_13",
+      "email": "mia.white@initech.co",
+      "emailVerified": true,
+      "displayName": "Mia White",
+      "passwordHash": "Iu9xQxK3yvHja/B9n5pudrOUeil8u1ibLHEA5iJJJGTkKi6sMdo5xM5RQplD6ZtR0xP/25EI3azkXHfmvPPk3b==",
+      "salt": "CDEFghijKLMN==",
+      "createdAt": "1648021242000",
+      "lastSignedInAt": "1700001200000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "mia.white@initech.co", "email": "mia.white@initech.co" }
+      ]
+    },
+    {
+      "localId": "uid_14",
+      "email": "noah.harris@initech.co",
+      "emailVerified": true,
+      "displayName": "Noah Harris",
+      "passwordHash": "Jv0yRyL4zwIkb/C9o6qvesPVfjm9v2jcMIFB6jKKKHUlLj7tNep6yN6SRqmE7auS1yQ/36FJ4bAlYIgnoQQl4c==",
+      "salt": "OPQRstuvWXYZ==",
+      "createdAt": "1648021342000",
+      "lastSignedInAt": "1700001300000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "noah.harris@initech.co", "email": "noah.harris@initech.co" }
+      ]
+    },
+    {
+      "localId": "uid_15",
+      "email": "olivia.clark@initech.co",
+      "emailVerified": true,
+      "displayName": "Olivia Clark",
+      "passwordHash": "Kw1zSzM50xJlc/D9p7rwftQWgkn0w3kdNJGB7kLLLIVmMk8uOfq7zO7TSrnF8bvT2zR/47GK5cBmZJhopRRm5d==",
+      "salt": "abcdefghIJKL==",
+      "phoneNumber": "+15551000015",
+      "createdAt": "1648021442000",
+      "lastSignedInAt": "1700001400000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "olivia.clark@initech.co", "email": "olivia.clark@initech.co" }
+      ]
+    },
+    {
+      "localId": "uid_16",
+      "email": "paul.lewis@wayneent.com",
+      "emailVerified": true,
+      "displayName": "Paul Lewis",
+      "passwordHash": "Lx2ATaN61yKmd/E9q8sxguRXhlo1x4leOKHC8lMMMLWnNl9vPgr80P8UTsoG9cwU30S/58HL6dCnaKiprSSn6e==",
+      "salt": "MNOPqrstUVWX==",
+      "createdAt": "1648021542000",
+      "lastSignedInAt": "1700001500000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "paul.lewis@wayneent.com", "email": "paul.lewis@wayneent.com" }
+      ]
+    },
+    {
+      "localId": "uid_17",
+      "email": "quinn.robinson@wayneent.com",
+      "emailVerified": true,
+      "displayName": "Quinn Robinson",
+      "passwordHash": "My3BUbO72zLne/F9r9tyivSYimm2y5mfPLID9mNNNMXoOm0wQhs91Q9VUtpH0dxV41T/69IM7eDobLjqsTTo7f==",
+      "salt": "YZABcdefGHIJ==",
+      "createdAt": "1648021642000",
+      "lastSignedInAt": "1700001600000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "quinn.robinson@wayneent.com", "email": "quinn.robinson@wayneent.com" }
+      ]
+    },
+    {
+      "localId": "uid_18",
+      "email": "rachel.walker@wayneent.com",
+      "emailVerified": true,
+      "displayName": "Rachel Walker",
+      "passwordHash": "Nz4CVcP83AMof/G9s0uzjwTZjnn3z6ngQLJE0nOOONYpPn1xRit02R0WVuqI1eyW52U/70JN8fEpcMkrtUUp8g==",
+      "salt": "KLMNopqrSTUV==",
+      "phoneNumber": "+15551000018",
+      "createdAt": "1648021742000",
+      "lastSignedInAt": "1700001700000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "rachel.walker@wayneent.com", "email": "rachel.walker@wayneent.com" },
+        { "providerId": "github.com", "rawId": "12345678", "email": "rachel@github.com", "displayName": "rachelw" }
+      ]
+    },
+    {
+      "localId": "uid_19",
+      "email": "sam.young@wayneent.com",
+      "emailVerified": true,
+      "displayName": "Sam Young",
+      "passwordHash": "OA5DWdQ94BNpg/H9t1v0kxUakoo40AohRMKF1oPPPOZqQo2ySju13S1XWvrJ2fzX63V/81KO9gFqdNlsuVVq9h==",
+      "salt": "WXYZabcdEFGH==",
+      "createdAt": "1648021842000",
+      "lastSignedInAt": "1700001800000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "sam.young@wayneent.com", "email": "sam.young@wayneent.com" }
+      ]
+    },
+    {
+      "localId": "uid_20",
+      "email": "tina.king@wayneent.com",
+      "emailVerified": true,
+      "displayName": "Tina King",
+      "passwordHash": "PB6EXeR05COqh/I9u2w1lyVblpp51BpiSNLG2pQQQPaqRp3zTkv24T2YXwsK3gAY74W/92LP0hGrfOmtvWWr0i==",
+      "salt": "IJKLmnopQRST==",
+      "createdAt": "1648021942000",
+      "lastSignedInAt": "1700001900000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "tina.king@wayneent.com", "email": "tina.king@wayneent.com" }
+      ]
+    },
+    {
+      "localId": "uid_21",
+      "email": "uma.scott@freelance.dev",
+      "emailVerified": true,
+      "displayName": "Uma Scott",
+      "passwordHash": "QC7FYfS16DPri/J9v3x2mzWcmqq62CqjTOMH3qRRRQbrSq40Ulw35U3ZYxtL4hBZ85X/03MQ1iHsgPnuwXXs1j==",
+      "salt": "UVWXyzabCDEF==",
+      "createdAt": "1648022042000",
+      "lastSignedInAt": "1700002000000",
+      "customAttributes": "{\"role\":\"freelancer\",\"plan\":\"premium\"}",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "uma.scott@freelance.dev", "email": "uma.scott@freelance.dev" }
+      ]
+    },
+    {
+      "localId": "uid_22",
+      "email": "victor.adams@freelance.dev",
+      "emailVerified": false,
+      "displayName": "Victor Adams",
+      "createdAt": "1648022142000",
+      "providerUserInfo": [
+        { "providerId": "google.com", "rawId": "109876543210", "email": "victor.adams@gmail.com", "displayName": "Victor Adams", "photoUrl": "https://lh3.googleusercontent.com/a/photo" }
+      ]
+    },
+    {
+      "localId": "uid_23",
+      "email": "wendy.baker@freelance.dev",
+      "emailVerified": true,
+      "displayName": "Wendy Baker",
+      "passwordHash": "RD8GZgT27EQsj/K9w4y3n0XdnrZD3DrkUPNI4rSSSScsTs51Vmx46V4aZyuM5iCa96Y/14NR2jItfQovxYYt2k==",
+      "salt": "GHIJklmnOPQR==",
+      "createdAt": "1648022242000",
+      "lastSignedInAt": "1700002200000",
+      "disabled": true,
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "wendy.baker@freelance.dev", "email": "wendy.baker@freelance.dev" }
+      ]
+    },
+    {
+      "localId": "uid_24",
+      "email": "xander.cole@freelance.dev",
+      "emailVerified": true,
+      "displayName": "Xander Cole",
+      "passwordHash": "SE9HahU38FRtk/L9x5z4o1YeosSE4EslVQOJ5sUTTTdtUu62Wny57W5bAzvN6jDb07Z/25OS3kJugRpwyZZu3l==",
+      "salt": "STUVwxyzABCD==",
+      "phoneNumber": "+15551000024",
+      "createdAt": "1648022342000",
+      "lastSignedInAt": "1700002300000",
+      "providerUserInfo": [
+        { "providerId": "password", "rawId": "xander.cole@freelance.dev", "email": "xander.cole@freelance.dev" }
+      ],
+      "mfaInfo": [
+        {
+          "mfaEnrollmentId": "mfa_enrollment_001",
+          "displayName": "My Phone",
+          "phoneInfo": "+15551000024",
+          "enrolledAt": "2023-06-15T10:30:00Z"
+        }
+      ]
+    },
+    {
+      "localId": "uid_25",
+      "displayName": "No Email User",
+      "createdAt": "1648022442000",
+      "providerUserInfo": [
+        { "providerId": "phone", "rawId": "+15559999999", "phoneNumber": "+15559999999" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,422 @@
+[
+  {
+    "email": "alice.anderson@acmecorp.com",
+    "email_verified": true,
+    "user_id": "user_001",
+    "given_name": "Alice",
+    "family_name": "Anderson",
+    "name": "Alice Anderson",
+    "nickname": "alice",
+    "custom_password_hash": {
+      "algorithm": "bcrypt",
+      "hash": {
+        "value": "$2b$10$C9hB01.YxRSTcn/ZOOo4j.TW7xCKKFKBSF.C7E0xiUwumqIDqWUXG"
+      }
+    },
+    "user_metadata": {
+      "organization_id": "org_acme_001",
+      "organization_name": "Acme Corporation",
+      "department": "Engineering",
+      "title": "Senior Software Engineer",
+      "location": "San Francisco, CA",
+      "phone": "+1-415-555-0101"
+    },
+    "app_metadata": {
+      "roles": ["admin", "developer"],
+      "plan": "enterprise",
+      "onboarding_completed": true
+    }
+  },
+  {
+    "email": "bob.builder@acmecorp.com",
+    "email_verified": true,
+    "user_id": "user_002",
+    "given_name": "Bob",
+    "family_name": "Builder",
+    "name": "Bob Builder",
+    "nickname": "bob",
+    "custom_password_hash": {
+      "algorithm": "bcrypt",
+      "hash": {
+        "value": "$2b$10$nFguVi9LsCAcvTZFKQlRKeLVydo8ETv483lkNsSFI/Wl1Rz1Ypo1K"
+      }
+    },
+    "user_metadata": {
+      "organization_id": "org_acme_001",
+      "organization_name": "Acme Corporation",
+      "department": "Engineering",
+      "title": "Engineering Manager",
+      "location": "San Francisco, CA",
+      "phone": "+1-415-555-0102"
+    },
+    "app_metadata": {
+      "roles": ["admin", "manager"],
+      "plan": "enterprise",
+      "onboarding_completed": true
+    }
+  },
+  {
+    "email": "charlie.chen@acmecorp.com",
+    "email_verified": true,
+    "user_id": "user_003",
+    "given_name": "Charlie",
+    "family_name": "Chen",
+    "name": "Charlie Chen",
+    "nickname": "charlie",
+    "custom_password_hash": {
+      "algorithm": "bcrypt",
+      "hash": {
+        "value": "$2b$10$C9hB01.YxRSTcn/ZOOo4j.TW7xCKKFKBSF.C7E0xiUwumqIDqWUXG"
+      }
+    },
+    "user_metadata": {
+      "organization_id": "org_acme_001",
+      "organization_name": "Acme Corporation",
+      "department": "Sales",
+      "title": "Account Executive",
+      "location": "New York, NY",
+      "phone": "+1-212-555-0103"
+    },
+    "app_metadata": {
+      "roles": ["user"],
+      "plan": "enterprise",
+      "onboarding_completed": true
+    }
+  },
+  {
+    "email": "diana.davis@acmecorp.com",
+    "email_verified": false,
+    "user_id": "user_004",
+    "given_name": "Diana",
+    "family_name": "Davis",
+    "name": "Diana Davis",
+    "nickname": "diana",
+    "custom_password_hash": {
+      "algorithm": "bcrypt",
+      "hash": {
+        "value": "$2b$10$C9hB01.YxRSTcn/ZOOo4j.TW7xCKKFKBSF.C7E0xiUwumqIDqWUXG"
+      }
+    },
+    "user_metadata": {
+      "organization_id": "org_acme_001",
+      "organization_name": "Acme Corporation",
+      "department": "Marketing",
+      "title": "Marketing Coordinator",
+      "location": "Austin, TX",
+      "phone": "+1-512-555-0104"
+    },
+    "app_metadata": {
+      "roles": ["user"],
+      "plan": "enterprise",
+      "onboarding_completed": false
+    }
+  },
+  {
+    "email": "evan.evans@betainc.com",
+    "email_verified": true,
+    "user_id": "user_005",
+    "given_name": "Evan",
+    "family_name": "Evans",
+    "name": "Evan Evans",
+    "nickname": "evan",
+    "custom_password_hash": {
+      "algorithm": "bcrypt",
+      "hash": {
+        "value": "$2b$10$nFguVi9LsCAcvTZFKQlRKeLVydo8ETv483lkNsSFI/Wl1Rz1Ypo1K"
+      }
+    },
+    "user_metadata": {
+      "organization_id": "org_beta_002",
+      "organization_name": "Beta Inc",
+      "department": "Product",
+      "title": "Product Manager",
+      "location": "Seattle, WA",
+      "phone": "+1-206-555-0105"
+    },
+    "app_metadata": {
+      "roles": ["admin", "product"],
+      "plan": "professional",
+      "onboarding_completed": true
+    }
+  },
+  {
+    "email": "fiona.fitzgerald@betainc.com",
+    "email_verified": true,
+    "user_id": "user_006",
+    "given_name": "Fiona",
+    "family_name": "Fitzgerald",
+    "name": "Fiona Fitzgerald",
+    "nickname": "fiona",
+    "custom_password_hash": {
+      "algorithm": "bcrypt",
+      "hash": {
+        "value": "$2b$10$C9hB01.YxRSTcn/ZOOo4j.TW7xCKKFKBSF.C7E0xiUwumqIDqWUXG"
+      }
+    },
+    "user_metadata": {
+      "organization_id": "org_beta_002",
+      "organization_name": "Beta Inc",
+      "department": "Engineering",
+      "title": "Staff Engineer",
+      "location": "Seattle, WA",
+      "phone": "+1-206-555-0106"
+    },
+    "app_metadata": {
+      "roles": ["developer"],
+      "plan": "professional",
+      "onboarding_completed": true
+    }
+  },
+  {
+    "email": "george.garcia@betainc.com",
+    "email_verified": true,
+    "user_id": "user_007",
+    "given_name": "George",
+    "family_name": "Garcia",
+    "name": "George Garcia",
+    "nickname": "george",
+    "custom_password_hash": {
+      "algorithm": "bcrypt",
+      "hash": {
+        "value": "$2b$10$C9hB01.YxRSTcn/ZOOo4j.TW7xCKKFKBSF.C7E0xiUwumqIDqWUXG"
+      }
+    },
+    "user_metadata": {
+      "organization_id": "org_beta_002",
+      "organization_name": "Beta Inc",
+      "department": "Design",
+      "title": "UX Designer",
+      "location": "Portland, OR",
+      "phone": "+1-503-555-0107"
+    },
+    "app_metadata": {
+      "roles": ["user"],
+      "plan": "professional",
+      "onboarding_completed": true
+    }
+  },
+  {
+    "email": "hannah.hernandez@betainc.com",
+    "email_verified": false,
+    "user_id": "user_008",
+    "given_name": "Hannah",
+    "family_name": "Hernandez",
+    "name": "Hannah Hernandez",
+    "nickname": "hannah",
+    "custom_password_hash": {
+      "algorithm": "bcrypt",
+      "hash": {
+        "value": "$2b$10$nFguVi9LsCAcvTZFKQlRKeLVydo8ETv483lkNsSFI/Wl1Rz1Ypo1K"
+      }
+    },
+    "user_metadata": {
+      "organization_id": "org_beta_002",
+      "organization_name": "Beta Inc",
+      "department": "Customer Success",
+      "title": "CS Representative",
+      "location": "Remote",
+      "phone": "+1-555-555-0108"
+    },
+    "app_metadata": {
+      "roles": ["user", "support"],
+      "plan": "professional",
+      "onboarding_completed": false
+    }
+  },
+  {
+    "email": "ivan.ivanov@gammallc.com",
+    "email_verified": true,
+    "user_id": "user_009",
+    "given_name": "Ivan",
+    "family_name": "Ivanov",
+    "name": "Ivan Ivanov",
+    "nickname": "ivan",
+    "custom_password_hash": {
+      "algorithm": "bcrypt",
+      "hash": {
+        "value": "$2b$10$C9hB01.YxRSTcn/ZOOo4j.TW7xCKKFKBSF.C7E0xiUwumqIDqWUXG"
+      }
+    },
+    "user_metadata": {
+      "organization_id": "org_gamma_003",
+      "organization_name": "Gamma LLC",
+      "department": "Operations",
+      "title": "COO",
+      "location": "Boston, MA",
+      "phone": "+1-617-555-0109"
+    },
+    "app_metadata": {
+      "roles": ["admin", "executive"],
+      "plan": "starter",
+      "onboarding_completed": true
+    }
+  },
+  {
+    "email": "julia.johnson@gammallc.com",
+    "email_verified": true,
+    "user_id": "user_010",
+    "given_name": "Julia",
+    "family_name": "Johnson",
+    "name": "Julia Johnson",
+    "nickname": "julia",
+    "custom_password_hash": {
+      "algorithm": "bcrypt",
+      "hash": {
+        "value": "$2b$10$nFguVi9LsCAcvTZFKQlRKeLVydo8ETv483lkNsSFI/Wl1Rz1Ypo1K"
+      }
+    },
+    "user_metadata": {
+      "organization_id": "org_gamma_003",
+      "organization_name": "Gamma LLC",
+      "department": "Finance",
+      "title": "Controller",
+      "location": "Boston, MA",
+      "phone": "+1-617-555-0110"
+    },
+    "app_metadata": {
+      "roles": ["user", "finance"],
+      "plan": "starter",
+      "onboarding_completed": true
+    }
+  },
+  {
+    "email": "kevin.kim@gammallc.com",
+    "email_verified": true,
+    "user_id": "user_011",
+    "given_name": "Kevin",
+    "family_name": "Kim",
+    "name": "Kevin Kim",
+    "nickname": "kevin",
+    "custom_password_hash": {
+      "algorithm": "bcrypt",
+      "hash": {
+        "value": "$2b$10$C9hB01.YxRSTcn/ZOOo4j.TW7xCKKFKBSF.C7E0xiUwumqIDqWUXG"
+      }
+    },
+    "user_metadata": {
+      "organization_id": "org_gamma_003",
+      "organization_name": "Gamma LLC",
+      "department": "Engineering",
+      "title": "Junior Developer",
+      "location": "Remote",
+      "phone": "+1-555-555-0111"
+    },
+    "app_metadata": {
+      "roles": ["developer"],
+      "plan": "starter",
+      "onboarding_completed": true
+    }
+  },
+  {
+    "email": "laura.lopez@acmecorp.com",
+    "email_verified": true,
+    "user_id": "user_012",
+    "given_name": "Laura",
+    "family_name": "Lopez",
+    "name": "Laura Lopez",
+    "nickname": "laura",
+    "custom_password_hash": {
+      "algorithm": "bcrypt",
+      "hash": {
+        "value": "$2b$10$nFguVi9LsCAcvTZFKQlRKeLVydo8ETv483lkNsSFI/Wl1Rz1Ypo1K"
+      }
+    },
+    "user_metadata": {
+      "organization_id": "org_acme_001",
+      "organization_name": "Acme Corporation",
+      "department": "HR",
+      "title": "HR Manager",
+      "location": "San Francisco, CA",
+      "phone": "+1-415-555-0112"
+    },
+    "app_metadata": {
+      "roles": ["user", "hr"],
+      "plan": "enterprise",
+      "onboarding_completed": true
+    }
+  },
+  {
+    "email": "michael.martinez@betainc.com",
+    "email_verified": false,
+    "user_id": "user_013",
+    "given_name": "Michael",
+    "family_name": "Martinez",
+    "name": "Michael Martinez",
+    "nickname": "michael",
+    "custom_password_hash": {
+      "algorithm": "bcrypt",
+      "hash": {
+        "value": "$2b$10$C9hB01.YxRSTcn/ZOOo4j.TW7xCKKFKBSF.C7E0xiUwumqIDqWUXG"
+      }
+    },
+    "user_metadata": {
+      "organization_id": "org_beta_002",
+      "organization_name": "Beta Inc",
+      "department": "Engineering",
+      "title": "DevOps Engineer",
+      "location": "Seattle, WA",
+      "phone": "+1-206-555-0113"
+    },
+    "app_metadata": {
+      "roles": ["developer", "devops"],
+      "plan": "professional",
+      "onboarding_completed": false
+    }
+  },
+  {
+    "email": "nancy.nguyen@gammallc.com",
+    "email_verified": true,
+    "user_id": "user_014",
+    "given_name": "Nancy",
+    "family_name": "Nguyen",
+    "name": "Nancy Nguyen",
+    "nickname": "nancy",
+    "custom_password_hash": {
+      "algorithm": "bcrypt",
+      "hash": {
+        "value": "$2b$10$nFguVi9LsCAcvTZFKQlRKeLVydo8ETv483lkNsSFI/Wl1Rz1Ypo1K"
+      }
+    },
+    "user_metadata": {
+      "organization_id": "org_gamma_003",
+      "organization_name": "Gamma LLC",
+      "department": "Sales",
+      "title": "Sales Representative",
+      "location": "Boston, MA",
+      "phone": "+1-617-555-0114"
+    },
+    "app_metadata": {
+      "roles": ["user"],
+      "plan": "starter",
+      "onboarding_completed": true
+    }
+  },
+  {
+    "email": "oliver.oconnor@acmecorp.com",
+    "email_verified": true,
+    "user_id": "user_015",
+    "given_name": "Oliver",
+    "family_name": "O'Connor",
+    "name": "Oliver O'Connor",
+    "nickname": "oliver",
+    "custom_password_hash": {
+      "algorithm": "bcrypt",
+      "hash": {
+        "value": "$2b$10$C9hB01.YxRSTcn/ZOOo4j.TW7xCKKFKBSF.C7E0xiUwumqIDqWUXG"
+      }
+    },
+    "user_metadata": {
+      "organization_id": "org_acme_001",
+      "organization_name": "Acme Corporation",
+      "department": "Engineering",
+      "title": "QA Engineer",
+      "location": "Austin, TX",
+      "phone": "+1-512-555-0115"
+    },
+    "app_metadata": {
+      "roles": ["developer", "qa"],
+      "plan": "enterprise",
+      "onboarding_completed": true
+    }
+  }
+]

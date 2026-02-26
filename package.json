@@ -17,7 +17,7 @@
   },
   "scripts": {
     "start": "tsx bin/import-users.ts",
-    "import:example": "tsx bin/import-users.ts --csv examples/example-input.csv",
+    "import:example": "tsx bin/import-users.ts --csv examples/common/example-input.csv",
     "typecheck": "tsc --noEmit",
     "test": "tsx scripts/run-all-tests.ts"
   },

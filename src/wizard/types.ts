@@ -7,7 +7,7 @@
 /**
  * Migration source provider
  */
-export type MigrationSource = 'auth0' | 'okta' | 'cognito' | 'clerk' | 'custom';
+export type MigrationSource = 'auth0' | 'okta' | 'cognito' | 'clerk' | 'firebase' | 'custom';
 
 /**
  * Import mode
@@ -75,6 +75,16 @@ export interface WizardAnswers {
   // Provider configuration (Clerk)
   clerkCsvPath?: string;
   clerkOrgMappingPath?: string;
+
+  // Provider configuration (Firebase)
+  firebaseJsonPath?: string;
+  firebaseSignerKey?: string;
+  firebaseSaltSeparator?: string;
+  firebaseRounds?: number;
+  firebaseMemCost?: number;
+  firebaseNameSplit?: 'first-space' | 'last-space' | 'first-name-only';
+  firebaseIncludeDisabled?: boolean;
+  firebaseOrgMappingPath?: string;
 
   // Role mapping (universal — applies to all sources)
   hasRoleMapping?: boolean;

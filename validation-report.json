@@ -1,23 +1,298 @@
 {
   "summary": {
-    "totalRows": 25,
-    "validRows": 25,
+    "totalRows": 23,
+    "validRows": 0,
     "invalidRows": 0,
-    "warningRows": 0,
-    "duplicateEmails": 25,
-    "duplicateExternalIds": 25,
-    "mode": "multi-org",
+    "warningRows": 23,
+    "duplicateEmails": 23,
+    "duplicateExternalIds": 23,
+    "mode": "user-only",
     "autoFixApplied": true,
-    "fixedIssues": 0
+    "fixedIssues": 25
   },
   "issues": [
     {
       "severity": "info",
       "category": "header",
-      "message": "Detected mode: multi-org",
+      "message": "Detected mode: user-only",
       "ruleId": "mode-detection"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 1,
+      "field": "metadata",
+      "email": "alice.johnson@acme.com",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"alice.johnson@acme.com\",\"email\":\"alice.johnson@acme.com\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 2,
+      "field": "metadata",
+      "email": "bob.martinez@acme.com",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"bob.martinez@acme.com\",\"email\":\"bob.martinez@acme.com\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 3,
+      "field": "metadata",
+      "email": "carol.williams@acme.com",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"carol.williams@acme.com\",\"email\":\"carol.williams@acme.com\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 4,
+      "field": "metadata",
+      "email": "david.brown@acme.com",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"david.brown@acme.com\",\"email\":\"david.brown@acme.com\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 5,
+      "field": "metadata",
+      "email": "emma.davis@acme.com",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"emma.davis@acme.com\",\"email\":\"emma.davis@acme.com\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 6,
+      "field": "metadata",
+      "email": "frank.garcia@globex.io",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object],[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"frank.garcia@globex.io\",\"email\":\"frank.garcia@globex.io\"},{\"providerId\":\"google.com\",\"rawId\":\"107234567890\",\"email\":\"frank.garcia@gmail.com\",\"displayName\":\"Frank Garcia\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 7,
+      "field": "metadata",
+      "email": "grace.lee@globex.io",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"grace.lee@globex.io\",\"email\":\"grace.lee@globex.io\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 8,
+      "field": "metadata",
+      "email": "henry.wilson@globex.io",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"henry.wilson@globex.io\",\"email\":\"henry.wilson@globex.io\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 9,
+      "field": "metadata",
+      "email": "iris.taylor@globex.io",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"iris.taylor@globex.io\",\"email\":\"iris.taylor@globex.io\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 10,
+      "field": "metadata",
+      "email": "jack.anderson@globex.io",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"jack.anderson@globex.io\",\"email\":\"jack.anderson@globex.io\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 11,
+      "field": "metadata",
+      "email": "karen.thomas@initech.co",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"karen.thomas@initech.co\",\"email\":\"karen.thomas@initech.co\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 12,
+      "field": "metadata",
+      "email": "leo.jackson@initech.co",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"leo.jackson@initech.co\",\"email\":\"leo.jackson@initech.co\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 13,
+      "field": "metadata",
+      "email": "mia.white@initech.co",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"mia.white@initech.co\",\"email\":\"mia.white@initech.co\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 14,
+      "field": "metadata",
+      "email": "noah.harris@initech.co",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"noah.harris@initech.co\",\"email\":\"noah.harris@initech.co\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 15,
+      "field": "metadata",
+      "email": "olivia.clark@initech.co",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"olivia.clark@initech.co\",\"email\":\"olivia.clark@initech.co\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 16,
+      "field": "metadata",
+      "email": "paul.lewis@wayneent.com",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"paul.lewis@wayneent.com\",\"email\":\"paul.lewis@wayneent.com\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 17,
+      "field": "metadata",
+      "email": "quinn.robinson@wayneent.com",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"quinn.robinson@wayneent.com\",\"email\":\"quinn.robinson@wayneent.com\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 18,
+      "field": "metadata",
+      "email": "rachel.walker@wayneent.com",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object],[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"rachel.walker@wayneent.com\",\"email\":\"rachel.walker@wayneent.com\"},{\"providerId\":\"github.com\",\"rawId\":\"12345678\",\"email\":\"rachel@github.com\",\"displayName\":\"rachelw\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 19,
+      "field": "metadata",
+      "email": "sam.young@wayneent.com",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"sam.young@wayneent.com\",\"email\":\"sam.young@wayneent.com\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 20,
+      "field": "metadata",
+      "email": "tina.king@wayneent.com",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"tina.king@wayneent.com\",\"email\":\"tina.king@wayneent.com\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 21,
+      "field": "metadata",
+      "email": "uma.scott@freelance.dev",
+      "message": "Metadata field \"custom_attributes\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "{\"role\":\"freelancer\",\"plan\":\"premium\"}"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 21,
+      "field": "metadata",
+      "email": "uma.scott@freelance.dev",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"uma.scott@freelance.dev\",\"email\":\"uma.scott@freelance.dev\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 22,
+      "field": "metadata",
+      "email": "victor.adams@freelance.dev",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"google.com\",\"rawId\":\"109876543210\",\"email\":\"victor.adams@gmail.com\",\"displayName\":\"Victor Adams\",\"photoUrl\":\"https://lh3.googleusercontent.com/a/photo\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 23,
+      "field": "metadata",
+      "email": "xander.cole@freelance.dev",
+      "message": "Metadata field \"provider_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"providerId\":\"password\",\"rawId\":\"xander.cole@freelance.dev\",\"email\":\"xander.cole@freelance.dev\"}]"
+    },
+    {
+      "severity": "warning",
+      "category": "row",
+      "recordNumber": 23,
+      "field": "metadata",
+      "email": "xander.cole@freelance.dev",
+      "message": "Metadata field \"mfa_info\" contains array/object (will be auto-converted to JSON string for WorkOS compatibility)",
+      "ruleId": "metadata-arrays-objects",
+      "originalValue": "[object Object]",
+      "fixedValue": "[{\"mfaEnrollmentId\":\"mfa_enrollment_001\",\"displayName\":\"My Phone\",\"phoneInfo\":\"+15551000024\",\"enrolledAt\":\"2023-06-15T10:30:00Z\"}]"
     }
   ],
-  "timestamp": "2026-02-19T16:33:33.299Z",
-  "csvHash": "18b32ef402134b18a0a0c1af8244539d18878072f181460f9315fd75613599a2"
+  "timestamp": "2026-02-26T23:18:36.292Z",
+  "csvHash": "df3f4621e7cf3b2b32c7034f0dd87be898ef366c8a3158e68bdc91197334d3af"
 }

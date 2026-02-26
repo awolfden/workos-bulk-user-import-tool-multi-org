@@ -1,47 +1,41 @@
 {
-  "timestamp": "2026-02-19T16:33:51.721Z",
-  "source": "clerk",
+  "timestamp": "2026-02-26T23:18:59.316Z",
+  "source": "firebase",
   "importMode": "multi-org",
   "result": {
     "success": true,
-    "totalSteps": 7,
-    "completedSteps": 7,
+    "totalSteps": 6,
+    "completedSteps": 6,
     "failedSteps": 0,
     "skippedSteps": 2,
-    "totalDuration": 43814,
+    "totalDuration": 28697,
     "summary": {
       "retries": 1
     }
   },
   "steps": [
     {
-      "stepId": "clerk-transform",
+      "stepId": "firebase-transform",
       "success": true,
-      "duration": 861,
-      "skipped": false
-    },
-    {
-      "stepId": "process-role-definitions",
-      "success": true,
-      "duration": 14676,
+      "duration": 1694,
       "skipped": false
     },
     {
       "stepId": "validate",
       "success": true,
-      "duration": 890,
+      "duration": 1693,
       "skipped": false
     },
     {
       "stepId": "plan",
       "success": true,
-      "duration": 839,
+      "duration": 1147,
       "skipped": false
     },
     {
       "stepId": "import",
       "success": true,
-      "duration": 2857,
+      "duration": 2266,
       "skipped": false
     },
     {
@@ -58,17 +52,16 @@
     }
   ],
   "plan": {
-    "warnings": [],
+    "warnings": [
+      "No org mapping file provided - users will be imported without organization memberships",
+      "No Firebase scrypt parameters provided - passwords will not be migrated"
+    ],
     "recommendations": [
       "Checkpoint directory: .workos-checkpoints/",
       "You can resume this migration with --resume flag",
-      "Clerk passwords (bcrypt) will be migrated - users keep their existing passwords",
-      "Organization mapping will be applied during transformation",
-      "Organizations referenced by org_name will be auto-created in WorkOS if they do not already exist",
-      "The import uses organization caching and pre-warming to efficiently handle org creation",
-      "Multi-org mode uses organization caching for performance",
-      "Role assignments will be applied during membership creation",
-      "Roles will be created before import — existing roles with different permissions will be preserved with a warning"
+      "Users will need to reset passwords on first login (no scrypt parameters provided)",
+      "To include passwords: Get hash parameters from Firebase Console > Authentication > Users > Password Hash Parameters",
+      "Multi-org mode uses organization caching for performance"
     ]
   }
 }

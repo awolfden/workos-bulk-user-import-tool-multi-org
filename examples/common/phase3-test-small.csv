@@ -1,0 +1,11 @@
+email,first_name,last_name,org_external_id,org_name
+alice1@acme.com,Alice,User1,acme-corp,Acme Corporation
+bob1@acme.com,Bob,User1,acme-corp,Acme Corporation
+charlie1@beta.com,Charlie,User1,beta-inc,Beta Inc
+dana1@beta.com,Dana,User1,beta-inc,Beta Inc
+eve1@acme.com,Eve,User1,acme-corp,Acme Corporation
+frank1@gamma.com,Frank,User1,gamma-llc,Gamma LLC
+grace1@gamma.com,Grace,User1,gamma-llc,Gamma LLC
+henry1@acme.com,Henry,User1,acme-corp,Acme Corporation
+iris1@beta.com,Iris,User1,beta-inc,Beta Inc
+jack1@delta.com,Jack,User1,delta-co,Delta Co

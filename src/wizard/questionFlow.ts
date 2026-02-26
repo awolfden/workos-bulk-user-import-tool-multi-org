@@ -47,6 +47,7 @@ export async function askQuestions(
       choices: [
         { title: "Auth0", value: "auth0" },
         { title: "Clerk", value: "clerk" },
+        { title: "Firebase", value: "firebase" },
         { title: "Okta (coming soon)", value: "okta", disabled: true },
         { title: "Cognito (coming soon)", value: "cognito", disabled: true },
         { title: "Custom CSV (I already have a CSV file)", value: "custom" },
@@ -87,9 +88,15 @@ export async function askQuestions(
     await askClerkConfiguration(answers);
   }
 
+  // If Firebase, ask for file paths and hash params
+  if (answers.source === "firebase") {
+    await askFirebaseConfiguration(answers);
+  }
+
   // Question 2: Import mode
-  // Auto-set to multi-org for Clerk with org mapping
-  if (answers.source === "clerk" && answers.clerkOrgMappingPath) {
+  // Auto-set to multi-org for Clerk/Firebase with org mapping
+  if ((answers.source === "clerk" && answers.clerkOrgMappingPath) ||
+      (answers.source === "firebase" && answers.firebaseOrgMappingPath)) {
     answers.importMode = "multi-org";
     console.log(
       chalk.gray("Import mode: multi-org (auto-set from org mapping file)\n")
@@ -491,6 +498,208 @@ async function askClerkConfiguration(
   );
 
   console.log(chalk.green("✓ Clerk configuration complete\n"));
+}
+
+/**
+ * Ask Firebase configuration (file paths, hash params, name splitting)
+ */
+async function askFirebaseConfiguration(
+  answers: Partial<WizardAnswers>
+): Promise<void> {
+  console.log(chalk.cyan("\n📋 Firebase Configuration"));
+  console.log(
+    chalk.gray(
+      "We'll transform your Firebase Auth JSON export into WorkOS format.\n" +
+      "Export your users with: firebase auth:export users.json --format=JSON --project=<id>\n"
+    )
+  );
+
+  // 1. Ask for Firebase JSON path
+  const jsonAnswer = await prompts({
+    type: "text",
+    name: "firebaseJsonPath",
+    message: "Path to your Firebase JSON export file:",
+    validate: (value: string) => {
+      if (!value.trim()) return "Firebase JSON path is required";
+      if (!value.endsWith(".json")) return "File should be a .json file";
+      return true;
+    },
+  });
+
+  if (!jsonAnswer.firebaseJsonPath) {
+    throw new Error("Firebase JSON path is required");
+  }
+
+  answers.firebaseJsonPath = jsonAnswer.firebaseJsonPath;
+  console.log(chalk.green("✓ Firebase JSON configured\n"));
+
+  // 2. Ask about password migration
+  console.log(chalk.cyan("🔐 Password Hash Migration"));
+  console.log(
+    chalk.gray(
+      "Firebase uses a modified scrypt algorithm for passwords.\n" +
+      "To migrate passwords, you need the hash parameters from your Firebase Console:\n" +
+      "  Authentication > Users > (⋮ menu) > Password Hash Parameters\n"
+    )
+  );
+
+  const hasHashParams = await prompts({
+    type: "confirm",
+    name: "hasHashParams",
+    message: "Do you have Firebase password hash parameters?",
+    initial: false,
+  });
+
+  if (hasHashParams.hasHashParams) {
+    const hashParams = await prompts([
+      {
+        type: "password",
+        name: "signerKey",
+        message: "Signer key (base64_signer_key):",
+        validate: (value: string) =>
+          value.trim().length > 0 || "Signer key is required",
+      },
+      {
+        type: "text",
+        name: "saltSeparator",
+        message: "Salt separator (base64_salt_separator):",
+        initial: "Bw==",
+      },
+      {
+        type: "number",
+        name: "rounds",
+        message: "Rounds:",
+        initial: 8,
+        min: 1,
+      },
+      {
+        type: "number",
+        name: "memCost",
+        message: "Memory cost (mem_cost):",
+        initial: 14,
+        min: 1,
+      },
+    ]);
+
+    if (!hashParams.signerKey) {
+      throw new Error("Signer key is required for password migration");
+    }
+
+    answers.firebaseSignerKey = hashParams.signerKey;
+    answers.firebaseSaltSeparator = hashParams.saltSeparator || "Bw==";
+    answers.firebaseRounds = hashParams.rounds || 8;
+    answers.firebaseMemCost = hashParams.memCost || 14;
+
+    console.log(chalk.green("✓ Password hash parameters configured\n"));
+  } else {
+    console.log(
+      chalk.yellow("⚠️  Users will be imported without password hashes\n")
+    );
+    console.log(
+      chalk.gray("Users will need to reset their passwords on first login.\n")
+    );
+  }
+
+  // 3. Ask about name splitting
+  console.log(chalk.cyan("👤 Display Name Handling"));
+  console.log(
+    chalk.gray(
+      "Firebase stores names as a single 'displayName' field.\n" +
+      "Choose how to split into first and last name for WorkOS.\n"
+    )
+  );
+
+  const nameSplitAnswer = await prompts({
+    type: "select",
+    name: "nameSplit",
+    message: "How should display names be split?",
+    choices: [
+      {
+        title: "Split on first space (e.g., 'John Doe' → John / Doe)",
+        value: "first-space",
+      },
+      {
+        title: "Split on last space (e.g., 'Mary Jane Watson' → Mary Jane / Watson)",
+        value: "last-space",
+      },
+      {
+        title: "Keep full name as first name (no splitting)",
+        value: "first-name-only",
+      },
+    ],
+  });
+
+  answers.firebaseNameSplit = nameSplitAnswer.nameSplit || "first-space";
+
+  // 4. Ask about disabled users
+  const disabledAnswer = await prompts({
+    type: "confirm",
+    name: "includeDisabled",
+    message: "Include disabled users in the migration?",
+    initial: false,
+  });
+
+  answers.firebaseIncludeDisabled = disabledAnswer.includeDisabled ?? false;
+
+  // 5. Ask about org mapping
+  const orgMappingAnswer = await prompts({
+    type: "confirm",
+    name: "hasOrgMapping",
+    message: "Do you have a user-to-organization mapping CSV?",
+    initial: false,
+  });
+
+  if (orgMappingAnswer.hasOrgMapping) {
+    const mappingPathAnswer = await prompts({
+      type: "text",
+      name: "firebaseOrgMappingPath",
+      message: "Path to organization mapping CSV:",
+      validate: (value: string) => {
+        if (!value.trim()) return "Org mapping CSV path is required";
+        if (!value.endsWith(".csv")) return "File should be a .csv file";
+        return true;
+      },
+    });
+
+    if (!mappingPathAnswer.firebaseOrgMappingPath) {
+      throw new Error("Org mapping CSV path is required");
+    }
+
+    answers.firebaseOrgMappingPath = mappingPathAnswer.firebaseOrgMappingPath;
+
+    console.log(chalk.cyan("\n🏢 Organization Mapping"));
+    console.log(
+      chalk.gray(
+        "Organizations will be created in WorkOS if they don't already exist.\n" +
+        "Your org mapping CSV should have a 'firebase_uid' column plus one or more of:\n" +
+        "  org_id, org_external_id, org_name\n" +
+        "Including 'org_name' alongside 'org_external_id' allows new organizations\n" +
+        "to be auto-created during import.\n"
+      )
+    );
+    console.log(chalk.green("✓ Organization mapping configured\n"));
+  } else {
+    console.log(
+      chalk.gray(
+        "\nUsers will be imported without organization memberships.\n" +
+        "You can add org memberships later.\n"
+      )
+    );
+  }
+
+  // Display transform info
+  console.log(
+    chalk.gray(
+      "The Firebase transform step will:\n" +
+      "  • Map Firebase fields to WorkOS format (email, name, external_id)\n" +
+      "  • Migrate scrypt password hashes in PHC format (if hash params provided)\n" +
+      "  • Store extra Firebase fields (phone, photo, MFA, providers) in metadata\n" +
+      "\nNote: If you provide a user-role mapping CSV later,\n" +
+      "it should use 'firebase_uid' as the join key (same as org mapping).\n"
+    )
+  );
+
+  console.log(chalk.green("✓ Firebase configuration complete\n"));
 }
 
 /**

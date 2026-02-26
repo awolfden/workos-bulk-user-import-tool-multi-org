@@ -1,5 +1,0 @@
-email,first_name,last_name,email_verified,password,password_hash,password_hash_type,external_id,metadata
-just-email@test.com,,,,,,,,
-name-verified@test.com,Alex,Example,yes,,,,,"{""plan"":""starter"",""region"":""us-east-1""}"
-with-hash@test.com,,,,,$2a$10$h8wZPR/PyqyBHaH0g0qKRuet9IoVjaVaH/1OxfotVh6tLHx4Akyc2,bcrypt,ext-123,"{""plan"":""starter"",""region"":""us-east-1""}"
-with-metadata@test.com,Jamie,Doe,false,,,,,"{""plan"":""starter"",""pregion"":""us-east-1""}"

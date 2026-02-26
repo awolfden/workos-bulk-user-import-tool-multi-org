@@ -1,4 +1,0 @@
-email,first_name,last_name,email_verified,password_hash,password_hash_type,external_id,metadata,org_external_id,org_name
-alice@acme.com,Alice,Smith,true,,,auth0|123,"{""_provider"":""auth0"",""auth0_department"":""Engineering"",""auth0_team"":""Backend"",""auth0_role"":""admin"",""auth0_permissions"":[""read"",""write""]}",org_001,Acme Corporation
-bob@beta.com,Bob,Jones,false,,,auth0|456,"{""_provider"":""auth0"",""auth0_department"":""Sales"",""auth0_role"":""user""}",org_002,Beta Inc
-charlie@acme.com,Charlie,Brown,true,,,auth0|789,"{""_provider"":""auth0"",""auth0_department"":""Engineering"",""auth0_team"":""Frontend"",""auth0_role"":""user"",""auth0_permissions"":[""read""]}",org_001,Acme Corporation

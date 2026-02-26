@@ -1,6 +1,6 @@
 # WorkOS Multi-Org Migration Toolkit
 
-Migrate users from Auth0 (or any IdP) to WorkOS with support for multi-organization setups, password migration, and million+ user scale.
+Migrate users from Auth0, Clerk, Firebase (or any IdP) to WorkOS with support for multi-organization setups, password migration, and million+ user scale.
 
 ## What Is This?
 
@@ -59,7 +59,7 @@ WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/import-users.ts --csv users.csv
 
 - ✅ **Wizard-Driven** - Interactive guidance through entire process
 - ✅ **Multi-Organization** - Import users across 1000+ organizations in one CSV
-- ✅ **Password Migration** - Bcrypt, Auth0, Okta formats supported
+- ✅ **Password Migration** - Bcrypt, Auth0, Firebase (scrypt), Okta formats supported
 - ✅ **Email Deduplication** - Intelligently merge duplicate emails (common with Auth0)
 - ✅ **Resumable** - Checkpoint large imports, resume on failure
 - ✅ **Parallel Processing** - 4x faster with worker pool (100K users in ~20 minutes)
@@ -77,6 +77,33 @@ WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/migrate-wizard.ts
 ```
 
 👉 **[Wizard Guide](docs/getting-started/WIZARD.md)**
+
+### Migrating from Clerk
+
+Use the wizard or the CLI directly:
+
+```bash
+npx tsx bin/transform-clerk.ts \
+  --clerk-csv clerk-export.csv \
+  --org-mapping clerk-org-mapping.csv \
+  --output workos-users.csv
+```
+
+👉 **[Clerk Migration Guide](docs/guides/CLERK-MIGRATION.md)**
+
+### Migrating from Firebase
+
+Use the wizard or the CLI directly:
+
+```bash
+npx tsx bin/transform-firebase.ts \
+  --firebase-json users.json \
+  --signer-key "<base64_signer_key>" \
+  --org-mapping firebase-org-mapping.csv \
+  --output workos-users.csv
+```
+
+👉 **[Firebase Migration Guide](docs/guides/FIREBASE-MIGRATION.md)**
 
 ### Multi-Organization Import
 

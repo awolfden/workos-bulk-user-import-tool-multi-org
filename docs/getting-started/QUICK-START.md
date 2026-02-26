@@ -71,7 +71,7 @@ Import users without organization memberships:
 
 ```bash
 WORKOS_SECRET_KEY=sk_test_123 \
-  npx tsx bin/import-users.ts --csv examples/example-input.csv
+  npx tsx bin/import-users.ts --csv examples/common/example-input.csv
 ```
 
 ### Single-Organization Mode
@@ -81,7 +81,7 @@ Add all users to one organization by WorkOS ID:
 ```bash
 WORKOS_SECRET_KEY=sk_test_123 \
   npx tsx bin/import-users.ts \
-    --csv examples/example-input.csv \
+    --csv examples/common/example-input.csv \
     --org-id org_123
 ```
 
@@ -90,7 +90,7 @@ Or by external ID (create if missing):
 ```bash
 WORKOS_SECRET_KEY=sk_test_123 \
   npx tsx bin/import-users.ts \
-    --csv examples/example-input.csv \
+    --csv examples/common/example-input.csv \
     --org-external-id acme-123 \
     --create-org-if-missing \
     --org-name "Acme Inc."

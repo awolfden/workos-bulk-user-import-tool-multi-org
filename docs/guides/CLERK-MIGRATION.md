@@ -46,7 +46,7 @@ verified_email_addresses,unverified_email_addresses,verified_phone_numbers,
 unverified_phone_numbers,totp_secret,password_digest,password_hasher
 ```
 
-An example is included at `examples/clerk-export.csv`.
+An example is included at `examples/clerk/clerk-export.csv`.
 
 ## Organization Mapping CSV
 
@@ -102,7 +102,7 @@ When multiple org columns are present, `org_id` takes priority:
 - If `org_id` is provided, it is used directly — `org_external_id` and `org_name` are ignored
 - If `org_id` is absent, `org_external_id` and `org_name` are passed through to the import step
 
-An example is included at `examples/clerk-org-mapping.csv`.
+An example is included at `examples/clerk/clerk-org-mapping.csv`.
 
 ## Role Mapping CSV (Optional)
 

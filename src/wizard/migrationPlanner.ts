@@ -19,14 +19,19 @@ export function generateMigrationPlan(answers: WizardAnswers): MigrationPlan {
   // Generate job ID once for consistency across all steps
   const jobId = answers.enableCheckpointing ? `migration-${Date.now()}` : undefined;
 
-  // Step 1: Export (if not custom CSV and not Clerk — Clerk users provide their own export)
-  if (answers.source !== 'custom' && answers.source !== 'clerk') {
+  // Step 1: Export (if not custom CSV, Clerk, or Firebase — those provide their own export)
+  if (answers.source !== 'custom' && answers.source !== 'clerk' && answers.source !== 'firebase') {
     steps.push(generateExportStep(answers));
   }
 
   // Step 1.5: Transform Clerk export (if Clerk source)
   if (answers.source === 'clerk') {
     steps.push(generateClerkTransformStep(answers));
+  }
+
+  // Step 1.5: Transform Firebase export (if Firebase source)
+  if (answers.source === 'firebase') {
+    steps.push(generateFirebaseTransformStep(answers));
   }
 
   // Step 2: Merge password hashes (if Auth0 and user has passwords)
@@ -150,6 +155,8 @@ function generateRoleDefinitionsStep(answers: WizardAnswers): MigrationStep {
   // Add org mapping for resolving org_external_id in role definitions
   if (answers.clerkOrgMappingPath) {
     args.push('--org-mapping', answers.clerkOrgMappingPath);
+  } else if (answers.firebaseOrgMappingPath) {
+    args.push('--org-mapping', answers.firebaseOrgMappingPath);
   }
 
   return {
@@ -191,6 +198,55 @@ function generateClerkTransformStep(answers: WizardAnswers): MigrationStep {
 }
 
 /**
+ * Generate Firebase transform step
+ */
+function generateFirebaseTransformStep(answers: WizardAnswers): MigrationStep {
+  const args: string[] = [
+    '--firebase-json', answers.firebaseJsonPath!,
+    '--output', 'firebase-transformed.csv',
+    '--name-split', answers.firebaseNameSplit || 'first-space',
+  ];
+
+  // Add scrypt params if provided
+  if (answers.firebaseSignerKey) {
+    args.push('--signer-key', answers.firebaseSignerKey);
+    if (answers.firebaseSaltSeparator) {
+      args.push('--salt-separator', answers.firebaseSaltSeparator);
+    }
+    if (answers.firebaseRounds) {
+      args.push('--rounds', String(answers.firebaseRounds));
+    }
+    if (answers.firebaseMemCost) {
+      args.push('--mem-cost', String(answers.firebaseMemCost));
+    }
+  }
+
+  // Include disabled users
+  if (answers.firebaseIncludeDisabled) {
+    args.push('--include-disabled');
+  }
+
+  // Org mapping
+  if (answers.firebaseOrgMappingPath) {
+    args.push('--org-mapping', answers.firebaseOrgMappingPath);
+  }
+
+  // Role mapping for Firebase transform (merges role_slugs into output CSV)
+  if (answers.roleMappingPath && answers.source === 'firebase') {
+    args.push('--role-mapping', answers.roleMappingPath);
+  }
+
+  return {
+    id: 'firebase-transform',
+    name: 'Transform Firebase Export',
+    description: 'Transform Firebase JSON to WorkOS format (field mapping, passwords, metadata, roles)',
+    command: 'npx tsx bin/transform-firebase.ts',
+    args,
+    optional: false
+  };
+}
+
+/**
  * Generate validation step
  */
 function generateValidationStep(answers: WizardAnswers): MigrationStep {
@@ -200,6 +256,8 @@ function generateValidationStep(answers: WizardAnswers): MigrationStep {
     inputCsv = answers.customCsvPath!;
   } else if (answers.source === 'clerk') {
     inputCsv = 'clerk-transformed.csv';
+  } else if (answers.source === 'firebase') {
+    inputCsv = 'firebase-transformed.csv';
   } else if (answers.source === 'auth0' && answers.auth0HasPasswords) {
     inputCsv = 'auth0-export-with-passwords.csv';
   } else {
@@ -260,8 +318,8 @@ function generatePlanStep(answers: WizardAnswers, jobId?: string): MigrationStep
     args.push('--concurrency', '15');
   }
 
-  // Add role mapping for non-Clerk sources (Clerk embeds roles in transformed CSV)
-  if (answers.roleMappingPath && answers.source !== 'clerk') {
+  // Add role mapping for non-Clerk/Firebase sources (they embed roles in transformed CSV)
+  if (answers.roleMappingPath && answers.source !== 'clerk' && answers.source !== 'firebase') {
     args.push('--role-mapping', answers.roleMappingPath);
   }
 
@@ -308,8 +366,8 @@ function generateDryRunStep(answers: WizardAnswers, jobId?: string): MigrationSt
     args.push('--concurrency', '15');
   }
 
-  // Add role mapping for non-Clerk sources (Clerk embeds roles in transformed CSV)
-  if (answers.roleMappingPath && answers.source !== 'clerk') {
+  // Add role mapping for non-Clerk/Firebase sources (they embed roles in transformed CSV)
+  if (answers.roleMappingPath && answers.source !== 'clerk' && answers.source !== 'firebase') {
     args.push('--role-mapping', answers.roleMappingPath);
   }
 
@@ -356,8 +414,8 @@ function generateImportStep(answers: WizardAnswers, jobId?: string): MigrationSt
     args.push('--concurrency', '15');
   }
 
-  // Add role mapping for non-Clerk sources (Clerk embeds roles in transformed CSV)
-  if (answers.roleMappingPath && answers.source !== 'clerk') {
+  // Add role mapping for non-Clerk/Firebase sources (they embed roles in transformed CSV)
+  if (answers.roleMappingPath && answers.source !== 'clerk' && answers.source !== 'firebase') {
     args.push('--role-mapping', answers.roleMappingPath);
   }
 
@@ -468,6 +526,11 @@ function getImportCsvPath(answers: WizardAnswers): string {
     return 'clerk-transformed.csv';
   }
 
+  // If Firebase, use the transformed CSV
+  if (answers.source === 'firebase') {
+    return 'firebase-transformed.csv';
+  }
+
   // If Auth0 passwords were merged, use the merged CSV
   if (answers.source === 'auth0' && answers.auth0HasPasswords) {
     return 'auth0-export-with-passwords.csv';
@@ -504,6 +567,14 @@ function generateWarnings(answers: WizardAnswers): string[] {
 
   if (answers.source === 'clerk' && !answers.clerkOrgMappingPath) {
     warnings.push('No org mapping file provided - users will be imported without organization memberships');
+  }
+
+  if (answers.source === 'firebase' && !answers.firebaseOrgMappingPath) {
+    warnings.push('No org mapping file provided - users will be imported without organization memberships');
+  }
+
+  if (answers.source === 'firebase' && !answers.firebaseSignerKey) {
+    warnings.push('No Firebase scrypt parameters provided - passwords will not be migrated');
   }
 
   if (answers.hasRoleMapping && !answers.hasRoleDefinitions) {
@@ -543,6 +614,19 @@ function generateRecommendations(answers: WizardAnswers): string[] {
       recommendations.push('Organization mapping will be applied during transformation');
       recommendations.push('Organizations referenced by org_name will be auto-created in WorkOS if they do not already exist');
       recommendations.push('The import uses organization caching and pre-warming to efficiently handle org creation');
+    }
+  }
+
+  if (answers.source === 'firebase') {
+    if (answers.firebaseSignerKey) {
+      recommendations.push('Firebase passwords (scrypt) will be migrated in PHC format - users keep their existing passwords');
+    } else {
+      recommendations.push('Users will need to reset passwords on first login (no scrypt parameters provided)');
+      recommendations.push('To include passwords: Get hash parameters from Firebase Console > Authentication > Users > Password Hash Parameters');
+    }
+    if (answers.firebaseOrgMappingPath) {
+      recommendations.push('Organization mapping will be applied during transformation');
+      recommendations.push('Organizations referenced by org_name will be auto-created in WorkOS if they do not already exist');
     }
   }
 
