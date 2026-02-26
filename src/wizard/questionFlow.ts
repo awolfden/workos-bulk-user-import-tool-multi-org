@@ -108,6 +108,11 @@ export async function askQuestions(
       message: "How do you want to import users?",
       choices: [
         {
+          title: "Users only (no organizations)",
+          value: "user-only",
+          description: "Import users without any organization memberships",
+        },
+        {
           title: "Single organization (all users go to one org)",
           value: "single-org",
           description: "All users will be added to the same WorkOS organization",

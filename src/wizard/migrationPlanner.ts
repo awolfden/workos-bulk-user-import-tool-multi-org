@@ -565,11 +565,11 @@ function generateWarnings(answers: WizardAnswers): string[] {
     warnings.push('No organization specified for single-org mode');
   }
 
-  if (answers.source === 'clerk' && !answers.clerkOrgMappingPath) {
+  if (answers.source === 'clerk' && !answers.clerkOrgMappingPath && answers.importMode !== 'user-only') {
     warnings.push('No org mapping file provided - users will be imported without organization memberships');
   }
 
-  if (answers.source === 'firebase' && !answers.firebaseOrgMappingPath) {
+  if (answers.source === 'firebase' && !answers.firebaseOrgMappingPath && answers.importMode !== 'user-only') {
     warnings.push('No org mapping file provided - users will be imported without organization memberships');
   }
 

@@ -12,7 +12,7 @@ export type MigrationSource = 'auth0' | 'okta' | 'cognito' | 'clerk' | 'firebase
 /**
  * Import mode
  */
-export type ImportMode = 'single-org' | 'multi-org';
+export type ImportMode = 'single-org' | 'multi-org' | 'user-only';
 
 /**
  * Organization specification method
