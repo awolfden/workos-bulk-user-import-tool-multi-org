@@ -98,7 +98,7 @@ function testValidationRules(): void {
   // Test missing email column
   const missingEmailIssues = requiredEmailRule!.validate({ headers: ['first_name', 'last_name'] });
   assert(missingEmailIssues.length === 1, 'Should detect missing email column');
-  assert(missingEmailIssues[0].severity === 'error', 'Missing email should be an error');
+  assert(missingEmailIssues[0]!.severity === 'error', 'Missing email should be an error');
 
   // Test valid headers
   const validHeaderIssues = requiredEmailRule!.validate({ headers: ['email', 'first_name'] });
@@ -160,7 +160,7 @@ function testAutoFixRules(): void {
   });
   assert(fixedEmail.email === 'alice@example.com', 'Should trim email whitespace');
   assert(emailChanges.length === 1, 'Should record one change');
-  assert(emailChanges[0].field === 'email', 'Change should be for email field');
+  assert(emailChanges[0]!.field === 'email', 'Change should be for email field');
 
   // Test boolean format auto-fix
   const booleanFormatRule = getRuleById('boolean-format');
@@ -307,13 +307,13 @@ async function testAutoFix(): Promise<void> {
     assert(lines.length === 4, `Fixed CSV should have 4 lines (header + 3 rows), got ${lines.length}`);
 
     // Check that email whitespace was removed
-    assert(lines[1].startsWith('alice@example.com,'), 'First row should have trimmed email');
-    assert(lines[2].startsWith('bob@example.com,'), 'Second row should have trimmed email');
+    assert(lines[1]!.startsWith('alice@example.com,'), 'First row should have trimmed email');
+    assert(lines[2]!.startsWith('bob@example.com,'), 'Second row should have trimmed email');
 
     // Check that booleans were normalized
-    assert(lines[1].includes(',true,'), 'First row should have normalized boolean (yes → true)');
-    assert(lines[2].includes(',true,'), 'Second row should have normalized boolean (1 → true)');
-    assert(lines[3].includes(',false,'), 'Third row should have normalized boolean (no → false)');
+    assert(lines[1]!.includes(',true,'), 'First row should have normalized boolean (yes → true)');
+    assert(lines[2]!.includes(',true,'), 'Second row should have normalized boolean (1 → true)');
+    assert(lines[3]!.includes(',false,'), 'Third row should have normalized boolean (no → false)');
 
     // Cleanup
     if (fs.existsSync(fixedCsvPath)) {

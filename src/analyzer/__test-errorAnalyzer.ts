@@ -359,8 +359,8 @@ async function testRetryableErrorsExtraction(): Promise<void> {
     const retryableErrors = analyzer.getRetryableErrors();
 
     assert(retryableErrors.length === 1, 'Should extract 1 retryable error');
-    assert(retryableErrors[0].email === 'retryable@example.com', 'Retryable error should have correct email');
-    assert(retryableErrors[0].rawRow.email === 'retryable@example.com', 'Retryable error should have rawRow data');
+    assert(retryableErrors[0]!.email === 'retryable@example.com', 'Retryable error should have correct email');
+    assert(retryableErrors[0]!.rawRow.email === 'retryable@example.com', 'Retryable error should have rawRow data');
   } finally {
     cleanupFile(errorsFile);
     cleanupFile(reportFile);

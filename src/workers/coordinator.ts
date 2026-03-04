@@ -120,7 +120,7 @@ export class WorkerCoordinator {
     const startTime = Date.now();
 
     for (let i = 0; i < uniqueOrgs.length; i++) {
-      const org = uniqueOrgs[i];
+      const org = uniqueOrgs[i]!;
 
       try {
         // Track cache size before resolution to detect new creations
