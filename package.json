@@ -13,7 +13,8 @@
     "workos-setup-auth0-test": "bin/setup-auth0-test-orgs.ts",
     "workos-analyze-errors": "bin/analyze-errors.ts",
     "workos-orchestrate": "bin/orchestrate-migration.ts",
-    "workos-migrate": "bin/migrate-wizard.ts"
+    "workos-migrate": "bin/migrate-wizard.ts",
+    "workos-enroll-totp": "bin/enroll-totp.ts"
   },
   "scripts": {
     "start": "tsx bin/import-users.ts",

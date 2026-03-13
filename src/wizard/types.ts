@@ -86,6 +86,12 @@ export interface WizardAnswers {
   firebaseIncludeDisabled?: boolean;
   firebaseOrgMappingPath?: string;
 
+  // TOTP migration
+  hasTotpSecrets?: boolean;
+  totpSecretsPath?: string;
+  totpSecretsFormat?: 'csv' | 'ndjson';
+  totpIssuer?: string;
+
   // Role mapping (universal — applies to all sources)
   hasRoleMapping?: boolean;
   hasRoleDefinitions?: boolean;

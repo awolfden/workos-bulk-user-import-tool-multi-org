@@ -197,7 +197,7 @@ async function testInvalidCsvFile(): Promise<void> {
   assert(plan.valid === false, 'Plan should be invalid');
   assert(plan.validation.errors.length > 0, 'Should have validation errors');
   assert(
-    plan.validation.errors[0].includes('not found'),
+    plan.validation.errors[0]!.includes('not found'),
     'Should mention file not found'
   );
 }

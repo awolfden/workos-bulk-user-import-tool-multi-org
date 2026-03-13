@@ -326,8 +326,8 @@ async function testIncludeDuplicates(): Promise<void> {
 
     const retryCsvRows = readCsv(retryCsvPath);
     assert(retryCsvRows.length === 2, 'Should include both duplicates');
-    assert(retryCsvRows[0].first_name === 'First', 'First row should have First');
-    assert(retryCsvRows[1].first_name === 'Second', 'Second row should have Second');
+    assert(retryCsvRows[0]!.first_name === 'First', 'First row should have First');
+    assert(retryCsvRows[1]!.first_name === 'Second', 'Second row should have Second');
   } finally {
     cleanupFiles(jsonlPath, reportPath, retryCsvPath);
   }

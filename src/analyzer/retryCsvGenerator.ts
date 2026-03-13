@@ -45,7 +45,7 @@ export async function generateRetryCsv(
   }
 
   // Determine column order (preserve original order from first row)
-  const firstRow = rows[0];
+  const firstRow = rows[0]!;
   const columns = Object.keys(firstRow);
 
   // Ensure standard WorkOS columns come first

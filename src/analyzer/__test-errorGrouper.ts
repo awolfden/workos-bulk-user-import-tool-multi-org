@@ -229,10 +229,10 @@ function testGroupSorting(): void {
   const groups = groupErrors(errors);
 
   assert(groups.length === 2, 'Should create 2 groups');
-  assert(groups[0].severity === 'critical', 'First group should be critical (highest severity)');
-  assert(groups[0].count === 1, 'Critical group has 1 error');
-  assert(groups[1].severity === 'low', 'Second group should be low');
-  assert(groups[1].count === 2, 'Low group has 2 errors');
+  assert(groups[0]!.severity === 'critical', 'First group should be critical (highest severity)');
+  assert(groups[0]!.count === 1, 'Critical group has 1 error');
+  assert(groups[1]!.severity === 'low', 'Second group should be low');
+  assert(groups[1]!.count === 2, 'Low group has 2 errors');
 }
 
 // Test 10: Examples and Email Limits
@@ -254,9 +254,9 @@ function testExamplesAndLimits(): void {
   const groups = groupErrors(errors);
 
   assert(groups.length === 1, 'Should create 1 group');
-  assert(groups[0].count === 15, 'Group should have 15 errors');
-  assert(groups[0].examples.length === 3, 'Should include max 3 examples');
-  assert(groups[0].affectedEmails.length === 10, 'Should include max 10 emails');
+  assert(groups[0]!.count === 15, 'Group should have 15 errors');
+  assert(groups[0]!.examples.length === 3, 'Should include max 3 examples');
+  assert(groups[0]!.affectedEmails.length === 10, 'Should include max 10 emails');
 }
 
 // Run all tests

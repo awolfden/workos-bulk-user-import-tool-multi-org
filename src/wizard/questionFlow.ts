@@ -93,6 +93,9 @@ export async function askQuestions(
     await askFirebaseConfiguration(answers);
   }
 
+  // TOTP migration question (universal — all sources)
+  await askTotpMigration(answers);
+
   // Question 2: Import mode
   // Auto-set to multi-org for Clerk/Firebase with org mapping
   if ((answers.source === "clerk" && answers.clerkOrgMappingPath) ||
@@ -705,6 +708,89 @@ async function askFirebaseConfiguration(
   );
 
   console.log(chalk.green("✓ Firebase configuration complete\n"));
+}
+
+/**
+ * Ask TOTP migration configuration (universal — all sources)
+ */
+async function askTotpMigration(
+  answers: Partial<WizardAnswers>
+): Promise<void> {
+  console.log(chalk.cyan("\n🔑 TOTP MFA Migration"));
+  console.log(
+    chalk.gray(
+      "If your users have TOTP-based MFA (authenticator apps like Google Authenticator),\n" +
+      "you can migrate their TOTP secrets so they don't need to re-enroll.\n"
+    )
+  );
+
+  const totpAnswer = await prompts({
+    type: "confirm",
+    name: "hasTotpSecrets",
+    message: "Do you have TOTP secrets to migrate?",
+    initial: false,
+  });
+
+  answers.hasTotpSecrets = totpAnswer.hasTotpSecrets;
+
+  if (!totpAnswer.hasTotpSecrets) {
+    console.log(chalk.gray("Skipping TOTP migration.\n"));
+    return;
+  }
+
+  const fileAnswer = await prompts([
+    {
+      type: "text",
+      name: "totpSecretsPath",
+      message: "Path to TOTP secrets file:",
+      validate: (value: string) => {
+        if (!value.trim()) return "File path is required";
+        if (!value.match(/\.(csv|ndjson|jsonl)$/i)) {
+          return "File should be .csv, .ndjson, or .jsonl format";
+        }
+        return true;
+      },
+    },
+  ]);
+
+  if (!fileAnswer.totpSecretsPath) {
+    throw new Error("TOTP secrets file path is required");
+  }
+
+  answers.totpSecretsPath = fileAnswer.totpSecretsPath;
+
+  // Auto-detect format from extension
+  const ext = fileAnswer.totpSecretsPath.toLowerCase();
+  if (ext.endsWith(".ndjson") || ext.endsWith(".jsonl")) {
+    answers.totpSecretsFormat = "ndjson";
+  } else {
+    answers.totpSecretsFormat = "csv";
+  }
+
+  // Ask for issuer name
+  const issuerAnswer = await prompts({
+    type: "text",
+    name: "totpIssuer",
+    message: "TOTP issuer name (shown in authenticator apps):",
+    initial: "",
+    hint: "Leave blank to use your WorkOS team name",
+  });
+
+  if (issuerAnswer.totpIssuer) {
+    answers.totpIssuer = issuerAnswer.totpIssuer;
+  }
+
+  console.log(chalk.green("✓ TOTP migration configured\n"));
+
+  if (answers.source === "auth0") {
+    console.log(
+      chalk.gray(
+        "Note: Auth0 does not expose TOTP secrets via their Management API.\n" +
+        "You need to request an MFA enrollment export from Auth0 support,\n" +
+        "similar to how password hash exports work.\n"
+      )
+    );
+  }
 }
 
 /**

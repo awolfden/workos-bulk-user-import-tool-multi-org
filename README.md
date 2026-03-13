@@ -54,12 +54,14 @@ WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/import-users.ts --csv users.csv
 | **3. Map** | Transform fields | `bin/map-fields.ts` | [Mapping Guide](docs/phases/03-MAP.md) |
 | **4. Analyze** | Review errors, plan fixes | `bin/analyze-errors.ts` | [Analysis Guide](docs/phases/04-ANALYZE.md) |
 | **5. Import** | Migrate to WorkOS | `bin/import-users.ts` | [Import Guide](docs/phases/05-IMPORT.md) |
+| **6. TOTP** | Enroll MFA factors | `bin/enroll-totp.ts` | [TOTP Guide](#migrating-totp-mfa-factors) |
 
 ## Key Features
 
 - ✅ **Wizard-Driven** - Interactive guidance through entire process
 - ✅ **Multi-Organization** - Import users across 1000+ organizations in one CSV
 - ✅ **Password Migration** - Bcrypt, Auth0, Firebase (scrypt), Okta formats supported
+- ✅ **TOTP Migration** - Enroll existing TOTP secrets so users keep their authenticator apps
 - ✅ **Email Deduplication** - Intelligently merge duplicate emails (common with Auth0)
 - ✅ **Resumable** - Checkpoint large imports, resume on failure
 - ✅ **Parallel Processing** - 4x faster with worker pool (100K users in ~20 minutes)
@@ -130,6 +132,35 @@ WORKOS_SECRET_KEY=sk_test_123 \
 ```
 
 👉 **[Large Scale Guide](docs/advanced/CHUNKING-RESUMABILITY.md)**
+
+### Migrating TOTP MFA Factors
+
+After importing users, enroll their existing TOTP secrets so they can keep using their authenticator apps without re-enrolling:
+
+```bash
+# From a CSV with email + totp_secret columns
+WORKOS_SECRET_KEY=sk_test_123 \
+  npx tsx bin/enroll-totp.ts --input totp-secrets.csv
+
+# From an NDJSON export (e.g. from Auth0 support)
+WORKOS_SECRET_KEY=sk_test_123 \
+  npx tsx bin/enroll-totp.ts --input auth0-mfa-export.ndjson --format ndjson
+
+# Dry run first to verify user lookups
+WORKOS_SECRET_KEY=sk_test_123 \
+  npx tsx bin/enroll-totp.ts --input totp-secrets.csv --dry-run
+```
+
+**TOTP CSV format:**
+
+```csv
+email,totp_secret,totp_issuer,totp_user
+alice@example.com,JBSWY3DPEHPK3PXP,MyApp,alice@example.com
+```
+
+Secrets must be Base32-encoded and compatible with SHA1 / 6-digit / 30-second TOTP.
+
+**Getting TOTP secrets from Auth0:** Auth0 does not expose TOTP secrets via their Management API. You need to file a support ticket requesting an MFA enrollment export, similar to how password hash exports work.
 
 ## Installation
 

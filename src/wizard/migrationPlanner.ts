@@ -60,6 +60,11 @@ export function generateMigrationPlan(answers: WizardAnswers): MigrationPlan {
   // Step 6: Execute import
   steps.push(generateImportStep(answers, jobId));
 
+  // Step 6.5: Enroll TOTP factors (if user has TOTP secrets)
+  if (answers.hasTotpSecrets && answers.totpSecretsPath) {
+    steps.push(generateTotpEnrollmentStep(answers));
+  }
+
   // Step 7: Analyze errors (conditional)
   steps.push(generateErrorAnalysisStep(answers, jobId));
 
@@ -432,6 +437,41 @@ function generateImportStep(answers: WizardAnswers, jobId?: string): MigrationSt
     command: 'npx tsx bin/orchestrate-migration.ts',
     args,
     optional: false
+  };
+}
+
+/**
+ * Generate TOTP enrollment step
+ */
+function generateTotpEnrollmentStep(answers: WizardAnswers): MigrationStep {
+  const args: string[] = [
+    '--input', answers.totpSecretsPath!,
+  ];
+
+  if (answers.totpSecretsFormat === 'ndjson') {
+    args.push('--format', 'ndjson');
+  }
+
+  if (answers.totpIssuer) {
+    args.push('--totp-issuer', answers.totpIssuer);
+  }
+
+  args.push('--errors-out', 'totp-errors.jsonl');
+
+  // Match concurrency from scale
+  if (answers.scale === 'large') {
+    args.push('--concurrency', '20');
+  } else if (answers.scale === 'medium') {
+    args.push('--concurrency', '15');
+  }
+
+  return {
+    id: 'enroll-totp',
+    name: 'Enroll TOTP Factors',
+    description: 'Enroll TOTP authentication factors for migrated users',
+    command: 'npx tsx bin/enroll-totp.ts',
+    args,
+    optional: false,
   };
 }
 

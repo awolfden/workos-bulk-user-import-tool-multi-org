@@ -134,6 +134,26 @@ async function main() {
   console.log(results[results.length - 1].passed ? '  ✓ Passed' : '  ✗ Failed');
   console.log(`  Duration: ${results[results.length - 1].duration}ms\n`);
 
+  // Test 2b: TOTP Enroller Unit Tests
+  console.log('→ Test 2b: TOTP Enroller Unit Tests');
+  results.push(await runTest(
+    'TOTP Enroller Unit Tests',
+    'npx',
+    ['tsx', 'src/__tests__/totpEnroller.test.ts']
+  ));
+  console.log(results[results.length - 1].passed ? '  ✓ Passed' : '  ✗ Failed');
+  console.log(`  Duration: ${results[results.length - 1].duration}ms\n`);
+
+  // Test 2c: TOTP Enroller CLI Tests
+  console.log('→ Test 2c: TOTP Enroller CLI Tests');
+  results.push(await runTest(
+    'TOTP Enroller CLI Tests',
+    'npx',
+    ['tsx', 'src/__tests__/totpEnrollerCli.test.ts']
+  ));
+  console.log(results[results.length - 1].passed ? '  ✓ Passed' : '  ✗ Failed');
+  console.log(`  Duration: ${results[results.length - 1].duration}ms\n`);
+
   // Compile workers for remaining tests
   console.log('→ Compiling workers...');
   await runCommand('npx', [
