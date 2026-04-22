@@ -186,10 +186,10 @@ npx tsx bin/import-users.ts \
   --role-mapping user-role-mapping.csv
 ```
 
-Or using the orchestrator:
+Or with role definitions (creates roles before import):
 
 ```bash
-npx tsx bin/orchestrate-migration.ts \
+npx tsx bin/import-users.ts \
   --csv users-validated.csv \
   --role-definitions role-definitions.csv \
   --role-mapping user-role-mapping.csv

@@ -11,7 +11,7 @@ The Clerk migration transforms a Clerk user CSV export into WorkOS-compatible fo
 1. **Export** — Download your user CSV from the Clerk dashboard
 2. **Transform** — Convert Clerk CSV fields to WorkOS format (`transform-clerk`)
 3. **Validate** — Check the transformed CSV for errors (`validate-csv`)
-4. **Import** — Migrate users into WorkOS (`import-users` / `orchestrate-migration`)
+4. **Import** — Migrate users into WorkOS (`import-users`)
 
 You can run these steps manually via CLI or let the wizard handle them automatically.
 

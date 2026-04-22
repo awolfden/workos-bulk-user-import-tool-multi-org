@@ -17,6 +17,8 @@ cd workos-bulk-user-import-tool-multi-org
 npm install
 ```
 
+**Prefer the wizard?** See the [Wizard Guide](WIZARD.md) for interactive step-by-step guidance.
+
 ## Option 1: Simple Import (Pre-Prepared CSV)
 
 If you already have a CSV file ready to import:
@@ -124,9 +126,11 @@ See [CSV Format Reference](../guides/CSV-FORMAT.md) for all supported columns.
 ## Common Options
 
 - `--csv <path>`: Path to CSV file (required)
-- `--errors-out <path>`: Save errors to file (CSV or JSON)
-- `--quiet`: Suppress per-row output
+- `--plan`: Analyze CSV and show migration plan (no import)
 - `--dry-run`: Validate without API calls
+- `-y, --yes`: Skip interactive prompts (for scripting)
+- `--errors-out <path>`: Save errors to file (CSV or JSONL)
+- `--quiet`: Suppress per-row output
 - `--concurrency <n>`: Parallel requests (default: 10)
 
 See [Import Phase Documentation](../phases/05-IMPORT.md) for all options.

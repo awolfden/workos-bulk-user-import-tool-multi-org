@@ -176,7 +176,7 @@ async function main() {
         // Checkpoint mode detected
         const jobId = checkpointMatch[1];
         console.log(chalk.gray(`\nTo retry failed imports from checkpoint, run:`));
-        console.log(chalk.cyan(`  npx tsx bin/orchestrate-migration.ts --csv <your-csv> --resume ${jobId}`));
+        console.log(chalk.cyan(`  npx tsx bin/import-users.ts --csv <your-csv> --resume ${jobId}`));
         console.log(chalk.gray('\nNote: Replace <your-csv> with your original CSV path.'));
         console.log(chalk.gray('      Fix any data validation issues in your CSV before retrying.'));
       } else if (opts.retryCsv) {

@@ -11,7 +11,6 @@
     "workos-export-auth0": "bin/export-auth0.ts",
     "workos-merge-auth0-passwords": "bin/merge-auth0-passwords.ts",
     "workos-analyze-errors": "bin/analyze-errors.ts",
-    "workos-orchestrate": "bin/orchestrate-migration.ts",
     "workos-migrate": "bin/migrate-wizard.ts"
   },
   "scripts": {

@@ -327,7 +327,7 @@ function generatePlanStep(answers: WizardAnswers, jobId?: string): MigrationStep
     id: 'plan',
     name: 'Plan Import',
     description: 'Generate import plan with estimates',
-    command: 'npx tsx bin/orchestrate-migration.ts',
+    command: 'npx tsx bin/import-users.ts',
     args,
     optional: false
   };
@@ -375,7 +375,7 @@ function generateDryRunStep(answers: WizardAnswers, jobId?: string): MigrationSt
     id: 'dry-run',
     name: 'Test Import (Dry Run)',
     description: 'Validate import configuration without creating users',
-    command: 'npx tsx bin/orchestrate-migration.ts',
+    command: 'npx tsx bin/import-users.ts',
     args,
     optional: false
   };
@@ -429,7 +429,7 @@ function generateImportStep(answers: WizardAnswers, jobId?: string): MigrationSt
     id: 'import',
     name: 'Execute Import',
     description: 'Import users to WorkOS',
-    command: 'npx tsx bin/orchestrate-migration.ts',
+    command: 'npx tsx bin/import-users.ts',
     args,
     optional: false
   };
@@ -483,7 +483,7 @@ function generateRetryStep(answers: WizardAnswers): MigrationStep {
     id: 'retry',
     name: 'Retry Failed Imports',
     description: 'Retry failed imports from error analysis',
-    command: 'npx tsx bin/orchestrate-migration.ts',
+    command: 'npx tsx bin/import-users.ts',
     args,
     optional: true,
     skipCondition: (ans) => !ans.logErrors

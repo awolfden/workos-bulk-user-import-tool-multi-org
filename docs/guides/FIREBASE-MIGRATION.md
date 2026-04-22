@@ -11,7 +11,7 @@ The Firebase migration transforms a Firebase JSON user export into WorkOS-compat
 1. **Export** — Export your users via the Firebase CLI
 2. **Transform** — Convert Firebase JSON fields to WorkOS format (`transform-firebase`)
 3. **Validate** — Check the transformed CSV for errors (`validate-csv`)
-4. **Import** — Migrate users into WorkOS (`import-users` / `orchestrate-migration`)
+4. **Import** — Migrate users into WorkOS (`import-users`)
 
 You can run these steps manually via CLI or let the wizard handle them automatically.
 

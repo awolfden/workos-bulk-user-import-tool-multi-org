@@ -159,7 +159,7 @@ async function main() {
         if (jobId) {
           // Checkpoint mode - resume from checkpoint
           console.log(chalk.cyan('  # Resume from checkpoint (retries failed records):'));
-          let resumeCmd = `  npx tsx bin/orchestrate-migration.ts --csv ${csvPath} --resume ${jobId}`;
+          let resumeCmd = `  npx tsx bin/import-users.ts --csv ${csvPath} --resume ${jobId}`;
 
           // Add org configuration if in single-org mode
           if (answers.importMode === 'single-org') {

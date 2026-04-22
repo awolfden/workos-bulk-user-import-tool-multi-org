@@ -29,7 +29,7 @@
  *
  * NOTE: Organization creation happens during the *import* step, not this
  * transform step. This tool maps org columns into the output CSV. The existing
- * import pipeline (import-users / orchestrate-migration) handles org lookups,
+ * import pipeline (import-users) handles org lookups,
  * caching, pre-warming, and auto-creation.
  *
  * PASSWORD HANDLING:
