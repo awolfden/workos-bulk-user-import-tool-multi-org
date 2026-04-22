@@ -77,7 +77,7 @@ The wizard will check prerequisites and help you set them up if missing.
 
 **Error Handling:**
 - Log errors to file? (recommended)
-- Error log path (default: `errors.jsonl`)
+- Error log path (default: `output/errors.jsonl`)
 
 ### 2. Shows Migration Plan
 
@@ -154,10 +154,10 @@ Users:
 Duration: 4m 32s
 
 Generated Files:
-  • auth0-export.csv
-  • users-validated.csv
-  • validation-report.json
-  • migration-summary.json
+  • output/auth0-export.csv
+  • output/users-validated.csv
+  • output/validation-report.json
+  • output/migration-summary.json
 
 ✓ All users successfully migrated!
 ```
@@ -188,13 +188,13 @@ npx tsx bin/migrate-wizard.ts \
 
 | File | Description |
 |------|-------------|
-| `auth0-export.csv` | Exported users from Auth0 |
-| `users-validated.csv` | Validated and fixed CSV |
-| `validation-report.json` | Validation results |
-| `errors.jsonl` | Import errors (if any) |
-| `error-analysis.json` | Error analysis report |
-| `retry.csv` | Retryable errors CSV |
-| `migration-summary.json` | Complete migration summary |
+| `output/auth0-export.csv` | Exported users from Auth0 |
+| `output/users-validated.csv` | Validated and fixed CSV |
+| `output/validation-report.json` | Validation results |
+| `output/errors.jsonl` | Import errors (if any) |
+| `output/error-analysis.json` | Error analysis report |
+| `output/retry.csv` | Retryable errors CSV |
+| `output/migration-summary.json` | Complete migration summary |
 | `.env` | Saved credentials |
 
 ## Common Scenarios
@@ -340,7 +340,7 @@ See [Password Migration Guide](../guides/PASSWORD-MIGRATION.md) for details.
 After wizard completes:
 
 - **Success**: Users are migrated to WorkOS!
-- **Errors**: Review `error-analysis.json` and run retry
+- **Errors**: Review `output/error-analysis.json` and run retry
 - **Learn more**: See [Import Phase](../phases/05-IMPORT.md)
 - **Advanced**: See [Worker Pool](../advanced/WORKER-POOL.md) for large-scale optimization
 

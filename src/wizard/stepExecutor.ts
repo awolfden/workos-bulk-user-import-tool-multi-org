@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import chalk from 'chalk';
 import prompts from 'prompts';
 import type { MigrationStep, StepResult, WizardAnswers } from './types.js';
+import { outputPath } from '../outputDir.js';
 
 /**
  * Execute a migration step
@@ -242,7 +243,7 @@ export function shouldRunStep(
     }
 
     // Check if errors file exists
-    let errorsPath = answers.errorsPath || 'errors.jsonl';
+    let errorsPath = answers.errorsPath || outputPath('errors.jsonl');
 
     // If checkpointing was enabled, construct checkpoint-aware path
     if (answers.enableCheckpointing) {
@@ -281,19 +282,19 @@ export function shouldRunStep(
     }
 
     // Check if retry CSV was generated AND has content
-    if (!fs.existsSync('retry.csv')) {
+    if (!fs.existsSync(outputPath('retry.csv'))) {
       return false;
     }
 
     // Check if file has actual content (more than just header row)
     try {
-      const stats = fs.statSync('retry.csv');
+      const stats = fs.statSync(outputPath('retry.csv'));
       if (stats.size === 0) {
         return false; // Empty file
       }
 
       // Read file and check if it has more than just the header line
-      const content = fs.readFileSync('retry.csv', 'utf-8').trim();
+      const content = fs.readFileSync(outputPath('retry.csv'), 'utf-8').trim();
       const lines = content.split('\n').filter(line => line.trim().length > 0);
       return lines.length > 1; // Has header + at least one data row
     } catch {

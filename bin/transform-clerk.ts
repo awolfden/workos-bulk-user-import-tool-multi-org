@@ -52,6 +52,7 @@ import { Command } from 'commander';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { transformClerkExport } from '../src/transformers/clerk/clerkTransformer.js';
+import { ensureOutputDir } from '../src/outputDir.js';
 
 const program = new Command();
 
@@ -62,7 +63,7 @@ program
   .requiredOption('--output <path>', 'Path to output WorkOS CSV file')
   .option('--org-mapping <path>', 'Path to organization mapping CSV (clerk_user_id → org)')
   .option('--role-mapping <path>', 'Path to user-role mapping CSV (clerk_user_id → role_slug)')
-  .option('--skipped-users <path>', 'Path for skipped user records (JSONL)', 'clerk-skipped-users.jsonl')
+  .option('--skipped-users <path>', 'Path for skipped user records (JSONL)', 'output/clerk-skipped-users.jsonl')
   .option('--quiet', 'Suppress output messages')
   .parse(process.argv);
 
@@ -77,6 +78,8 @@ const opts = program.opts<{
 
 async function main() {
   const startTime = Date.now();
+
+  ensureOutputDir();
 
   if (!opts.quiet) {
     console.log('Clerk → WorkOS Transform Tool');
@@ -162,8 +165,8 @@ async function main() {
 
       // Next steps
       console.log('\nNext steps:');
-      console.log(`  1. Validate: npx tsx bin/validate-csv.ts --csv ${path.resolve(opts.output)} --auto-fix --fixed-csv users-validated.csv`);
-      console.log(`  2. Import:   npx tsx bin/import-users.ts --csv users-validated.csv`);
+      console.log(`  1. Validate: npx tsx bin/validate-csv.ts --csv ${path.resolve(opts.output)} --auto-fix --fixed-csv output/users-validated.csv`);
+      console.log(`  2. Import:   npx tsx bin/import-users.ts --csv output/users-validated.csv`);
       console.log('');
     }
 

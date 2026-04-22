@@ -45,7 +45,7 @@ npx tsx bin/import-users.ts --csv path/to/users.csv
 Optionally save failed rows to fix and retry later:
 
 ```bash
-npx tsx bin/import-users.ts --csv path/to/users.csv --errors-out errors.csv
+npx tsx bin/import-users.ts --csv path/to/users.csv --errors-out output/errors.csv
 ```
 
 ## Option 2: Use the Wizard

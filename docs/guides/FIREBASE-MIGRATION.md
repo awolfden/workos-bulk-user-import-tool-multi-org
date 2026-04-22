@@ -210,8 +210,8 @@ WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/migrate-wizard.ts
 
 ### What the Wizard Does Automatically
 
-1. **Transform Firebase Export** — Runs `transform-firebase` to convert your Firebase JSON to WorkOS format (outputs `firebase-transformed.csv`)
-2. **Validate CSV** — Runs `validate-csv` with auto-fix (outputs `users-validated.csv`)
+1. **Transform Firebase Export** — Runs `transform-firebase` to convert your Firebase JSON to WorkOS format (outputs `output/firebase-transformed.csv`)
+2. **Validate CSV** — Runs `validate-csv` with auto-fix (outputs `output/users-validated.csv`)
 3. **Plan Import** — Shows estimated duration and configuration
 4. **Dry Run** (if enabled) — Tests import without creating users
 5. **Execute Import** — Imports users into WorkOS
@@ -247,7 +247,7 @@ npx tsx bin/transform-firebase.ts \
   --include-disabled \
   --org-mapping firebase-org-mapping.csv \
   --role-mapping user-role-mapping.csv \
-  --skipped-users firebase-skipped-users.jsonl \
+  --skipped-users output/firebase-skipped-users.jsonl \
   --quiet
 ```
 
@@ -265,7 +265,7 @@ npx tsx bin/transform-firebase.ts \
 | `--include-disabled` | No | Include disabled users in the output |
 | `--org-mapping <path>` | No | Path to organization mapping CSV |
 | `--role-mapping <path>` | No | Path to role mapping CSV |
-| `--skipped-users <path>` | No | Path for skipped user records (default: `firebase-skipped-users.jsonl`) |
+| `--skipped-users <path>` | No | Path for skipped user records (default: `output/firebase-skipped-users.jsonl`) |
 | `--quiet` | No | Suppress output messages |
 
 The transform step produces a summary showing total users, transformed count, skipped count, password stats, name splitting stats, and org mapping stats.
@@ -276,8 +276,8 @@ The transform step produces a summary showing total users, transformed count, sk
 npx tsx bin/validate-csv.ts \
   --csv workos-users.csv \
   --auto-fix \
-  --fixed-csv users-validated.csv \
-  --report validation-report.json
+  --fixed-csv output/users-validated.csv \
+  --report output/validation-report.json
 ```
 
 ### Step 3: Import Users
@@ -285,14 +285,14 @@ npx tsx bin/validate-csv.ts \
 **Simple import:**
 
 ```bash
-npx tsx bin/import-users.ts --csv users-validated.csv
+npx tsx bin/import-users.ts --csv output/users-validated.csv
 ```
 
 **Multi-org import with workers:**
 
 ```bash
 npx tsx bin/import-users.ts \
-  --csv users-validated.csv \
+  --csv output/users-validated.csv \
   --job-id firebase-migration \
   --workers 4
 ```
@@ -300,7 +300,7 @@ npx tsx bin/import-users.ts \
 **Dry run first:**
 
 ```bash
-npx tsx bin/import-users.ts --csv users-validated.csv --dry-run
+npx tsx bin/import-users.ts --csv output/users-validated.csv --dry-run
 ```
 
 ## Password Handling
@@ -328,7 +328,7 @@ $firebase-scrypt$hash=<b64hash>$salt=<b64salt>$sk=<b64signerKey>$ss=<b64saltSep>
 
 If you do not supply the `--signer-key` flag, password hashes are **omitted** from the output. Users will need to reset their password on first login to WorkOS. A warning is logged to alert you.
 
-The transformation summary shows how many users had passwords migrated vs. skipped. Check the `firebase-skipped-users.jsonl` file for details on individual skipped records.
+The transformation summary shows how many users had passwords migrated vs. skipped. Check the `output/firebase-skipped-users.jsonl` file for details on individual skipped records.
 
 For more details, see the [WorkOS Firebase migration guide](https://workos.com/docs/migrate/firebase).
 
@@ -419,7 +419,7 @@ You did not provide `--signer-key` during the transform step. Password hashes wi
 
 ### Users missing from output
 
-Check the transformation summary and `firebase-skipped-users.jsonl` for users that were skipped. Common reasons:
+Check the transformation summary and `output/firebase-skipped-users.jsonl` for users that were skipped. Common reasons:
 
 - **No email address** — Users without an email are skipped (e.g., phone-only users)
 - **Disabled accounts** — Disabled users are excluded by default. Use `--include-disabled` to include them.

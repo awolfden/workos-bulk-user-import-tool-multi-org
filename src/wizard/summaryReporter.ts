@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import chalk from 'chalk';
 import type { MigrationResult, StepResult, MigrationPlan } from './types.js';
+import { outputPath as toOutputPath } from '../outputDir.js';
 
 /**
  * Generate migration result from step results
@@ -126,13 +127,13 @@ export function displayMigrationSummary(result: MigrationResult): void {
   // Next steps
   console.log(chalk.bold('\nGenerated Files:'));
   const files = [
-    'auth0-export.csv',
-    'users-validated.csv',
-    'validation-report.json',
-    'errors.jsonl',
-    'error-analysis.json',
-    'retry.csv',
-    'migration-summary.json'
+    toOutputPath('auth0-export.csv'),
+    toOutputPath('users-validated.csv'),
+    toOutputPath('validation-report.json'),
+    toOutputPath('errors.jsonl'),
+    toOutputPath('error-analysis.json'),
+    toOutputPath('retry.csv'),
+    toOutputPath('migration-summary.json'),
   ].filter(f => fs.existsSync(f));
 
   files.forEach(f => {
@@ -148,7 +149,7 @@ export function displayMigrationSummary(result: MigrationResult): void {
 export function saveMigrationSummary(
   result: MigrationResult,
   plan: MigrationPlan,
-  outputPath: string = 'migration-summary.json'
+  outputPath: string = toOutputPath('migration-summary.json')
 ): void {
   const summary = {
     timestamp: new Date().toISOString(),

@@ -148,6 +148,9 @@ examples/fifty-thousand-users.csv
 errors-*.csv
 errors-*.json
 
+# Migration output files
+output/
+
 # Checkpoint files
 .workos-checkpoints/
 

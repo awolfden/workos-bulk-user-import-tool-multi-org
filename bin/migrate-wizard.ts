@@ -24,6 +24,7 @@ import {
   saveMigrationSummary
 } from '../src/wizard/summaryReporter.js';
 import type { WizardOptions } from '../src/wizard/types.js';
+import { ensureOutputDir, outputPath } from '../src/outputDir.js';
 
 const program = new Command();
 
@@ -51,6 +52,8 @@ async function main() {
     // Step 1: Check environment
     console.log(chalk.cyan.bold('WorkOS Migration Wizard'));
     console.log(chalk.gray('Version 1.0.0\n'));
+
+    ensureOutputDir();
 
     const envCheck = checkEnvironment();
     displayEnvironmentCheck(envCheck);
@@ -126,7 +129,7 @@ async function main() {
 
       if (hasErrors && answers.logErrors) {
         // Construct correct error path (checkpointed or not)
-        let errorsPath = answers.errorsPath || 'errors.jsonl';
+        let errorsPath = answers.errorsPath || outputPath('errors.jsonl');
         let jobId: string | undefined;
 
         // If checkpointing was enabled, extract job ID from import step
@@ -154,7 +157,7 @@ async function main() {
 
         // Build CSV path for retry
         const csvPath = answers.customCsvPath ||
-                        (answers.source === 'auth0' ? 'auth0-export.csv' : 'users.csv');
+                        (answers.source === 'auth0' ? outputPath('auth0-export.csv') : 'users.csv');
 
         if (jobId) {
           // Checkpoint mode - resume from checkpoint

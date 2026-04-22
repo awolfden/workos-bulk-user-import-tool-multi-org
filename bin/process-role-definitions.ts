@@ -26,6 +26,7 @@ import { RoleCache } from '../src/roles/roleCache.js';
 import { OrganizationCache } from '../src/cache/organizationCache.js';
 import { processRoleDefinitions } from '../src/roles/roleDefinitionsProcessor.js';
 import { parseOrgMappingForUniqueOrgs } from '../src/roles/orgMappingReader.js';
+import { ensureOutputDir } from '../src/outputDir.js';
 
 const program = new Command();
 
@@ -36,7 +37,7 @@ program
   .option('--org-mapping <path>', 'Path to org mapping CSV (for resolving org_external_id to WorkOS org IDs)')
   .option('--dry-run', 'Validate and show what would be created without making API calls')
   .option('--quiet', 'Suppress output messages')
-  .option('--report <path>', 'Path for processing report JSON', 'role-definitions-report.json')
+  .option('--report <path>', 'Path for processing report JSON', 'output/role-definitions-report.json')
   .parse(process.argv);
 
 const opts = program.opts<{
@@ -48,6 +49,7 @@ const opts = program.opts<{
 }>();
 
 async function main() {
+  ensureOutputDir();
   const startTime = Date.now();
 
   if (!opts.quiet) {

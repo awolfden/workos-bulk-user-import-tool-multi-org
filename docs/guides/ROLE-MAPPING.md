@@ -71,13 +71,13 @@ org-viewer,Viewer,organization,"content:read",,globex-io
 # Environment roles only (no org mapping needed)
 npx tsx bin/process-role-definitions.ts \
   --definitions role-definitions.csv \
-  --report role-definitions-report.json
+  --report output/role-definitions-report.json
 
 # With organization roles (pass org mapping to resolve external IDs)
 npx tsx bin/process-role-definitions.ts \
   --definitions role-definitions.csv \
   --org-mapping clerk-org-mapping.csv \
-  --report role-definitions-report.json
+  --report output/role-definitions-report.json
 ```
 
 The `--org-mapping` flag reads the org mapping CSV, extracts unique organizations, and resolves/creates them in WorkOS before creating org-scoped roles. This ensures org IDs are available when the WorkOS API requires them.
@@ -146,13 +146,13 @@ The wizard automatically generates the correct commands with `--role-definitions
 # Without org roles:
 npx tsx bin/process-role-definitions.ts \
   --definitions role-definitions.csv \
-  --report role-definitions-report.json
+  --report output/role-definitions-report.json
 
 # With org roles (Clerk example — pass the same org mapping CSV used for import):
 npx tsx bin/process-role-definitions.ts \
   --definitions role-definitions.csv \
   --org-mapping clerk-org-mapping.csv \
-  --report role-definitions-report.json
+  --report output/role-definitions-report.json
 ```
 
 ### Step 2: Transform (Clerk only)
@@ -173,7 +173,7 @@ For Clerk, the `--role-mapping` flag merges role slugs into the transformed CSV.
 npx tsx bin/validate-csv.ts \
   --csv workos-users.csv \
   --auto-fix \
-  --fixed-csv users-validated.csv
+  --fixed-csv output/users-validated.csv
 ```
 
 The validator checks `role_slugs` format (lowercase alphanumeric with hyphens/underscores).
@@ -182,7 +182,7 @@ The validator checks `role_slugs` format (lowercase alphanumeric with hyphens/un
 
 ```bash
 npx tsx bin/import-users.ts \
-  --csv users-validated.csv \
+  --csv output/users-validated.csv \
   --role-mapping user-role-mapping.csv
 ```
 
@@ -190,7 +190,7 @@ Or with role definitions (creates roles before import):
 
 ```bash
 npx tsx bin/import-users.ts \
-  --csv users-validated.csv \
+  --csv output/users-validated.csv \
   --role-definitions role-definitions.csv \
   --role-mapping user-role-mapping.csv
 ```

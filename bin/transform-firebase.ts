@@ -57,6 +57,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { transformFirebaseExport } from '../src/transformers/firebase/firebaseTransformer.js';
 import type { FirebaseScryptParams } from '../src/transformers/firebase/phcEncoder.js';
+import { ensureOutputDir } from '../src/outputDir.js';
 
 const program = new Command();
 
@@ -73,7 +74,7 @@ program
   .option('--include-disabled', 'Include disabled users in output')
   .option('--org-mapping <path>', 'Path to organization mapping CSV (firebase_uid → org)')
   .option('--role-mapping <path>', 'Path to user-role mapping CSV (firebase_uid → role_slug)')
-  .option('--skipped-users <path>', 'Path for skipped user records (JSONL)', 'firebase-skipped-users.jsonl')
+  .option('--skipped-users <path>', 'Path for skipped user records (JSONL)', 'output/firebase-skipped-users.jsonl')
   .option('--quiet', 'Suppress output messages')
   .parse(process.argv);
 
@@ -93,6 +94,7 @@ const opts = program.opts<{
 }>();
 
 async function main() {
+  ensureOutputDir();
   const startTime = Date.now();
 
   if (!opts.quiet) {
@@ -208,8 +210,8 @@ async function main() {
 
       // Next steps
       console.log('\nNext steps:');
-      console.log(`  1. Validate: npx tsx bin/validate-csv.ts --csv ${path.resolve(opts.output)} --auto-fix --fixed-csv users-validated.csv`);
-      console.log(`  2. Import:   npx tsx bin/import-users.ts --csv users-validated.csv`);
+      console.log(`  1. Validate: npx tsx bin/validate-csv.ts --csv ${path.resolve(opts.output)} --auto-fix --fixed-csv output/users-validated.csv`);
+      console.log(`  2. Import:   npx tsx bin/import-users.ts --csv output/users-validated.csv`);
       console.log('');
     }
 

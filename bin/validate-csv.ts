@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import chalk from 'chalk';
 import { CSVValidator } from '../src/validator/csvValidator.js';
 import type { ValidationOptions } from '../src/validator/types.js';
+import { ensureOutputDir } from '../src/outputDir.js';
 
 const program = new Command();
 
@@ -29,8 +30,8 @@ program
   .option('--fixed-csv <path>', 'Output path for fixed CSV (requires --auto-fix)')
   .option('--dedupe', 'Deduplicate rows with same email address')
   .option('--deduped-csv <path>', 'Output path for deduplicated CSV (requires --dedupe)')
-  .option('--dedupe-report <path>', 'Deduplication report path (default: deduplication-report.json)', 'deduplication-report.json')
-  .option('--report <path>', 'JSON report path (default: validation-report.json)', 'validation-report.json')
+  .option('--dedupe-report <path>', 'Deduplication report path (default: output/deduplication-report.json)', 'output/deduplication-report.json')
+  .option('--report <path>', 'JSON report path (default: output/validation-report.json)', 'output/validation-report.json')
   .option('--check-api', 'Check WorkOS API for conflicts (requires WORKOS_SECRET_KEY)')
   .option('--quiet', 'Suppress progress output')
   .parse(process.argv);
@@ -41,6 +42,8 @@ const opts = program.opts();
  * Main validation function
  */
 async function main() {
+  ensureOutputDir();
+
   // Validate options
   if (!fs.existsSync(opts.csv)) {
     console.error(chalk.red(`Error: CSV file not found: ${opts.csv}`));

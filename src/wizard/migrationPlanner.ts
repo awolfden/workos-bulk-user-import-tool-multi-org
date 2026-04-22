@@ -7,6 +7,7 @@
 import path from 'node:path';
 import os from 'node:os';
 import type { WizardAnswers, MigrationPlan, MigrationStep } from './types.js';
+import { outputPath } from '../outputDir.js';
 
 /**
  * Generate a migration plan from wizard answers
@@ -91,7 +92,7 @@ function generateExportStep(answers: WizardAnswers): MigrationStep {
     args.push('--domain', answers.auth0Domain!);
     args.push('--client-id', answers.auth0ClientId!);
     args.push('--client-secret', answers.auth0ClientSecret!);
-    args.push('--output', 'auth0-export.csv');
+    args.push('--output', outputPath('auth0-export.csv'));
 
     // Add organization flags if organizations are included
     if (answers.auth0IncludeOrgs !== false) {
@@ -124,8 +125,8 @@ function generateExportStep(answers: WizardAnswers): MigrationStep {
  * Generate password merge step
  */
 function generatePasswordMergeStep(answers: WizardAnswers): MigrationStep {
-  const inputCsv = 'auth0-export.csv';
-  const outputCsv = 'auth0-export-with-passwords.csv';
+  const inputCsv = outputPath('auth0-export.csv');
+  const outputCsv = outputPath('auth0-export-with-passwords.csv');
 
   const args: string[] = [
     '--csv', inputCsv,
@@ -149,7 +150,7 @@ function generatePasswordMergeStep(answers: WizardAnswers): MigrationStep {
 function generateRoleDefinitionsStep(answers: WizardAnswers): MigrationStep {
   const args: string[] = [
     '--definitions', answers.roleDefinitionsPath!,
-    '--report', 'role-definitions-report.json',
+    '--report', outputPath('role-definitions-report.json'),
   ];
 
   // Add org mapping for resolving org_external_id in role definitions
@@ -175,7 +176,7 @@ function generateRoleDefinitionsStep(answers: WizardAnswers): MigrationStep {
 function generateClerkTransformStep(answers: WizardAnswers): MigrationStep {
   const args: string[] = [
     '--clerk-csv', answers.clerkCsvPath!,
-    '--output', 'clerk-transformed.csv',
+    '--output', outputPath('clerk-transformed.csv'),
   ];
 
   if (answers.clerkOrgMappingPath) {
@@ -203,7 +204,7 @@ function generateClerkTransformStep(answers: WizardAnswers): MigrationStep {
 function generateFirebaseTransformStep(answers: WizardAnswers): MigrationStep {
   const args: string[] = [
     '--firebase-json', answers.firebaseJsonPath!,
-    '--output', 'firebase-transformed.csv',
+    '--output', outputPath('firebase-transformed.csv'),
     '--name-split', answers.firebaseNameSplit || 'first-space',
   ];
 
@@ -255,25 +256,25 @@ function generateValidationStep(answers: WizardAnswers): MigrationStep {
   if (answers.source === 'custom') {
     inputCsv = answers.customCsvPath!;
   } else if (answers.source === 'clerk') {
-    inputCsv = 'clerk-transformed.csv';
+    inputCsv = outputPath('clerk-transformed.csv');
   } else if (answers.source === 'firebase') {
-    inputCsv = 'firebase-transformed.csv';
+    inputCsv = outputPath('firebase-transformed.csv');
   } else if (answers.source === 'auth0' && answers.auth0HasPasswords) {
-    inputCsv = 'auth0-export-with-passwords.csv';
+    inputCsv = outputPath('auth0-export-with-passwords.csv');
   } else {
-    inputCsv = 'auth0-export.csv';
+    inputCsv = outputPath('auth0-export.csv');
   }
 
-  const outputCsv = answers.autoFixIssues ? 'users-validated.csv' : undefined;
+  const outputCsv = answers.autoFixIssues ? outputPath('users-validated.csv') : undefined;
 
   const args: string[] = ['--csv', inputCsv];
 
   if (answers.autoFixIssues) {
     args.push('--auto-fix');
-    args.push('--fixed-csv', 'users-validated.csv');
+    args.push('--fixed-csv', outputPath('users-validated.csv'));
   }
 
-  args.push('--report', 'validation-report.json');
+  args.push('--report', outputPath('validation-report.json'));
 
   return {
     id: 'validate',
@@ -422,7 +423,7 @@ function generateImportStep(answers: WizardAnswers, jobId?: string): MigrationSt
   // Add error logging (only if checkpointing is disabled)
   // When checkpointing is enabled, errors are automatically stored in the checkpoint directory
   if (answers.logErrors && !answers.enableCheckpointing) {
-    args.push('--errors-out', answers.errorsPath || 'errors.jsonl');
+    args.push('--errors-out', answers.errorsPath || outputPath('errors.jsonl'));
   }
 
   return {
@@ -440,7 +441,7 @@ function generateImportStep(answers: WizardAnswers, jobId?: string): MigrationSt
  */
 function generateErrorAnalysisStep(answers: WizardAnswers, jobId?: string): MigrationStep {
   // Construct error path based on checkpointing
-  let errorsPath = answers.errorsPath || 'errors.jsonl';
+  let errorsPath = answers.errorsPath || outputPath('errors.jsonl');
 
   if (answers.enableCheckpointing && jobId) {
     const checkpointDir = answers.checkpointDir || '.workos-checkpoints';
@@ -451,9 +452,9 @@ function generateErrorAnalysisStep(answers: WizardAnswers, jobId?: string): Migr
     '--errors',
     errorsPath,
     '--retry-csv',
-    'retry.csv',
+    outputPath('retry.csv'),
     '--report',
-    'error-analysis.json'
+    outputPath('error-analysis.json')
   ];
 
   return {
@@ -471,7 +472,7 @@ function generateErrorAnalysisStep(answers: WizardAnswers, jobId?: string): Migr
  * Generate retry step
  */
 function generateRetryStep(answers: WizardAnswers): MigrationStep {
-  const args: string[] = ['--csv', 'retry.csv'];
+  const args: string[] = ['--csv', outputPath('retry.csv')];
 
   // Add org configuration
   addOrgArgs(args, answers);
@@ -518,25 +519,25 @@ function getImportCsvPath(answers: WizardAnswers): string {
 
   // If validation with auto-fix was run, use the validated CSV
   if (answers.validateCsv && answers.autoFixIssues) {
-    return 'users-validated.csv';
+    return outputPath('users-validated.csv');
   }
 
   // If Clerk, use the transformed CSV
   if (answers.source === 'clerk') {
-    return 'clerk-transformed.csv';
+    return outputPath('clerk-transformed.csv');
   }
 
   // If Firebase, use the transformed CSV
   if (answers.source === 'firebase') {
-    return 'firebase-transformed.csv';
+    return outputPath('firebase-transformed.csv');
   }
 
   // If Auth0 passwords were merged, use the merged CSV
   if (answers.source === 'auth0' && answers.auth0HasPasswords) {
-    return 'auth0-export-with-passwords.csv';
+    return outputPath('auth0-export-with-passwords.csv');
   }
 
-  return 'auth0-export.csv';
+  return outputPath('auth0-export.csv');
 }
 
 /**

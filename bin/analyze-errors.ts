@@ -18,6 +18,7 @@ import chalk from 'chalk';
 import { ErrorAnalyzer } from '../src/analyzer/errorAnalyzer.js';
 import { generateRetryCsv } from '../src/analyzer/retryCsvGenerator.js';
 import type { AnalyzerOptions } from '../src/analyzer/types.js';
+import { ensureOutputDir } from '../src/outputDir.js';
 
 const program = new Command();
 
@@ -27,7 +28,7 @@ program
   .version('1.0.0')
   .requiredOption('--errors <path>', 'Path to errors.jsonl file')
   .option('--retry-csv <path>', 'Output path for retry CSV')
-  .option('--report <path>', 'JSON report path (default: error-analysis-report.json)', 'error-analysis-report.json')
+  .option('--report <path>', 'JSON report path (default: output/error-analysis-report.json)', 'output/error-analysis-report.json')
   .option('--include-duplicates', 'Include duplicate emails in retry CSV (default: false)', false)
   .option('--quiet', 'Suppress progress output')
   .parse(process.argv);
@@ -38,6 +39,8 @@ const opts = program.opts();
  * Main analysis function
  */
 async function main() {
+  ensureOutputDir();
+
   // Validate options
   if (!fs.existsSync(opts.errors)) {
     console.error(chalk.red(`Error: Errors file not found: ${opts.errors}`));

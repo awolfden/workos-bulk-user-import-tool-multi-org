@@ -170,8 +170,8 @@ WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/migrate-wizard.ts
 
 ### What the Wizard Does Automatically
 
-1. **Transform Clerk Export** — Runs `transform-clerk` to convert your Clerk CSV to WorkOS format (outputs `clerk-transformed.csv`)
-2. **Validate CSV** — Runs `validate-csv` with auto-fix (outputs `users-validated.csv`)
+1. **Transform Clerk Export** — Runs `transform-clerk` to convert your Clerk CSV to WorkOS format (outputs `output/clerk-transformed.csv`)
+2. **Validate CSV** — Runs `validate-csv` with auto-fix (outputs `output/users-validated.csv`)
 3. **Plan Import** — Shows estimated duration and configuration
 4. **Dry Run** (if enabled) — Tests import without creating users
 5. **Execute Import** — Imports users into WorkOS
@@ -205,7 +205,7 @@ npx tsx bin/transform-clerk.ts \
 | `--clerk-csv <path>` | Yes | Path to Clerk CSV export |
 | `--output <path>` | Yes | Output path for WorkOS CSV |
 | `--org-mapping <path>` | No | Path to organization mapping CSV |
-| `--skipped-users <path>` | No | Path for skipped user records (default: `clerk-skipped-users.jsonl`) |
+| `--skipped-users <path>` | No | Path for skipped user records (default: `output/clerk-skipped-users.jsonl`) |
 | `--quiet` | No | Suppress output messages |
 
 The transform step produces a summary showing total users, transformed count, skipped count, password stats, and org mapping stats.
@@ -216,8 +216,8 @@ The transform step produces a summary showing total users, transformed count, sk
 npx tsx bin/validate-csv.ts \
   --csv workos-users.csv \
   --auto-fix \
-  --fixed-csv users-validated.csv \
-  --report validation-report.json
+  --fixed-csv output/users-validated.csv \
+  --report output/validation-report.json
 ```
 
 ### Step 3: Import Users
@@ -225,14 +225,14 @@ npx tsx bin/validate-csv.ts \
 **Simple import:**
 
 ```bash
-npx tsx bin/import-users.ts --csv users-validated.csv
+npx tsx bin/import-users.ts --csv output/users-validated.csv
 ```
 
 **Multi-org import with workers:**
 
 ```bash
 npx tsx bin/import-users.ts \
-  --csv users-validated.csv \
+  --csv output/users-validated.csv \
   --job-id clerk-migration \
   --workers 4
 ```
@@ -240,7 +240,7 @@ npx tsx bin/import-users.ts \
 **Dry run first:**
 
 ```bash
-npx tsx bin/import-users.ts --csv users-validated.csv --dry-run
+npx tsx bin/import-users.ts --csv output/users-validated.csv --dry-run
 ```
 
 ## Password Handling
@@ -256,7 +256,7 @@ Clerk stores password hashes alongside user records. The transformer supports **
 
 Users whose passwords are skipped will need to **reset their password on first login** to WorkOS.
 
-The transformation summary shows how many users had passwords migrated vs. skipped. Check the `clerk-skipped-users.jsonl` file for details on individual skipped records.
+The transformation summary shows how many users had passwords migrated vs. skipped. Check the `output/clerk-skipped-users.jsonl` file for details on individual skipped records.
 
 ## Field Mapping Reference
 
@@ -307,7 +307,7 @@ ls -la user-org-mapping.csv
 
 ### "Missing required field: primary_email_address"
 
-The user row in the Clerk CSV has no email address. These users are automatically skipped and logged to the skipped users file (`clerk-skipped-users.jsonl`).
+The user row in the Clerk CSV has no email address. These users are automatically skipped and logged to the skipped users file (`output/clerk-skipped-users.jsonl`).
 
 ### "Unsupported password hasher" warning
 
@@ -315,7 +315,7 @@ The user has a non-bcrypt password hash (argon2, scrypt, or pbkdf2). Their passw
 
 ### Users missing from output
 
-Check the transformation summary and `clerk-skipped-users.jsonl` for users that were skipped due to missing email addresses.
+Check the transformation summary and `output/clerk-skipped-users.jsonl` for users that were skipped due to missing email addresses.
 
 ### Org mapping not applied
 

@@ -189,7 +189,7 @@ npx tsx bin/import-users.ts \
   --org-id org_123 \
   --yes \
   --job-id ci-migration \
-  --errors-out errors.jsonl
+  --errors-out output/errors.jsonl
 ```
 
 **Example: Automated migration script**
@@ -209,14 +209,14 @@ npx tsx bin/import-users.ts \
   --csv users-fixed.csv \
   --org-id org_123 \
   --job-id auto-migration-$(date +%s) \
-  --errors-out errors.jsonl \
+  --errors-out output/errors.jsonl \
   --yes
 
 # Analyze errors if any
-if [ -f errors.jsonl ]; then
-  npx tsx bin/analyze-errors.ts --errors errors.jsonl --retry-csv retry.csv
-  if [ -f retry.csv ]; then
-    npx tsx bin/import-users.ts --csv retry.csv --org-id org_123 --yes
+if [ -f output/errors.jsonl ]; then
+  npx tsx bin/analyze-errors.ts --errors output/errors.jsonl --retry-csv output/retry.csv
+  if [ -f output/retry.csv ]; then
+    npx tsx bin/import-users.ts --csv output/retry.csv --org-id org_123 --yes
   fi
 fi
 ```
@@ -236,7 +236,7 @@ npx tsx bin/import-users.ts \
   --csv users.csv \
   --job-id large-migration \
   --workers 4 \
-  --errors-out errors.jsonl
+  --errors-out output/errors.jsonl
 ```
 
 ### Plan Then Execute
