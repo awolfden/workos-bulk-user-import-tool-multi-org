@@ -31,9 +31,11 @@ export function registerCommand(parent: Command) {
     .description('Interactive guided migration wizard for WorkOS User Management')
     .version('1.0.0')
     // Options
-    .option('--dry-run', 'Show migration plan without executing')
     .option('-y, --yes', 'Skip confirmation prompts')
     .option('--quiet', 'Suppress progress output')
+    .option('--no-validate', 'Skip CSV validation step')
+    .option('--no-auto-fix', 'Skip auto-fix during validation')
+    .option('--no-error-log', 'Disable error logging to file')
     // Pre-filled options (for non-interactive use)
     .option('--source <provider>', 'Migration source (auth0, okta, cognito, custom)')
     .option('--org-id <id>', 'WorkOS organization ID')
@@ -63,12 +65,14 @@ async function main(opts: Record<string, any>) {
 
     // Step 2: Ask questions
     const wizardOptions: WizardOptions = {
-      dryRun: opts.dryRun,
       yes: opts.yes,
       quiet: opts.quiet,
       source: opts.source,
       orgId: opts.orgId,
-      auth0Domain: opts.auth0Domain
+      auth0Domain: opts.auth0Domain,
+      noValidate: opts.validate === false,
+      noAutoFix: opts.autoFix === false,
+      noErrorLog: opts.errorLog === false,
     };
 
     const answers = await askQuestions(wizardOptions);
@@ -82,8 +86,8 @@ async function main(opts: Record<string, any>) {
     const plan = generateMigrationPlan(answers);
     displayMigrationPlan(plan);
 
-    // Step 5: Confirm execution (unless --yes or --dry-run)
-    if (!opts.dryRun && !opts.yes) {
+    // Step 5: Confirm execution (unless --yes)
+    if (!opts.yes) {
       const confirmation = await prompts({
         type: 'confirm',
         name: 'proceed',
@@ -97,20 +101,12 @@ async function main(opts: Record<string, any>) {
       }
     }
 
-    // If dry-run, stop here
-    if (opts.dryRun) {
-      console.log(chalk.green('✓ Dry-run complete - no changes made\n'));
-      console.log(chalk.gray('To execute this migration, run without --dry-run flag\n'));
-      process.exit(0);
-    }
-
     // Step 6: Execute migration steps
     console.log(chalk.cyan('\n' + '='.repeat(60)));
     console.log(chalk.cyan('EXECUTING MIGRATION'));
     console.log(chalk.cyan('='.repeat(60)));
 
-    const requireConsent = !opts.yes; // Skip consent if --yes flag
-    const stepResults = await executeSteps(plan.steps, answers, opts.quiet, requireConsent);
+    const stepResults = await executeSteps(plan.steps, answers, opts.quiet);
 
     // Step 7: Generate and display summary
     const result = generateMigrationResult(stepResults, plan);
@@ -237,8 +233,3 @@ async function main(opts: Record<string, any>) {
   }
 }
 
-// Handle prompt cancellation (Ctrl+C)
-prompts.override({ onCancel: () => {
-  console.log(chalk.yellow('\n\nMigration cancelled by user\n'));
-  process.exit(0);
-}});

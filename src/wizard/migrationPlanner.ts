@@ -4,8 +4,6 @@
  * Converts user answers into a concrete migration plan with steps.
  */
 
-import path from 'node:path';
-import os from 'node:os';
 import type { WizardAnswers, MigrationPlan, MigrationStep } from './types.js';
 import { outputPath } from '../outputDir.js';
 
@@ -53,12 +51,7 @@ export function generateMigrationPlan(answers: WizardAnswers): MigrationPlan {
   // Step 4: Plan import
   steps.push(generatePlanStep(answers, jobId));
 
-  // Step 5: Dry-run import (if enabled)
-  if (answers.runDryRunFirst) {
-    steps.push(generateDryRunStep(answers, jobId));
-  }
-
-  // Step 6: Execute import
+  // Step 5: Execute import
   steps.push(generateImportStep(answers, jobId));
 
   // Step 7: Analyze errors (conditional)
@@ -113,7 +106,8 @@ function generateExportStep(answers: WizardAnswers): MigrationStep {
       description: 'Export users and organizations from Auth0',
       command: 'npx workos-migrate export-auth0',
       args,
-      optional: false
+      optional: false,
+      expectedOutputs: [outputPath('auth0-export.csv')]
     };
   }
 
@@ -140,7 +134,8 @@ function generatePasswordMergeStep(answers: WizardAnswers): MigrationStep {
     description: 'Merge Auth0 password hashes into CSV export',
     command: 'npx workos-migrate merge-passwords',
     args,
-    optional: false
+    optional: false,
+    expectedOutputs: [outputCsv]
   };
 }
 
@@ -167,6 +162,7 @@ function generateRoleDefinitionsStep(answers: WizardAnswers): MigrationStep {
     command: 'npx workos-migrate process-roles',
     args,
     optional: false,
+    expectedOutputs: [outputPath('role-definitions-report.json')]
   };
 }
 
@@ -194,7 +190,8 @@ function generateClerkTransformStep(answers: WizardAnswers): MigrationStep {
     description: 'Transform Clerk CSV to WorkOS format (field mapping, passwords, metadata, roles)',
     command: 'npx workos-migrate transform-clerk',
     args,
-    optional: false
+    optional: false,
+    expectedOutputs: [outputPath('clerk-transformed.csv')]
   };
 }
 
@@ -243,7 +240,8 @@ function generateFirebaseTransformStep(answers: WizardAnswers): MigrationStep {
     description: 'Transform Firebase JSON to WorkOS format (field mapping, passwords, metadata, roles)',
     command: 'npx workos-migrate transform-firebase',
     args,
-    optional: false
+    optional: false,
+    expectedOutputs: [outputPath('firebase-transformed.csv')]
   };
 }
 
@@ -276,13 +274,19 @@ function generateValidationStep(answers: WizardAnswers): MigrationStep {
 
   args.push('--report', outputPath('validation-report.json'));
 
+  const expectedOutputs = [outputPath('validation-report.json')];
+  if (answers.autoFixIssues) {
+    expectedOutputs.unshift(outputPath('users-validated.csv'));
+  }
+
   return {
     id: 'validate',
     name: 'Validate CSV',
     description: 'Validate CSV data and auto-fix common issues',
     command: 'npx workos-migrate validate',
     args,
-    optional: false
+    optional: false,
+    expectedOutputs
   };
 }
 
@@ -330,55 +334,8 @@ function generatePlanStep(answers: WizardAnswers, jobId?: string): MigrationStep
     description: 'Generate import plan with estimates',
     command: 'npx workos-migrate import',
     args,
-    optional: false
-  };
-}
-
-/**
- * Generate dry-run import step
- */
-function generateDryRunStep(answers: WizardAnswers, jobId?: string): MigrationStep {
-  const csvPath = getImportCsvPath(answers);
-  const args: string[] = ['--csv', csvPath, '--dry-run'];
-
-  // Add org configuration
-  addOrgArgs(args, answers);
-
-  // Add checkpoint configuration
-  if (answers.enableCheckpointing && jobId) {
-    args.push('--job-id', jobId);
-
-    if (answers.scale === 'large') {
-      args.push('--chunk-size', '5000');
-    } else if (answers.scale === 'medium') {
-      args.push('--chunk-size', '2000');
-    }
-  }
-
-  // Add worker configuration
-  if (answers.enableWorkers && answers.workerCount) {
-    args.push('--workers', answers.workerCount.toString());
-  }
-
-  // Add concurrency based on scale
-  if (answers.scale === 'large') {
-    args.push('--concurrency', '20');
-  } else if (answers.scale === 'medium') {
-    args.push('--concurrency', '15');
-  }
-
-  // Add role mapping for non-Clerk/Firebase sources (they embed roles in transformed CSV)
-  if (answers.roleMappingPath && answers.source !== 'clerk' && answers.source !== 'firebase') {
-    args.push('--role-mapping', answers.roleMappingPath);
-  }
-
-  return {
-    id: 'dry-run',
-    name: 'Test Import (Dry Run)',
-    description: 'Validate import configuration without creating users',
-    command: 'npx workos-migrate import',
-    args,
-    optional: false
+    optional: false,
+    expectedOutputs: []
   };
 }
 
@@ -432,7 +389,10 @@ function generateImportStep(answers: WizardAnswers, jobId?: string): MigrationSt
     description: 'Import users to WorkOS',
     command: 'npx workos-migrate import',
     args,
-    optional: false
+    optional: false,
+    expectedOutputs: answers.logErrors && !answers.enableCheckpointing
+      ? [answers.errorsPath || outputPath('errors.jsonl')]
+      : []
   };
 }
 
@@ -464,7 +424,8 @@ function generateErrorAnalysisStep(answers: WizardAnswers, jobId?: string): Migr
     command: 'npx workos-migrate analyze',
     args,
     optional: true,
-    skipCondition: (ans) => !ans.logErrors
+    skipCondition: (ans) => !ans.logErrors,
+    expectedOutputs: [outputPath('retry.csv'), outputPath('error-analysis.json')]
   };
 }
 
@@ -487,7 +448,8 @@ function generateRetryStep(answers: WizardAnswers): MigrationStep {
     command: 'npx workos-migrate import',
     args,
     optional: true,
-    skipCondition: (ans) => !ans.logErrors
+    skipCondition: (ans) => !ans.logErrors,
+    expectedOutputs: []
   };
 }
 
@@ -546,22 +508,6 @@ function getImportCsvPath(answers: WizardAnswers): string {
 function generateWarnings(answers: WizardAnswers): string[] {
   const warnings: string[] = [];
 
-  if (!answers.validateCsv) {
-    warnings.push('Skipping CSV validation may result in import errors');
-  }
-
-  if (!answers.logErrors) {
-    warnings.push('Error logging disabled - failed imports cannot be retried');
-  }
-
-  if (answers.scale === 'large' && !answers.enableCheckpointing) {
-    warnings.push('Large migration without checkpointing - cannot resume if interrupted');
-  }
-
-  if (answers.scale === 'large' && !answers.enableWorkers) {
-    warnings.push('Large migration without workers - import will take longer');
-  }
-
   if (answers.importMode === 'single-org' && !answers.orgId && !answers.orgExternalId && !answers.orgName) {
     warnings.push('No organization specified for single-org mode');
   }
@@ -605,7 +551,6 @@ function generateRecommendations(answers: WizardAnswers): string[] {
   }
 
   if (answers.enableCheckpointing) {
-    recommendations.push('Checkpoint directory: .workos-checkpoints/');
     recommendations.push('You can resume this migration with --resume flag');
   }
 

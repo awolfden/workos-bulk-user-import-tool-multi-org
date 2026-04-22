@@ -131,8 +131,6 @@ async function runTests() {
     assert.ok(importStep.args.includes('--role-mapping'), 'Import step should have --role-mapping');
     assert.ok(importStep.args.includes('user-role-mapping.csv'));
 
-    const dryRunStep = plan.steps.find(s => s.id === 'dry-run');
-    // Dry run only present when runDryRunFirst is true
   });
 
   await test('adds --role-mapping to plan step for non-Clerk source', () => {
@@ -152,26 +150,6 @@ async function runTests() {
     const planStep = plan.steps.find(s => s.id === 'plan');
     assert.ok(planStep, 'Should include plan step');
     assert.ok(planStep.args.includes('--role-mapping'), 'Plan step should have --role-mapping');
-  });
-
-  await test('adds --role-mapping to dry-run step for non-Clerk source', () => {
-    const plan = generateMigrationPlan({
-      source: 'custom',
-      customCsvPath: 'users.csv',
-      importMode: 'single-org',
-      orgId: 'org_123',
-      scale: 'small',
-      enableCheckpointing: false,
-      validateCsv: true,
-      logErrors: true,
-      runDryRunFirst: true,
-      hasRoleMapping: true,
-      roleMappingPath: 'user-role-mapping.csv',
-    });
-
-    const dryRunStep = plan.steps.find(s => s.id === 'dry-run');
-    assert.ok(dryRunStep, 'Should include dry-run step');
-    assert.ok(dryRunStep.args.includes('--role-mapping'), 'Dry-run step should have --role-mapping');
   });
 
   // --- Warnings and recommendations ---
