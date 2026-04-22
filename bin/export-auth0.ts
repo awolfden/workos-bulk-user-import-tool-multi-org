@@ -1,4 +1,7 @@
-#!/usr/bin/env node
+/**
+ * Export users and organizations from Auth0 to WorkOS CSV format
+ */
+
 import "dotenv/config";
 import { Command } from "commander";
 import path from "node:path";
@@ -25,49 +28,49 @@ function formatETA(ms: number): string {
   }
 }
 
-const program = new Command();
+export function registerCommand(parent: Command) {
+  parent
+    .command('export-auth0')
+    .description("Export users and organizations from Auth0 to WorkOS CSV format")
+    .requiredOption("--domain <domain>", "Auth0 tenant domain (e.g., tenant.auth0.com)")
+    .requiredOption("--client-id <id>", "Auth0 Management API client ID")
+    .requiredOption("--client-secret <secret>", "Auth0 Management API client secret")
+    .requiredOption("--output <path>", "Output CSV file path")
+    .option("--audience <url>", "Auth0 API audience (default: https://{domain}/api/v2/)")
+    .option("--orgs <ids...>", "Filter to specific organization IDs (space-separated)")
+    .option("--page-size <n>", "API page size (default: 100, max: 100)", (v: string) => parseInt(v, 10))
+    .option("--rate-limit <n>", "API rate limit in requests/second (default: 50, Auth0 Free: 2, Developer: 50, Enterprise: 100+)", (v: string) => parseInt(v, 10))
+    .option("--user-fetch-concurrency <n>", "Number of users to fetch in parallel (default: 10, max: 50)", (v: string) => parseInt(v, 10))
+    .option("--use-metadata", "Use user_metadata instead of Organizations API (for non-Enterprise plans)", false)
+    .option("--metadata-org-id-field <field>", "Custom metadata field for org ID (e.g., company_id, tenant_id)")
+    .option("--metadata-org-name-field <field>", "Custom metadata field for org name (e.g., company_name, tenant_name)")
+    .option("--job-id <id>", "Job ID for checkpointing (enables resumability)")
+    .option("--resume [jobId]", "Resume from an existing checkpoint (uses --job-id if no value provided)")
+    .option("--checkpoint-dir <path>", "Directory for checkpoint files (default: .workos-checkpoints)")
+    .option("--quiet", "Suppress progress output", false)
+    .action(async (opts) => {
+      await main(opts);
+    });
+}
 
-program
-  .name("workos-export-auth0")
-  .description("Export users and organizations from Auth0 to WorkOS CSV format")
-  .requiredOption("--domain <domain>", "Auth0 tenant domain (e.g., tenant.auth0.com)")
-  .requiredOption("--client-id <id>", "Auth0 Management API client ID")
-  .requiredOption("--client-secret <secret>", "Auth0 Management API client secret")
-  .requiredOption("--output <path>", "Output CSV file path")
-  .option("--audience <url>", "Auth0 API audience (default: https://{domain}/api/v2/)")
-  .option("--orgs <ids...>", "Filter to specific organization IDs (space-separated)")
-  .option("--page-size <n>", "API page size (default: 100, max: 100)", (v) => parseInt(v, 10))
-  .option("--rate-limit <n>", "API rate limit in requests/second (default: 50, Auth0 Free: 2, Developer: 50, Enterprise: 100+)", (v) => parseInt(v, 10))
-  .option("--user-fetch-concurrency <n>", "Number of users to fetch in parallel (default: 10, max: 50)", (v) => parseInt(v, 10))
-  .option("--use-metadata", "Use user_metadata instead of Organizations API (for non-Enterprise plans)", false)
-  .option("--metadata-org-id-field <field>", "Custom metadata field for org ID (e.g., company_id, tenant_id)")
-  .option("--metadata-org-name-field <field>", "Custom metadata field for org name (e.g., company_name, tenant_name)")
-  .option("--job-id <id>", "Job ID for checkpointing (enables resumability)")
-  .option("--resume [jobId]", "Resume from an existing checkpoint (uses --job-id if no value provided)")
-  .option("--checkpoint-dir <path>", "Directory for checkpoint files (default: .workos-checkpoints)")
-  .option("--quiet", "Suppress progress output", false)
-  .parse(process.argv);
-
-async function main() {
-  const opts = program.opts<{
-    domain: string;
-    clientId: string;
-    clientSecret: string;
-    output: string;
-    audience?: string;
-    orgs?: string[];
-    pageSize?: number;
-    rateLimit?: number;
-    userFetchConcurrency?: number;
-    useMetadata?: boolean;
-    metadataOrgIdField?: string;
-    metadataOrgNameField?: string;
-    jobId?: string;
-    resume?: boolean | string;
-    checkpointDir?: string;
-    quiet?: boolean;
-  }>();
-
+async function main(opts: {
+  domain: string;
+  clientId: string;
+  clientSecret: string;
+  output: string;
+  audience?: string;
+  orgs?: string[];
+  pageSize?: number;
+  rateLimit?: number;
+  userFetchConcurrency?: number;
+  useMetadata?: boolean;
+  metadataOrgIdField?: string;
+  metadataOrgNameField?: string;
+  jobId?: string;
+  resume?: boolean | string;
+  checkpointDir?: string;
+  quiet?: boolean;
+}) {
   const logger = createLogger({ quiet: opts.quiet });
 
   // Build credentials
@@ -139,8 +142,8 @@ async function main() {
     // Print next steps
     if (!opts.quiet) {
       logger.log("Next steps:");
-      logger.log(`  1. Validate: workos-validate-csv --csv ${path.resolve(opts.output)}`);
-      logger.log(`  2. Import: workos-import-users --csv ${path.resolve(opts.output)}`);
+      logger.log(`  1. Validate: npx workos-migrate validate --csv ${path.resolve(opts.output)}`);
+      logger.log(`  2. Import: npx workos-migrate import --csv ${path.resolve(opts.output)}`);
       logger.log("");
     }
 
@@ -156,5 +159,3 @@ async function main() {
     process.exit(1);
   }
 }
-
-main();

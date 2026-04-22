@@ -1,6 +1,5 @@
-#!/usr/bin/env node
 /**
- * Migration Wizard - CLI Entry Point
+ * Migration Wizard
  *
  * Interactive guided migration from Auth0/Okta/Cognito to WorkOS.
  */
@@ -26,28 +25,28 @@ import {
 import type { WizardOptions } from '../src/wizard/types.js';
 import { ensureOutputDir, outputPath } from '../src/outputDir.js';
 
-const program = new Command();
-
-program
-  .name('migrate-wizard')
-  .description('Interactive guided migration wizard for WorkOS User Management')
-  .version('1.0.0')
-  // Options
-  .option('--dry-run', 'Show migration plan without executing')
-  .option('-y, --yes', 'Skip confirmation prompts')
-  .option('--quiet', 'Suppress progress output')
-  // Pre-filled options (for non-interactive use)
-  .option('--source <provider>', 'Migration source (auth0, okta, cognito, custom)')
-  .option('--org-id <id>', 'WorkOS organization ID')
-  .option('--auth0-domain <domain>', 'Auth0 domain')
-  .parse(process.argv);
-
-const opts = program.opts();
+export function registerCommand(parent: Command) {
+  parent
+    .command('wizard')
+    .description('Interactive guided migration wizard for WorkOS User Management')
+    .version('1.0.0')
+    // Options
+    .option('--dry-run', 'Show migration plan without executing')
+    .option('-y, --yes', 'Skip confirmation prompts')
+    .option('--quiet', 'Suppress progress output')
+    // Pre-filled options (for non-interactive use)
+    .option('--source <provider>', 'Migration source (auth0, okta, cognito, custom)')
+    .option('--org-id <id>', 'WorkOS organization ID')
+    .option('--auth0-domain <domain>', 'Auth0 domain')
+    .action(async (opts) => {
+      await main(opts);
+    });
+}
 
 /**
  * Main function
  */
-async function main() {
+async function main(opts: Record<string, any>) {
   try {
     // Step 1: Check environment
     console.log(chalk.cyan.bold('WorkOS Migration Wizard'));
@@ -149,7 +148,7 @@ async function main() {
 
         console.log(chalk.bold('Next steps:'));
         console.log(chalk.gray(`  1. Review errors: cat ${errorsPath}`));
-        console.log(chalk.gray(`  2. Analyze errors: npx tsx bin/analyze-errors.ts --errors ${errorsPath}`));
+        console.log(chalk.gray(`  2. Analyze errors: npx workos-migrate analyze --errors ${errorsPath}`));
         console.log(chalk.gray('  3. Fix issues and retry\n'));
 
         // Display retry commands
@@ -162,7 +161,7 @@ async function main() {
         if (jobId) {
           // Checkpoint mode - resume from checkpoint
           console.log(chalk.cyan('  # Resume from checkpoint (retries failed records):'));
-          let resumeCmd = `  npx tsx bin/import-users.ts --csv ${csvPath} --resume ${jobId}`;
+          let resumeCmd = `  npx workos-migrate import --csv ${csvPath} --resume ${jobId}`;
 
           // Add org configuration if in single-org mode
           if (answers.importMode === 'single-org') {
@@ -188,7 +187,7 @@ async function main() {
         } else {
           // Non-checkpoint mode - retry from scratch
           console.log(chalk.cyan('  # Retry import (full re-run):'));
-          let retryCmd = `  npx tsx bin/import-users.ts --csv ${csvPath}`;
+          let retryCmd = `  npx workos-migrate import --csv ${csvPath}`;
 
           // Add org configuration if in single-org mode
           if (answers.importMode === 'single-org') {
@@ -243,6 +242,3 @@ prompts.override({ onCancel: () => {
   console.log(chalk.yellow('\n\nMigration cancelled by user\n'));
   process.exit(0);
 }});
-
-// Run main function
-main();

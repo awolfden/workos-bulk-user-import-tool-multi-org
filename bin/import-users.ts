@@ -1,4 +1,7 @@
-#!/usr/bin/env node
+/**
+ * Generic CSV-based WorkOS user importer
+ */
+
 import "dotenv/config";
 import { Command } from "commander";
 import path from "node:path";
@@ -19,63 +22,63 @@ import { RoleCache } from "../src/roles/roleCache.js";
 import { OrganizationCache } from "../src/cache/organizationCache.js";
 import type { OrchestratorOptions } from "../src/orchestrator/types.js";
 
-const program = new Command();
-
-program
-  .name("workos-import-users")
-  .description("Generic CSV-based WorkOS user importer")
-  .requiredOption("--csv <path>", "Path to CSV file containing users")
-  .option("--errors-out <path>", "Write errors to CSV or JSON file")
-  .option("--quiet", "Suppress per-record output", false)
-  .option("--concurrency <n>", "Max number of parallel requests (default: 10)", (v) => parseInt(v, 10))
-  .option("--org-id <id>", "Target organization ID for single-org mode")
-  .option("--org-external-id <externalId>", "Target organization by external_id for single-org mode")
-  .option("--create-org-if-missing", "Create organization if not found (requires --org-external-id and --org-name)", false)
-  .option("--org-name <name>", "Organization name when creating via --create-org-if-missing")
-  .option("--require-membership", "If membership creation fails, delete newly created user and mark failure", false)
-  .option("--dry-run", "Parse and validate only; do not call WorkOS APIs", false)
-  // Phase 3: Chunking and resumability
-  .option("--job-id <id>", "Job identifier for checkpoint/resume (enables chunked mode)")
-  .option("--resume [job-id]", "Resume from checkpoint (auto-detects last job if no ID provided)")
-  .option("--chunk-size <n>", "Rows per chunk for checkpointing (default: 1000)", (v) => parseInt(v, 10))
-  .option("--checkpoint-dir <path>", "Checkpoint storage directory (default: .workos-checkpoints)")
-  // Phase 4: Parallel processing
-  .option("--workers <n>", "Number of worker threads for parallel processing (default: 1, requires --job-id)", (v) => parseInt(v, 10))
-  // Role assignment
-  .option("--role-mapping <path>", "Path to user-role mapping CSV (external_id → role_slug)")
-  .option("--role-definitions <path>", "Path to role definitions CSV (creates roles before import)")
-  // Planning and automation
-  .option("--plan", "Analyze CSV and display migration plan without importing")
-  .option("-y, --yes", "Skip interactive prompts (for scripting/automation)")
-  .parse(process.argv);
-
-async function main() {
-  const opts = program.opts<{
-    csv?: string;
-    errorsOut?: string;
-    quiet?: boolean;
-    concurrency?: number;
-    orgId?: string;
-    orgExternalId?: string;
-    createOrgIfMissing?: boolean;
-    orgName?: string;
-    requireMembership?: boolean;
-    dryRun?: boolean;
-    // Checkpoint/resume flags
-    jobId?: string;
-    resume?: string | boolean;
-    chunkSize?: number;
-    checkpointDir?: string;
-    // Parallel processing
-    workers?: number;
+export function registerCommand(parent: Command) {
+  parent
+    .command('import')
+    .description("Generic CSV-based WorkOS user importer")
+    .requiredOption("--csv <path>", "Path to CSV file containing users")
+    .option("--errors-out <path>", "Write errors to CSV or JSON file")
+    .option("--quiet", "Suppress per-record output", false)
+    .option("--concurrency <n>", "Max number of parallel requests (default: 10)", (v: string) => parseInt(v, 10))
+    .option("--org-id <id>", "Target organization ID for single-org mode")
+    .option("--org-external-id <externalId>", "Target organization by external_id for single-org mode")
+    .option("--create-org-if-missing", "Create organization if not found (requires --org-external-id and --org-name)", false)
+    .option("--org-name <name>", "Organization name when creating via --create-org-if-missing")
+    .option("--require-membership", "If membership creation fails, delete newly created user and mark failure", false)
+    .option("--dry-run", "Parse and validate only; do not call WorkOS APIs", false)
+    // Phase 3: Chunking and resumability
+    .option("--job-id <id>", "Job identifier for checkpoint/resume (enables chunked mode)")
+    .option("--resume [job-id]", "Resume from checkpoint (auto-detects last job if no ID provided)")
+    .option("--chunk-size <n>", "Rows per chunk for checkpointing (default: 1000)", (v: string) => parseInt(v, 10))
+    .option("--checkpoint-dir <path>", "Checkpoint storage directory (default: .workos-checkpoints)")
+    // Phase 4: Parallel processing
+    .option("--workers <n>", "Number of worker threads for parallel processing (default: 1, requires --job-id)", (v: string) => parseInt(v, 10))
     // Role assignment
-    roleMapping?: string;
-    roleDefinitions?: string;
+    .option("--role-mapping <path>", "Path to user-role mapping CSV (external_id → role_slug)")
+    .option("--role-definitions <path>", "Path to role definitions CSV (creates roles before import)")
     // Planning and automation
-    plan?: boolean;
-    yes?: boolean;
-  }>();
+    .option("--plan", "Analyze CSV and display migration plan without importing")
+    .option("-y, --yes", "Skip interactive prompts (for scripting/automation)")
+    .action(async (opts) => {
+      await main(opts);
+    });
+}
 
+async function main(opts: {
+  csv?: string;
+  errorsOut?: string;
+  quiet?: boolean;
+  concurrency?: number;
+  orgId?: string;
+  orgExternalId?: string;
+  createOrgIfMissing?: boolean;
+  orgName?: string;
+  requireMembership?: boolean;
+  dryRun?: boolean;
+  // Checkpoint/resume flags
+  jobId?: string;
+  resume?: string | boolean;
+  chunkSize?: number;
+  checkpointDir?: string;
+  // Parallel processing
+  workers?: number;
+  // Role assignment
+  roleMapping?: string;
+  roleDefinitions?: string;
+  // Planning and automation
+  plan?: boolean;
+  yes?: boolean;
+}) {
   const csvPath = opts.csv;
   if (!csvPath) {
     // eslint-disable-next-line no-console
@@ -455,7 +458,7 @@ async function runPlanningMode(
   if (plan.valid) {
     console.log(`\n${chalk.green('Plan is valid.')}`);
     console.log(`Ready to import ${plan.summary.totalRows.toLocaleString()} users.`);
-    console.log(chalk.gray(`To execute: npx tsx bin/import-users.ts --csv ${plan.summary.csvPath}`));
+    console.log(chalk.gray(`To execute: npx workos-migrate import --csv ${plan.summary.csvPath}`));
     process.exit(0);
   } else {
     console.log(`\n${chalk.red('Plan is invalid.')}`);
@@ -463,7 +466,3 @@ async function runPlanningMode(
     process.exit(1);
   }
 }
-
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
-main();
-

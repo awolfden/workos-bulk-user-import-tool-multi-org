@@ -1,6 +1,5 @@
-#!/usr/bin/env node
 /**
- * Phase 4: Error Analyzer - CLI Entry Point
+ * Phase 4: Error Analyzer
  *
  * Analyze errors.jsonl from failed imports, group by pattern, classify retryability,
  * generate retry CSVs, and suggest fixes.
@@ -20,25 +19,25 @@ import { generateRetryCsv } from '../src/analyzer/retryCsvGenerator.js';
 import type { AnalyzerOptions } from '../src/analyzer/types.js';
 import { ensureOutputDir } from '../src/outputDir.js';
 
-const program = new Command();
-
-program
-  .name('analyze-errors')
-  .description('Analyze errors.jsonl from failed imports and generate retry CSVs')
-  .version('1.0.0')
-  .requiredOption('--errors <path>', 'Path to errors.jsonl file')
-  .option('--retry-csv <path>', 'Output path for retry CSV')
-  .option('--report <path>', 'JSON report path (default: output/error-analysis-report.json)', 'output/error-analysis-report.json')
-  .option('--include-duplicates', 'Include duplicate emails in retry CSV (default: false)', false)
-  .option('--quiet', 'Suppress progress output')
-  .parse(process.argv);
-
-const opts = program.opts();
+export function registerCommand(parent: Command) {
+  parent
+    .command('analyze')
+    .description('Analyze errors.jsonl from failed imports and generate retry CSVs')
+    .version('1.0.0')
+    .requiredOption('--errors <path>', 'Path to errors.jsonl file')
+    .option('--retry-csv <path>', 'Output path for retry CSV')
+    .option('--report <path>', 'JSON report path (default: output/error-analysis-report.json)', 'output/error-analysis-report.json')
+    .option('--include-duplicates', 'Include duplicate emails in retry CSV (default: false)', false)
+    .option('--quiet', 'Suppress progress output')
+    .action(async (opts) => {
+      await main(opts);
+    });
+}
 
 /**
  * Main analysis function
  */
-async function main() {
+async function main(opts: Record<string, any>) {
   ensureOutputDir();
 
   // Validate options
@@ -179,13 +178,13 @@ async function main() {
         // Checkpoint mode detected
         const jobId = checkpointMatch[1];
         console.log(chalk.gray(`\nTo retry failed imports from checkpoint, run:`));
-        console.log(chalk.cyan(`  npx tsx bin/import-users.ts --csv <your-csv> --resume ${jobId}`));
+        console.log(chalk.cyan(`  npx workos-migrate import --csv <your-csv> --resume ${jobId}`));
         console.log(chalk.gray('\nNote: Replace <your-csv> with your original CSV path.'));
         console.log(chalk.gray('      Fix any data validation issues in your CSV before retrying.'));
       } else if (opts.retryCsv) {
         // Non-checkpoint mode with retry CSV
         console.log(chalk.gray(`\nTo retry failed imports, run:`));
-        console.log(chalk.cyan(`  npx tsx bin/import-users.ts --csv ${opts.retryCsv}`));
+        console.log(chalk.cyan(`  npx workos-migrate import --csv ${opts.retryCsv}`));
       }
 
       process.exit(0);
@@ -202,5 +201,3 @@ async function main() {
     process.exit(2);
   }
 }
-
-main();

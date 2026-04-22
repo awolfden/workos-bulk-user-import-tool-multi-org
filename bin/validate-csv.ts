@@ -1,6 +1,5 @@
-#!/usr/bin/env node
 /**
- * Phase 2: CSV Validator - CLI Entry Point
+ * Phase 2: CSV Validator
  *
  * Pre-flight validation of CSV files with auto-fix, duplicate detection,
  * and optional API conflict checking.
@@ -19,29 +18,29 @@ import { CSVValidator } from '../src/validator/csvValidator.js';
 import type { ValidationOptions } from '../src/validator/types.js';
 import { ensureOutputDir } from '../src/outputDir.js';
 
-const program = new Command();
-
-program
-  .name('validate-csv')
-  .description('Validate CSV files before importing to WorkOS')
-  .version('2.0.0')
-  .requiredOption('--csv <path>', 'CSV file to validate')
-  .option('--auto-fix', 'Auto-fix common issues (whitespace, booleans)')
-  .option('--fixed-csv <path>', 'Output path for fixed CSV (requires --auto-fix)')
-  .option('--dedupe', 'Deduplicate rows with same email address')
-  .option('--deduped-csv <path>', 'Output path for deduplicated CSV (requires --dedupe)')
-  .option('--dedupe-report <path>', 'Deduplication report path (default: output/deduplication-report.json)', 'output/deduplication-report.json')
-  .option('--report <path>', 'JSON report path (default: output/validation-report.json)', 'output/validation-report.json')
-  .option('--check-api', 'Check WorkOS API for conflicts (requires WORKOS_SECRET_KEY)')
-  .option('--quiet', 'Suppress progress output')
-  .parse(process.argv);
-
-const opts = program.opts();
+export function registerCommand(parent: Command) {
+  parent
+    .command('validate')
+    .description('Validate CSV files before importing to WorkOS')
+    .version('2.0.0')
+    .requiredOption('--csv <path>', 'CSV file to validate')
+    .option('--auto-fix', 'Auto-fix common issues (whitespace, booleans)')
+    .option('--fixed-csv <path>', 'Output path for fixed CSV (requires --auto-fix)')
+    .option('--dedupe', 'Deduplicate rows with same email address')
+    .option('--deduped-csv <path>', 'Output path for deduplicated CSV (requires --dedupe)')
+    .option('--dedupe-report <path>', 'Deduplication report path (default: output/deduplication-report.json)', 'output/deduplication-report.json')
+    .option('--report <path>', 'JSON report path (default: output/validation-report.json)', 'output/validation-report.json')
+    .option('--check-api', 'Check WorkOS API for conflicts (requires WORKOS_SECRET_KEY)')
+    .option('--quiet', 'Suppress progress output')
+    .action(async (opts) => {
+      await main(opts);
+    });
+}
 
 /**
  * Main validation function
  */
-async function main() {
+async function main(opts: Record<string, any>) {
   ensureOutputDir();
 
   // Validate options
@@ -166,5 +165,3 @@ async function main() {
     process.exit(2);
   }
 }
-
-main();

@@ -111,7 +111,7 @@ function generateExportStep(answers: WizardAnswers): MigrationStep {
       id: 'export',
       name: 'Export from Auth0',
       description: 'Export users and organizations from Auth0',
-      command: 'npx tsx bin/export-auth0.ts',
+      command: 'npx workos-migrate export-auth0',
       args,
       optional: false
     };
@@ -138,7 +138,7 @@ function generatePasswordMergeStep(answers: WizardAnswers): MigrationStep {
     id: 'merge-passwords',
     name: 'Merge Password Hashes',
     description: 'Merge Auth0 password hashes into CSV export',
-    command: 'npx tsx bin/merge-auth0-passwords.ts',
+    command: 'npx workos-migrate merge-passwords',
     args,
     optional: false
   };
@@ -164,7 +164,7 @@ function generateRoleDefinitionsStep(answers: WizardAnswers): MigrationStep {
     id: 'process-role-definitions',
     name: 'Process Role Definitions',
     description: 'Create roles and permissions in WorkOS from definitions CSV',
-    command: 'npx tsx bin/process-role-definitions.ts',
+    command: 'npx workos-migrate process-roles',
     args,
     optional: false,
   };
@@ -192,7 +192,7 @@ function generateClerkTransformStep(answers: WizardAnswers): MigrationStep {
     id: 'clerk-transform',
     name: 'Transform Clerk Export',
     description: 'Transform Clerk CSV to WorkOS format (field mapping, passwords, metadata, roles)',
-    command: 'npx tsx bin/transform-clerk.ts',
+    command: 'npx workos-migrate transform-clerk',
     args,
     optional: false
   };
@@ -241,7 +241,7 @@ function generateFirebaseTransformStep(answers: WizardAnswers): MigrationStep {
     id: 'firebase-transform',
     name: 'Transform Firebase Export',
     description: 'Transform Firebase JSON to WorkOS format (field mapping, passwords, metadata, roles)',
-    command: 'npx tsx bin/transform-firebase.ts',
+    command: 'npx workos-migrate transform-firebase',
     args,
     optional: false
   };
@@ -280,7 +280,7 @@ function generateValidationStep(answers: WizardAnswers): MigrationStep {
     id: 'validate',
     name: 'Validate CSV',
     description: 'Validate CSV data and auto-fix common issues',
-    command: 'npx tsx bin/validate-csv.ts',
+    command: 'npx workos-migrate validate',
     args,
     optional: false
   };
@@ -328,7 +328,7 @@ function generatePlanStep(answers: WizardAnswers, jobId?: string): MigrationStep
     id: 'plan',
     name: 'Plan Import',
     description: 'Generate import plan with estimates',
-    command: 'npx tsx bin/import-users.ts',
+    command: 'npx workos-migrate import',
     args,
     optional: false
   };
@@ -376,7 +376,7 @@ function generateDryRunStep(answers: WizardAnswers, jobId?: string): MigrationSt
     id: 'dry-run',
     name: 'Test Import (Dry Run)',
     description: 'Validate import configuration without creating users',
-    command: 'npx tsx bin/import-users.ts',
+    command: 'npx workos-migrate import',
     args,
     optional: false
   };
@@ -430,7 +430,7 @@ function generateImportStep(answers: WizardAnswers, jobId?: string): MigrationSt
     id: 'import',
     name: 'Execute Import',
     description: 'Import users to WorkOS',
-    command: 'npx tsx bin/import-users.ts',
+    command: 'npx workos-migrate import',
     args,
     optional: false
   };
@@ -461,7 +461,7 @@ function generateErrorAnalysisStep(answers: WizardAnswers, jobId?: string): Migr
     id: 'analyze-errors',
     name: 'Analyze Errors',
     description: 'Analyze import errors and generate retry CSV',
-    command: 'npx tsx bin/analyze-errors.ts',
+    command: 'npx workos-migrate analyze',
     args,
     optional: true,
     skipCondition: (ans) => !ans.logErrors
@@ -484,7 +484,7 @@ function generateRetryStep(answers: WizardAnswers): MigrationStep {
     id: 'retry',
     name: 'Retry Failed Imports',
     description: 'Retry failed imports from error analysis',
-    command: 'npx tsx bin/import-users.ts',
+    command: 'npx workos-migrate import',
     args,
     optional: true,
     skipCondition: (ans) => !ans.logErrors

@@ -129,7 +129,7 @@ function generateSuggestionForGroup(group: ErrorGroup): FixSuggestion | null {
       affectedCount: count,
       suggestion: 'Rate limited by WorkOS API. Reduce --concurrency value (try 5 or lower) and retry.',
       actionable: false,
-      exampleFix: 'Run: npx tsx bin/import-users.ts --csv retry.csv --concurrency 5'
+      exampleFix: 'Run: npx workos-migrate import --csv retry.csv --concurrency 5'
     };
   }
 
@@ -142,7 +142,7 @@ function generateSuggestionForGroup(group: ErrorGroup): FixSuggestion | null {
       affectedCount: count,
       suggestion: 'WorkOS API server error. Wait a few minutes and retry with generated retry CSV.',
       actionable: false,
-      exampleFix: 'Wait 5-10 minutes, then run: npx tsx bin/import-users.ts --csv retry.csv'
+      exampleFix: 'Wait 5-10 minutes, then run: npx workos-migrate import --csv retry.csv'
     };
   }
 

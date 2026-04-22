@@ -94,7 +94,12 @@ function runCommand(command: string, args: string[], quiet: boolean): Promise<st
     let cmd: string;
     let cmdArgs: string[];
 
-    if (command.startsWith('npx tsx')) {
+    if (command.startsWith('npx workos-migrate')) {
+      cmd = 'npx';
+      const subcommand = command.replace('npx workos-migrate ', '');
+      cmdArgs = ['workos-migrate', subcommand, ...args];
+    } else if (command.startsWith('npx tsx')) {
+      // Backward compat
       cmd = 'npx';
       const scriptPath = command.replace('npx tsx ', '');
       cmdArgs = ['tsx', scriptPath, ...args];

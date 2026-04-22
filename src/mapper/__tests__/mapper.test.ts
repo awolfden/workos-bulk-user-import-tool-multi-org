@@ -135,7 +135,7 @@ async function runTests(): Promise<void> {
   } else {
     console.log('\n✅ All tests passed!');
     console.log('\nNote: Full end-to-end test was performed via CLI:');
-    console.log('  npx tsx bin/map-fields.ts --input examples/auth0/auth0-test-input.csv --output examples/auth0/auth0-test-output.csv --profile auth0');
+    console.log('  npx workos-migrate map-fields --input examples/auth0/auth0-test-input.csv --output examples/auth0/auth0-test-output.csv --profile auth0');
     process.exit(0);
   }
 }
