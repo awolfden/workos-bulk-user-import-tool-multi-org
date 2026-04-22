@@ -1,4 +1,0 @@
-email,first_name,last_name,email_verified,external_id,org_external_id,org_name
- alice@example.com ,Alice,Smith,yes,user-001,acme-corp,Acme Corporation
-bob@example.com ,Bob,Jones,1,user-002,beta-inc,Beta Inc
-charlie@example.com,Charlie,Brown,no,user-003,gamma-llc,Gamma LLC

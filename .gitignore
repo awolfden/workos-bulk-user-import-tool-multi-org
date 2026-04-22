@@ -151,5 +151,8 @@ errors-*.json
 # Checkpoint files
 .workos-checkpoints/
 
+# Compiled JS in source (project uses tsx, not tsc output)
+src/**/*.js
+
 #Ideation files
 docs/ideation/
