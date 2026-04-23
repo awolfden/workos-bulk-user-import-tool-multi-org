@@ -1,6 +1,5 @@
-#!/usr/bin/env node
 /**
- * Migration Wizard - CLI Entry Point
+ * Migration Wizard
  *
  * Interactive guided migration from Auth0/Okta/Cognito to WorkOS.
  */
@@ -24,33 +23,38 @@ import {
   saveMigrationSummary
 } from '../src/wizard/summaryReporter.js';
 import type { WizardOptions } from '../src/wizard/types.js';
+import { ensureOutputDir, outputPath } from '../src/outputDir.js';
 
-const program = new Command();
-
-program
-  .name('migrate-wizard')
-  .description('Interactive guided migration wizard for WorkOS User Management')
-  .version('1.0.0')
-  // Options
-  .option('--dry-run', 'Show migration plan without executing')
-  .option('-y, --yes', 'Skip confirmation prompts')
-  .option('--quiet', 'Suppress progress output')
-  // Pre-filled options (for non-interactive use)
-  .option('--source <provider>', 'Migration source (auth0, okta, cognito, custom)')
-  .option('--org-id <id>', 'WorkOS organization ID')
-  .option('--auth0-domain <domain>', 'Auth0 domain')
-  .parse(process.argv);
-
-const opts = program.opts();
+export function registerCommand(parent: Command) {
+  parent
+    .command('wizard')
+    .description('Interactive guided migration wizard for WorkOS User Management')
+    .version('1.0.0')
+    // Options
+    .option('-y, --yes', 'Skip confirmation prompts')
+    .option('--quiet', 'Suppress progress output')
+    .option('--no-validate', 'Skip CSV validation step')
+    .option('--no-auto-fix', 'Skip auto-fix during validation')
+    .option('--no-error-log', 'Disable error logging to file')
+    // Pre-filled options (for non-interactive use)
+    .option('--source <provider>', 'Migration source (auth0, okta, cognito, custom)')
+    .option('--org-id <id>', 'WorkOS organization ID')
+    .option('--auth0-domain <domain>', 'Auth0 domain')
+    .action(async (opts) => {
+      await main(opts);
+    });
+}
 
 /**
  * Main function
  */
-async function main() {
+async function main(opts: Record<string, any>) {
   try {
     // Step 1: Check environment
     console.log(chalk.cyan.bold('WorkOS Migration Wizard'));
     console.log(chalk.gray('Version 1.0.0\n'));
+
+    ensureOutputDir();
 
     const envCheck = checkEnvironment();
     displayEnvironmentCheck(envCheck);
@@ -61,12 +65,14 @@ async function main() {
 
     // Step 2: Ask questions
     const wizardOptions: WizardOptions = {
-      dryRun: opts.dryRun,
       yes: opts.yes,
       quiet: opts.quiet,
       source: opts.source,
       orgId: opts.orgId,
-      auth0Domain: opts.auth0Domain
+      auth0Domain: opts.auth0Domain,
+      noValidate: opts.validate === false,
+      noAutoFix: opts.autoFix === false,
+      noErrorLog: opts.errorLog === false,
     };
 
     const answers = await askQuestions(wizardOptions);
@@ -80,8 +86,8 @@ async function main() {
     const plan = generateMigrationPlan(answers);
     displayMigrationPlan(plan);
 
-    // Step 5: Confirm execution (unless --yes or --dry-run)
-    if (!opts.dryRun && !opts.yes) {
+    // Step 5: Confirm execution (unless --yes)
+    if (!opts.yes) {
       const confirmation = await prompts({
         type: 'confirm',
         name: 'proceed',
@@ -95,20 +101,12 @@ async function main() {
       }
     }
 
-    // If dry-run, stop here
-    if (opts.dryRun) {
-      console.log(chalk.green('✓ Dry-run complete - no changes made\n'));
-      console.log(chalk.gray('To execute this migration, run without --dry-run flag\n'));
-      process.exit(0);
-    }
-
     // Step 6: Execute migration steps
     console.log(chalk.cyan('\n' + '='.repeat(60)));
     console.log(chalk.cyan('EXECUTING MIGRATION'));
     console.log(chalk.cyan('='.repeat(60)));
 
-    const requireConsent = !opts.yes; // Skip consent if --yes flag
-    const stepResults = await executeSteps(plan.steps, answers, opts.quiet, requireConsent);
+    const stepResults = await executeSteps(plan.steps, answers, opts.quiet);
 
     // Step 7: Generate and display summary
     const result = generateMigrationResult(stepResults, plan);
@@ -126,7 +124,7 @@ async function main() {
 
       if (hasErrors && answers.logErrors) {
         // Construct correct error path (checkpointed or not)
-        let errorsPath = answers.errorsPath || 'errors.jsonl';
+        let errorsPath = answers.errorsPath || outputPath('errors.jsonl');
         let jobId: string | undefined;
 
         // If checkpointing was enabled, extract job ID from import step
@@ -146,7 +144,7 @@ async function main() {
 
         console.log(chalk.bold('Next steps:'));
         console.log(chalk.gray(`  1. Review errors: cat ${errorsPath}`));
-        console.log(chalk.gray(`  2. Analyze errors: npx tsx bin/analyze-errors.ts --errors ${errorsPath}`));
+        console.log(chalk.gray(`  2. Analyze errors: npx workos-migrate analyze --errors ${errorsPath}`));
         console.log(chalk.gray('  3. Fix issues and retry\n'));
 
         // Display retry commands
@@ -154,12 +152,12 @@ async function main() {
 
         // Build CSV path for retry
         const csvPath = answers.customCsvPath ||
-                        (answers.source === 'auth0' ? 'auth0-export.csv' : 'users.csv');
+                        (answers.source === 'auth0' ? outputPath('auth0-export.csv') : 'users.csv');
 
         if (jobId) {
           // Checkpoint mode - resume from checkpoint
           console.log(chalk.cyan('  # Resume from checkpoint (retries failed records):'));
-          let resumeCmd = `  npx tsx bin/orchestrate-migration.ts --csv ${csvPath} --resume ${jobId}`;
+          let resumeCmd = `  npx workos-migrate import --csv ${csvPath} --resume ${jobId}`;
 
           // Add org configuration if in single-org mode
           if (answers.importMode === 'single-org') {
@@ -185,7 +183,7 @@ async function main() {
         } else {
           // Non-checkpoint mode - retry from scratch
           console.log(chalk.cyan('  # Retry import (full re-run):'));
-          let retryCmd = `  npx tsx bin/import-users.ts --csv ${csvPath}`;
+          let retryCmd = `  npx workos-migrate import --csv ${csvPath}`;
 
           // Add org configuration if in single-org mode
           if (answers.importMode === 'single-org') {
@@ -235,11 +233,3 @@ async function main() {
   }
 }
 
-// Handle prompt cancellation (Ctrl+C)
-prompts.override({ onCancel: () => {
-  console.log(chalk.yellow('\n\nMigration cancelled by user\n'));
-  process.exit(0);
-}});
-
-// Run main function
-main();

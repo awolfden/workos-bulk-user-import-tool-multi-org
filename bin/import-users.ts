@@ -1,69 +1,85 @@
-#!/usr/bin/env node
+/**
+ * Generic CSV-based WorkOS user importer
+ */
+
 import "dotenv/config";
 import { Command } from "commander";
 import path from "node:path";
+import chalk from "chalk";
+import prompts from "prompts";
 import { importUsersFromCsv } from "../src/importer.js";
 import { renderSummaryBox } from "../src/summary.js";
 import { writeErrorsOut } from "../src/errorsOut.js";
 import { createLogger } from "../src/logger.js";
 import { resolveOrganization } from "../src/orgs.js";
 import { CheckpointManager, findLastJob } from "../src/checkpoint/manager.js";
-import { calculateCsvHash, countCsvRows } from "../src/checkpoint/csvUtils.js";
+import { calculateCsvHash, countCsvRows, validateCsvHeaders } from "../src/checkpoint/csvUtils.js";
 import { parseUserRoleMapping } from "../src/roles/userRoleMappingParser.js";
+import { MigrationPlanner } from "../src/orchestrator/migrationPlanner.js";
+import { validateConfig } from "../src/orchestrator/configValidator.js";
+import { processRoleDefinitions } from "../src/roles/roleDefinitionsProcessor.js";
+import { RoleCache } from "../src/roles/roleCache.js";
+import { OrganizationCache } from "../src/cache/organizationCache.js";
+import type { OrchestratorOptions } from "../src/orchestrator/types.js";
 
-const program = new Command();
-
-program
-  .name("workos-import-users")
-  .description("Generic CSV-based WorkOS user importer")
-  .requiredOption("--csv <path>", "Path to CSV file containing users")
-  .option("--errors-out <path>", "Write errors to CSV or JSON file")
-  .option("--quiet", "Suppress per-record output", false)
-  .option("--concurrency <n>", "Max number of parallel requests (default: 10)", (v) => parseInt(v, 10))
-  .option("--org-id <id>", "Target organization ID for single-org mode")
-  .option("--org-external-id <externalId>", "Target organization by external_id for single-org mode")
-  .option("--create-org-if-missing", "Create organization if not found (requires --org-external-id and --org-name)", false)
-  .option("--org-name <name>", "Organization name when creating via --create-org-if-missing")
-  .option("--require-membership", "If membership creation fails, delete newly created user and mark failure", false)
-  .option("--dry-run", "Parse and validate only; do not call WorkOS APIs", false)
-  // Phase 3: Chunking and resumability
-  .option("--job-id <id>", "Job identifier for checkpoint/resume (enables chunked mode)")
-  .option("--resume [job-id]", "Resume from checkpoint (auto-detects last job if no ID provided)")
-  .option("--chunk-size <n>", "Rows per chunk for checkpointing (default: 1000)", (v) => parseInt(v, 10))
-  .option("--checkpoint-dir <path>", "Checkpoint storage directory (default: .workos-checkpoints)")
-  // Phase 4: Parallel processing
-  .option("--workers <n>", "Number of worker threads for parallel processing (default: 1, requires --job-id)", (v) => parseInt(v, 10))
-  // Role assignment
-  .option("--role-mapping <path>", "Path to user-role mapping CSV (external_id → role_slug)")
-  // Back-compat: accept --user-export as alias to --csv
-  .option("--user-export <path>", "(deprecated) Use --csv instead", undefined)
-  .parse(process.argv);
-
-async function main() {
-  const opts = program.opts<{
-    csv?: string;
-    userExport?: string;
-    errorsOut?: string;
-    quiet?: boolean;
-    concurrency?: number;
-    orgId?: string;
-    orgExternalId?: string;
-    createOrgIfMissing?: boolean;
-    orgName?: string;
-    requireMembership?: boolean;
-    dryRun?: boolean;
-    // Phase 3: Checkpoint/resume flags
-    jobId?: string;
-    resume?: string | boolean;
-    chunkSize?: number;
-    checkpointDir?: string;
+export function registerCommand(parent: Command) {
+  parent
+    .command('import')
+    .description("Generic CSV-based WorkOS user importer")
+    .requiredOption("--csv <path>", "Path to CSV file containing users")
+    .option("--errors-out <path>", "Write errors to CSV or JSON file")
+    .option("--quiet", "Suppress per-record output", false)
+    .option("--concurrency <n>", "Max number of parallel requests (default: 10)", (v: string) => parseInt(v, 10))
+    .option("--org-id <id>", "Target organization ID for single-org mode")
+    .option("--org-external-id <externalId>", "Target organization by external_id for single-org mode")
+    .option("--create-org-if-missing", "Create organization if not found (requires --org-external-id and --org-name)", false)
+    .option("--org-name <name>", "Organization name when creating via --create-org-if-missing")
+    .option("--require-membership", "If membership creation fails, delete newly created user and mark failure", false)
+    .option("--dry-run", "Parse and validate only; do not call WorkOS APIs", false)
+    // Phase 3: Chunking and resumability
+    .option("--job-id <id>", "Job identifier for checkpoint/resume (enables chunked mode)")
+    .option("--resume [job-id]", "Resume from checkpoint (auto-detects last job if no ID provided)")
+    .option("--chunk-size <n>", "Rows per chunk for checkpointing (default: 1000)", (v: string) => parseInt(v, 10))
+    .option("--checkpoint-dir <path>", "Checkpoint storage directory (default: .workos-checkpoints)")
     // Phase 4: Parallel processing
-    workers?: number;
+    .option("--workers <n>", "Number of worker threads for parallel processing (default: 1, requires --job-id)", (v: string) => parseInt(v, 10))
     // Role assignment
-    roleMapping?: string;
-  }>();
+    .option("--role-mapping <path>", "Path to user-role mapping CSV (external_id → role_slug)")
+    .option("--role-definitions <path>", "Path to role definitions CSV (creates roles before import)")
+    // Planning and automation
+    .option("--plan", "Analyze CSV and display migration plan without importing")
+    .option("-y, --yes", "Skip interactive prompts (for scripting/automation)")
+    .action(async (opts) => {
+      await main(opts);
+    });
+}
 
-  const csvPath = opts.csv ?? opts.userExport;
+async function main(opts: {
+  csv?: string;
+  errorsOut?: string;
+  quiet?: boolean;
+  concurrency?: number;
+  orgId?: string;
+  orgExternalId?: string;
+  createOrgIfMissing?: boolean;
+  orgName?: string;
+  requireMembership?: boolean;
+  dryRun?: boolean;
+  // Checkpoint/resume flags
+  jobId?: string;
+  resume?: string | boolean;
+  chunkSize?: number;
+  checkpointDir?: string;
+  // Parallel processing
+  workers?: number;
+  // Role assignment
+  roleMapping?: string;
+  roleDefinitions?: string;
+  // Planning and automation
+  plan?: boolean;
+  yes?: boolean;
+}) {
+  const csvPath = opts.csv;
   if (!csvPath) {
     // eslint-disable-next-line no-console
     console.error("Error: --csv <path> is required.");
@@ -93,7 +109,68 @@ async function main() {
     }
   }
 
-  // Phase 3: Checkpoint initialization
+  // Planning mode: analyze CSV and display plan without importing
+  if (opts.plan) {
+    await runPlanningMode(absCsv, opts);
+    process.exit(0); // runPlanningMode exits on its own, but just in case
+  }
+
+  // Config validation before execution
+  const totalRowsForValidation = await countCsvRows(absCsv);
+  const headerInfo = await validateCsvHeaders(absCsv);
+  const detectedMode: 'single-org' | 'multi-org' | 'user-only' =
+    (opts.orgId || opts.orgExternalId) ? 'single-org' :
+    headerInfo.hasOrgColumns ? 'multi-org' : 'user-only';
+
+  const orchestratorOpts: OrchestratorOptions = {
+    csvPath: absCsv,
+    quiet: opts.quiet,
+    yes: opts.yes,
+    concurrency: opts.concurrency,
+    orgId: opts.orgId,
+    orgExternalId: opts.orgExternalId,
+    orgName: opts.orgName,
+    createOrgIfMissing: opts.createOrgIfMissing,
+    requireMembership: opts.requireMembership,
+    dryRun: opts.dryRun,
+    errorsOutPath: opts.errorsOut,
+    jobId: opts.jobId,
+    resume: opts.resume,
+    chunkSize: opts.chunkSize,
+    checkpointDir: opts.checkpointDir,
+    workers: opts.workers,
+  };
+
+  const validation = validateConfig(orchestratorOpts, detectedMode, totalRowsForValidation);
+  if (validation.errors.length > 0) {
+    console.error(chalk.red('\nConfiguration errors:'));
+    for (const error of validation.errors) {
+      console.error(chalk.red(`  - ${error}`));
+    }
+    process.exit(1);
+  }
+  if (validation.warnings.length > 0 && !opts.quiet) {
+    for (const warning of validation.warnings) {
+      logger.warn(`Warning: ${warning}`);
+    }
+  }
+
+  // Interactive confirmation for large imports
+  if (totalRowsForValidation > 10000 && !opts.yes && !opts.quiet && !opts.dryRun) {
+    console.log(chalk.yellow(`\nLarge import detected: ${totalRowsForValidation.toLocaleString()} rows`));
+    const response = await prompts({
+      type: 'confirm',
+      name: 'proceed',
+      message: 'Proceed with import?',
+      initial: true
+    });
+    if (!response.proceed) {
+      console.log(chalk.yellow('Import cancelled'));
+      process.exit(0);
+    }
+  }
+
+  // Checkpoint initialization
   let checkpointManager: CheckpointManager | undefined;
 
   // Handle resume mode
@@ -149,6 +226,33 @@ async function main() {
     });
 
     logger.log(`Checkpoint created: ${checkpointManager.getCheckpointDir()}`);
+  }
+
+  // Process role definitions if provided (before import)
+  if (opts.roleDefinitions) {
+    const definitionsPath = path.resolve(opts.roleDefinitions);
+    if (!opts.quiet) {
+      console.log(chalk.cyan('\nProcessing role definitions...'));
+    }
+
+    const roleCache = new RoleCache({ dryRun: opts.dryRun });
+    const orgCache = new OrganizationCache({ dryRun: opts.dryRun });
+
+    const roleSummary = await processRoleDefinitions({
+      csvPath: definitionsPath,
+      roleCache,
+      orgCache,
+      dryRun: opts.dryRun,
+      quiet: opts.quiet,
+    });
+
+    if (!opts.quiet) {
+      console.log(`  Created: ${roleSummary.created}, Already exist: ${roleSummary.alreadyExist}, Errors: ${roleSummary.errors}`);
+      if (roleSummary.errors > 0) {
+        console.log(chalk.yellow('  Warning: Some role definitions failed. Import will continue.'));
+      }
+      console.log('');
+    }
   }
 
   let exitCode = 0;
@@ -281,6 +385,84 @@ async function main() {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
-main();
+/**
+ * Planning mode: analyze CSV and display migration plan without importing
+ */
+async function runPlanningMode(
+  absCsv: string,
+  opts: { quiet?: boolean; concurrency?: number; orgId?: string; orgExternalId?: string; orgName?: string; createOrgIfMissing?: boolean; requireMembership?: boolean; dryRun?: boolean; errorsOut?: string; jobId?: string; resume?: string | boolean; chunkSize?: number; checkpointDir?: string; workers?: number; }
+): Promise<void> {
+  const options: OrchestratorOptions = {
+    csvPath: absCsv,
+    quiet: opts.quiet,
+    concurrency: opts.concurrency,
+    orgId: opts.orgId,
+    orgExternalId: opts.orgExternalId,
+    orgName: opts.orgName,
+    createOrgIfMissing: opts.createOrgIfMissing,
+    requireMembership: opts.requireMembership,
+    dryRun: opts.dryRun,
+    errorsOutPath: opts.errorsOut,
+    jobId: opts.jobId,
+    resume: opts.resume,
+    chunkSize: opts.chunkSize,
+    checkpointDir: opts.checkpointDir,
+    workers: opts.workers,
+  };
 
+  const planner = new MigrationPlanner(options);
+  const plan = await planner.generatePlan();
+
+  if (!opts.quiet) {
+    console.log(chalk.cyan('\n--- Migration Plan ---\n'));
+  }
+
+  console.log(`CSV:              ${plan.summary.csvPath}`);
+  console.log(`Total rows:       ${plan.summary.totalRows.toLocaleString()}`);
+  console.log(`Mode:             ${plan.summary.mode}`);
+  console.log(`Estimated time:   ${plan.summary.estimatedDuration}`);
+
+  if (plan.summary.hasCheckpoint) {
+    console.log(`Checkpoint:       Existing checkpoint found`);
+  }
+
+  console.log(`\n${chalk.bold('Configuration:')}`);
+  console.log(`  Workers:        ${plan.configuration.workers}`);
+  console.log(`  Concurrency:    ${plan.configuration.concurrency} per worker`);
+  if (plan.summary.estimatedChunks) {
+    console.log(`  Chunks:         ${plan.summary.estimatedChunks} (${plan.configuration.chunkSize} rows each)`);
+  }
+  console.log(`  Org resolution: ${plan.configuration.orgResolution}`);
+
+  if (plan.validation.errors.length > 0) {
+    console.log(`\n${chalk.red('Configuration errors:')}`);
+    for (const error of plan.validation.errors) {
+      console.log(chalk.red(`  - ${error}`));
+    }
+  }
+
+  if (plan.validation.warnings.length > 0) {
+    console.log(`\n${chalk.yellow('Warnings:')}`);
+    for (const warning of plan.validation.warnings) {
+      console.log(chalk.yellow(`  - ${warning}`));
+    }
+  }
+
+  if (plan.recommendations.length > 0 && plan.validation.errors.length === 0) {
+    console.log(`\n${chalk.bold('Recommendations:')}`);
+    for (const recommendation of plan.recommendations) {
+      console.log(`  - ${recommendation}`);
+    }
+  }
+
+  if (plan.valid) {
+    console.log(`\n${chalk.green('Plan is valid.')}`);
+    console.log(`Ready to import ${plan.summary.totalRows.toLocaleString()} users.`);
+    console.log(chalk.gray(`To execute: npx workos-migrate import --csv ${plan.summary.csvPath}`));
+    process.exit(0);
+  } else {
+    console.log(`\n${chalk.red('Plan is invalid.')}`);
+    console.log(chalk.gray('Fix the errors above and try again.'));
+    process.exit(1);
+  }
+}

@@ -10,8 +10,8 @@ The Firebase migration transforms a Firebase JSON user export into WorkOS-compat
 
 1. **Export** — Export your users via the Firebase CLI
 2. **Transform** — Convert Firebase JSON fields to WorkOS format (`transform-firebase`)
-3. **Validate** — Check the transformed CSV for errors (`validate-csv`)
-4. **Import** — Migrate users into WorkOS (`import-users` / `orchestrate-migration`)
+3. **Validate** — Check the transformed CSV for errors (`validate`)
+4. **Import** — Migrate users into WorkOS (`import`)
 
 You can run these steps manually via CLI or let the wizard handle them automatically.
 
@@ -159,7 +159,7 @@ Each row is a single user-role pair. Users with multiple roles have multiple row
 Pass `--role-mapping` to the transform step. Role slugs are merged into the output CSV as a `role_slugs` column:
 
 ```bash
-npx tsx bin/transform-firebase.ts \
+npx workos-migrate transform-firebase \
   --firebase-json users.json \
   --org-mapping firebase-org-mapping.csv \
   --role-mapping user-role-mapping.csv \
@@ -174,7 +174,7 @@ The import step then reads role slugs from the transformed CSV and assigns them 
 If your roles don't already exist in WorkOS, process a role definitions CSV first:
 
 ```bash
-npx tsx bin/process-role-definitions.ts \
+npx workos-migrate process-roles \
   --definitions role-definitions.csv
 ```
 
@@ -184,12 +184,12 @@ An example is included at `examples/firebase/firebase-role-mapping.csv`.
 
 ## Option A: Wizard (Recommended)
 
-The wizard automates the full transform → validate → import pipeline.
+The wizard automates the full transform -> validate -> import pipeline.
 
 ### Launch
 
 ```bash
-WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/migrate-wizard.ts
+WORKOS_SECRET_KEY=sk_test_123 npx workos-migrate wizard
 ```
 
 ### Wizard Prompts
@@ -210,8 +210,8 @@ WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/migrate-wizard.ts
 
 ### What the Wizard Does Automatically
 
-1. **Transform Firebase Export** — Runs `transform-firebase` to convert your Firebase JSON to WorkOS format (outputs `firebase-transformed.csv`)
-2. **Validate CSV** — Runs `validate-csv` with auto-fix (outputs `users-validated.csv`)
+1. **Transform Firebase Export** — Runs `transform-firebase` to convert your Firebase JSON to WorkOS format (outputs `output/firebase-transformed.csv`)
+2. **Validate CSV** — Runs `validate` with auto-fix (outputs `output/users-validated.csv`)
 3. **Plan Import** — Shows estimated duration and configuration
 4. **Dry Run** (if enabled) — Tests import without creating users
 5. **Execute Import** — Imports users into WorkOS
@@ -224,7 +224,7 @@ WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/migrate-wizard.ts
 **Without org mapping:**
 
 ```bash
-npx tsx bin/transform-firebase.ts \
+npx workos-migrate transform-firebase \
   --firebase-json users.json \
   --signer-key "jxspr8Ki0RYycVU8zykb..." \
   --salt-separator "Bw==" \
@@ -236,7 +236,7 @@ npx tsx bin/transform-firebase.ts \
 **With org mapping and all flags:**
 
 ```bash
-npx tsx bin/transform-firebase.ts \
+npx workos-migrate transform-firebase \
   --firebase-json users.json \
   --output workos-users.csv \
   --signer-key "jxspr8Ki0RYycVU8zykb..." \
@@ -247,7 +247,7 @@ npx tsx bin/transform-firebase.ts \
   --include-disabled \
   --org-mapping firebase-org-mapping.csv \
   --role-mapping user-role-mapping.csv \
-  --skipped-users firebase-skipped-users.jsonl \
+  --skipped-users output/firebase-skipped-users.jsonl \
   --quiet
 ```
 
@@ -265,7 +265,7 @@ npx tsx bin/transform-firebase.ts \
 | `--include-disabled` | No | Include disabled users in the output |
 | `--org-mapping <path>` | No | Path to organization mapping CSV |
 | `--role-mapping <path>` | No | Path to role mapping CSV |
-| `--skipped-users <path>` | No | Path for skipped user records (default: `firebase-skipped-users.jsonl`) |
+| `--skipped-users <path>` | No | Path for skipped user records (default: `output/firebase-skipped-users.jsonl`) |
 | `--quiet` | No | Suppress output messages |
 
 The transform step produces a summary showing total users, transformed count, skipped count, password stats, name splitting stats, and org mapping stats.
@@ -273,11 +273,11 @@ The transform step produces a summary showing total users, transformed count, sk
 ### Step 2: Validate CSV
 
 ```bash
-npx tsx bin/validate-csv.ts \
+npx workos-migrate validate \
   --csv workos-users.csv \
   --auto-fix \
-  --fixed-csv users-validated.csv \
-  --report validation-report.json
+  --fixed-csv output/users-validated.csv \
+  --report output/validation-report.json
 ```
 
 ### Step 3: Import Users
@@ -285,14 +285,14 @@ npx tsx bin/validate-csv.ts \
 **Simple import:**
 
 ```bash
-npx tsx bin/import-users.ts --csv users-validated.csv
+npx workos-migrate import --csv output/users-validated.csv
 ```
 
 **Multi-org import with workers:**
 
 ```bash
-npx tsx bin/import-users.ts \
-  --csv users-validated.csv \
+npx workos-migrate import \
+  --csv output/users-validated.csv \
   --job-id firebase-migration \
   --workers 4
 ```
@@ -300,7 +300,7 @@ npx tsx bin/import-users.ts \
 **Dry run first:**
 
 ```bash
-npx tsx bin/import-users.ts --csv users-validated.csv --dry-run
+npx workos-migrate import --csv output/users-validated.csv --dry-run
 ```
 
 ## Password Handling
@@ -328,7 +328,7 @@ $firebase-scrypt$hash=<b64hash>$salt=<b64salt>$sk=<b64signerKey>$ss=<b64saltSep>
 
 If you do not supply the `--signer-key` flag, password hashes are **omitted** from the output. Users will need to reset their password on first login to WorkOS. A warning is logged to alert you.
 
-The transformation summary shows how many users had passwords migrated vs. skipped. Check the `firebase-skipped-users.jsonl` file for details on individual skipped records.
+The transformation summary shows how many users had passwords migrated vs. skipped. Check the `output/firebase-skipped-users.jsonl` file for details on individual skipped records.
 
 For more details, see the [WorkOS Firebase migration guide](https://workos.com/docs/migrate/firebase).
 
@@ -419,7 +419,7 @@ You did not provide `--signer-key` during the transform step. Password hashes wi
 
 ### Users missing from output
 
-Check the transformation summary and `firebase-skipped-users.jsonl` for users that were skipped. Common reasons:
+Check the transformation summary and `output/firebase-skipped-users.jsonl` for users that were skipped. Common reasons:
 
 - **No email address** — Users without an email are skipped (e.g., phone-only users)
 - **Disabled accounts** — Disabled users are excluded by default. Use `--include-disabled` to include them.
@@ -439,8 +439,7 @@ If using `org_external_id` without `org_name`, the organization must already exi
 - [Firebase CLI Auth Export](https://firebase.google.com/docs/cli/auth) — Firebase CLI documentation for auth export
 - [Firebase Admin SDK](https://firebase.google.com/docs/auth/admin/manage-users) — Managing Firebase users programmatically
 - [WorkOS Firebase Migration](https://workos.com/docs/migrate/firebase) — WorkOS documentation for Firebase migration
-- [Wizard Guide](../getting-started/WIZARD.md) — Interactive migration walkthrough
+- [Wizard Guide](WIZARD.md) — Interactive migration walkthrough
 - [CSV Format Reference](CSV-FORMAT.md) — WorkOS CSV column reference
-- [Multi-Organization Imports](MULTI-ORG.md) — Multi-org import details
-- [Password Migration](PASSWORD-MIGRATION.md) — Password hash formats
+- [Custom CSV Import](CUSTOM-CSV-IMPORT.md) — Multi-org and custom CSV import details
 - [Role Mapping Guide](ROLE-MAPPING.md) — Role mapping workflow

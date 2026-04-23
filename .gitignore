@@ -148,8 +148,14 @@ examples/fifty-thousand-users.csv
 errors-*.csv
 errors-*.json
 
+# Migration output files
+output/
+
 # Checkpoint files
 .workos-checkpoints/
+
+# Compiled JS in source (project uses tsx, not tsc output)
+src/**/*.js
 
 #Ideation files
 docs/ideation/

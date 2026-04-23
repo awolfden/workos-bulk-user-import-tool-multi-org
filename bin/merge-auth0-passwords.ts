@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Merge Auth0 Password Hashes into CSV Export
  *
@@ -7,16 +6,10 @@
  * an NDJSON file containing user emails and bcrypt password hashes.
  *
  * This tool merges that password data into your Auth0 CSV export.
- *
- * Usage:
- *   npx tsx bin/merge-auth0-passwords.ts \
- *     --csv auth0-export.csv \
- *     --passwords auth0-passwords.ndjson \
- *     --output auth0-export-with-passwords.csv
  */
 
 import { Command } from 'commander';
-import { createReadStream, createWriteStream, readFileSync } from 'node:fs';
+import { createReadStream, createWriteStream } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { parse } from 'csv-parse';
 import { stringify } from 'csv-stringify';
@@ -39,20 +32,20 @@ interface PasswordLookup {
   };
 }
 
-const program = new Command();
+export function registerCommand(parent: Command) {
+  parent
+    .command('merge-passwords')
+    .description('Merge Auth0 password hashes from NDJSON export into CSV')
+    .requiredOption('--csv <path>', 'Path to Auth0 CSV export file')
+    .requiredOption('--passwords <path>', 'Path to Auth0 password NDJSON export file')
+    .requiredOption('--output <path>', 'Path to output CSV file with passwords')
+    .option('--quiet', 'Suppress output messages')
+    .action(async (opts) => {
+      await main(opts);
+    });
+}
 
-program
-  .name('merge-auth0-passwords')
-  .description('Merge Auth0 password hashes from NDJSON export into CSV')
-  .requiredOption('--csv <path>', 'Path to Auth0 CSV export file')
-  .requiredOption('--passwords <path>', 'Path to Auth0 password NDJSON export file')
-  .requiredOption('--output <path>', 'Path to output CSV file with passwords')
-  .option('--quiet', 'Suppress output messages')
-  .parse(process.argv);
-
-const opts = program.opts();
-
-async function main() {
+async function main(opts: Record<string, any>) {
   const startTime = Date.now();
 
   if (!opts.quiet) {
@@ -261,8 +254,3 @@ async function mergeCsvWithPasswords(
       });
   });
 }
-
-main().catch((error) => {
-  console.error('Error:', error.message);
-  process.exit(1);
-});

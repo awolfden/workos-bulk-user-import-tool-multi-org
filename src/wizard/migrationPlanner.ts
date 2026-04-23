@@ -4,9 +4,8 @@
  * Converts user answers into a concrete migration plan with steps.
  */
 
-import path from 'node:path';
-import os from 'node:os';
 import type { WizardAnswers, MigrationPlan, MigrationStep } from './types.js';
+import { outputPath } from '../outputDir.js';
 
 /**
  * Generate a migration plan from wizard answers
@@ -52,12 +51,7 @@ export function generateMigrationPlan(answers: WizardAnswers): MigrationPlan {
   // Step 4: Plan import
   steps.push(generatePlanStep(answers, jobId));
 
-  // Step 5: Dry-run import (if enabled)
-  if (answers.runDryRunFirst) {
-    steps.push(generateDryRunStep(answers, jobId));
-  }
-
-  // Step 6: Execute import
+  // Step 5: Execute import
   steps.push(generateImportStep(answers, jobId));
 
   // Step 6.5: Enroll TOTP factors (if user has TOTP secrets)
@@ -96,7 +90,7 @@ function generateExportStep(answers: WizardAnswers): MigrationStep {
     args.push('--domain', answers.auth0Domain!);
     args.push('--client-id', answers.auth0ClientId!);
     args.push('--client-secret', answers.auth0ClientSecret!);
-    args.push('--output', 'auth0-export.csv');
+    args.push('--output', outputPath('auth0-export.csv'));
 
     // Add organization flags if organizations are included
     if (answers.auth0IncludeOrgs !== false) {
@@ -115,9 +109,10 @@ function generateExportStep(answers: WizardAnswers): MigrationStep {
       id: 'export',
       name: 'Export from Auth0',
       description: 'Export users and organizations from Auth0',
-      command: 'npx tsx bin/export-auth0.ts',
+      command: 'npx workos-migrate export-auth0',
       args,
-      optional: false
+      optional: false,
+      expectedOutputs: [outputPath('auth0-export.csv')]
     };
   }
 
@@ -129,8 +124,8 @@ function generateExportStep(answers: WizardAnswers): MigrationStep {
  * Generate password merge step
  */
 function generatePasswordMergeStep(answers: WizardAnswers): MigrationStep {
-  const inputCsv = 'auth0-export.csv';
-  const outputCsv = 'auth0-export-with-passwords.csv';
+  const inputCsv = outputPath('auth0-export.csv');
+  const outputCsv = outputPath('auth0-export-with-passwords.csv');
 
   const args: string[] = [
     '--csv', inputCsv,
@@ -142,9 +137,10 @@ function generatePasswordMergeStep(answers: WizardAnswers): MigrationStep {
     id: 'merge-passwords',
     name: 'Merge Password Hashes',
     description: 'Merge Auth0 password hashes into CSV export',
-    command: 'npx tsx bin/merge-auth0-passwords.ts',
+    command: 'npx workos-migrate merge-passwords',
     args,
-    optional: false
+    optional: false,
+    expectedOutputs: [outputCsv]
   };
 }
 
@@ -154,7 +150,7 @@ function generatePasswordMergeStep(answers: WizardAnswers): MigrationStep {
 function generateRoleDefinitionsStep(answers: WizardAnswers): MigrationStep {
   const args: string[] = [
     '--definitions', answers.roleDefinitionsPath!,
-    '--report', 'role-definitions-report.json',
+    '--report', outputPath('role-definitions-report.json'),
   ];
 
   // Add org mapping for resolving org_external_id in role definitions
@@ -168,9 +164,10 @@ function generateRoleDefinitionsStep(answers: WizardAnswers): MigrationStep {
     id: 'process-role-definitions',
     name: 'Process Role Definitions',
     description: 'Create roles and permissions in WorkOS from definitions CSV',
-    command: 'npx tsx bin/process-role-definitions.ts',
+    command: 'npx workos-migrate process-roles',
     args,
     optional: false,
+    expectedOutputs: [outputPath('role-definitions-report.json')]
   };
 }
 
@@ -180,7 +177,7 @@ function generateRoleDefinitionsStep(answers: WizardAnswers): MigrationStep {
 function generateClerkTransformStep(answers: WizardAnswers): MigrationStep {
   const args: string[] = [
     '--clerk-csv', answers.clerkCsvPath!,
-    '--output', 'clerk-transformed.csv',
+    '--output', outputPath('clerk-transformed.csv'),
   ];
 
   if (answers.clerkOrgMappingPath) {
@@ -196,9 +193,10 @@ function generateClerkTransformStep(answers: WizardAnswers): MigrationStep {
     id: 'clerk-transform',
     name: 'Transform Clerk Export',
     description: 'Transform Clerk CSV to WorkOS format (field mapping, passwords, metadata, roles)',
-    command: 'npx tsx bin/transform-clerk.ts',
+    command: 'npx workos-migrate transform-clerk',
     args,
-    optional: false
+    optional: false,
+    expectedOutputs: [outputPath('clerk-transformed.csv')]
   };
 }
 
@@ -208,7 +206,7 @@ function generateClerkTransformStep(answers: WizardAnswers): MigrationStep {
 function generateFirebaseTransformStep(answers: WizardAnswers): MigrationStep {
   const args: string[] = [
     '--firebase-json', answers.firebaseJsonPath!,
-    '--output', 'firebase-transformed.csv',
+    '--output', outputPath('firebase-transformed.csv'),
     '--name-split', answers.firebaseNameSplit || 'first-space',
   ];
 
@@ -245,9 +243,10 @@ function generateFirebaseTransformStep(answers: WizardAnswers): MigrationStep {
     id: 'firebase-transform',
     name: 'Transform Firebase Export',
     description: 'Transform Firebase JSON to WorkOS format (field mapping, passwords, metadata, roles)',
-    command: 'npx tsx bin/transform-firebase.ts',
+    command: 'npx workos-migrate transform-firebase',
     args,
-    optional: false
+    optional: false,
+    expectedOutputs: [outputPath('firebase-transformed.csv')]
   };
 }
 
@@ -260,33 +259,39 @@ function generateValidationStep(answers: WizardAnswers): MigrationStep {
   if (answers.source === 'custom') {
     inputCsv = answers.customCsvPath!;
   } else if (answers.source === 'clerk') {
-    inputCsv = 'clerk-transformed.csv';
+    inputCsv = outputPath('clerk-transformed.csv');
   } else if (answers.source === 'firebase') {
-    inputCsv = 'firebase-transformed.csv';
+    inputCsv = outputPath('firebase-transformed.csv');
   } else if (answers.source === 'auth0' && answers.auth0HasPasswords) {
-    inputCsv = 'auth0-export-with-passwords.csv';
+    inputCsv = outputPath('auth0-export-with-passwords.csv');
   } else {
-    inputCsv = 'auth0-export.csv';
+    inputCsv = outputPath('auth0-export.csv');
   }
 
-  const outputCsv = answers.autoFixIssues ? 'users-validated.csv' : undefined;
+  const outputCsv = answers.autoFixIssues ? outputPath('users-validated.csv') : undefined;
 
   const args: string[] = ['--csv', inputCsv];
 
   if (answers.autoFixIssues) {
     args.push('--auto-fix');
-    args.push('--fixed-csv', 'users-validated.csv');
+    args.push('--fixed-csv', outputPath('users-validated.csv'));
   }
 
-  args.push('--report', 'validation-report.json');
+  args.push('--report', outputPath('validation-report.json'));
+
+  const expectedOutputs = [outputPath('validation-report.json')];
+  if (answers.autoFixIssues) {
+    expectedOutputs.unshift(outputPath('users-validated.csv'));
+  }
 
   return {
     id: 'validate',
     name: 'Validate CSV',
     description: 'Validate CSV data and auto-fix common issues',
-    command: 'npx tsx bin/validate-csv.ts',
+    command: 'npx workos-migrate validate',
     args,
-    optional: false
+    optional: false,
+    expectedOutputs
   };
 }
 
@@ -332,57 +337,10 @@ function generatePlanStep(answers: WizardAnswers, jobId?: string): MigrationStep
     id: 'plan',
     name: 'Plan Import',
     description: 'Generate import plan with estimates',
-    command: 'npx tsx bin/orchestrate-migration.ts',
+    command: 'npx workos-migrate import',
     args,
-    optional: false
-  };
-}
-
-/**
- * Generate dry-run import step
- */
-function generateDryRunStep(answers: WizardAnswers, jobId?: string): MigrationStep {
-  const csvPath = getImportCsvPath(answers);
-  const args: string[] = ['--csv', csvPath, '--dry-run'];
-
-  // Add org configuration
-  addOrgArgs(args, answers);
-
-  // Add checkpoint configuration
-  if (answers.enableCheckpointing && jobId) {
-    args.push('--job-id', jobId);
-
-    if (answers.scale === 'large') {
-      args.push('--chunk-size', '5000');
-    } else if (answers.scale === 'medium') {
-      args.push('--chunk-size', '2000');
-    }
-  }
-
-  // Add worker configuration
-  if (answers.enableWorkers && answers.workerCount) {
-    args.push('--workers', answers.workerCount.toString());
-  }
-
-  // Add concurrency based on scale
-  if (answers.scale === 'large') {
-    args.push('--concurrency', '20');
-  } else if (answers.scale === 'medium') {
-    args.push('--concurrency', '15');
-  }
-
-  // Add role mapping for non-Clerk/Firebase sources (they embed roles in transformed CSV)
-  if (answers.roleMappingPath && answers.source !== 'clerk' && answers.source !== 'firebase') {
-    args.push('--role-mapping', answers.roleMappingPath);
-  }
-
-  return {
-    id: 'dry-run',
-    name: 'Test Import (Dry Run)',
-    description: 'Validate import configuration without creating users',
-    command: 'npx tsx bin/orchestrate-migration.ts',
-    args,
-    optional: false
+    optional: false,
+    expectedOutputs: []
   };
 }
 
@@ -427,16 +385,19 @@ function generateImportStep(answers: WizardAnswers, jobId?: string): MigrationSt
   // Add error logging (only if checkpointing is disabled)
   // When checkpointing is enabled, errors are automatically stored in the checkpoint directory
   if (answers.logErrors && !answers.enableCheckpointing) {
-    args.push('--errors-out', answers.errorsPath || 'errors.jsonl');
+    args.push('--errors-out', answers.errorsPath || outputPath('errors.jsonl'));
   }
 
   return {
     id: 'import',
     name: 'Execute Import',
     description: 'Import users to WorkOS',
-    command: 'npx tsx bin/orchestrate-migration.ts',
+    command: 'npx workos-migrate import',
     args,
-    optional: false
+    optional: false,
+    expectedOutputs: answers.logErrors && !answers.enableCheckpointing
+      ? [answers.errorsPath || outputPath('errors.jsonl')]
+      : []
   };
 }
 
@@ -480,7 +441,7 @@ function generateTotpEnrollmentStep(answers: WizardAnswers): MigrationStep {
  */
 function generateErrorAnalysisStep(answers: WizardAnswers, jobId?: string): MigrationStep {
   // Construct error path based on checkpointing
-  let errorsPath = answers.errorsPath || 'errors.jsonl';
+  let errorsPath = answers.errorsPath || outputPath('errors.jsonl');
 
   if (answers.enableCheckpointing && jobId) {
     const checkpointDir = answers.checkpointDir || '.workos-checkpoints';
@@ -491,19 +452,20 @@ function generateErrorAnalysisStep(answers: WizardAnswers, jobId?: string): Migr
     '--errors',
     errorsPath,
     '--retry-csv',
-    'retry.csv',
+    outputPath('retry.csv'),
     '--report',
-    'error-analysis.json'
+    outputPath('error-analysis.json')
   ];
 
   return {
     id: 'analyze-errors',
     name: 'Analyze Errors',
     description: 'Analyze import errors and generate retry CSV',
-    command: 'npx tsx bin/analyze-errors.ts',
+    command: 'npx workos-migrate analyze',
     args,
     optional: true,
-    skipCondition: (ans) => !ans.logErrors
+    skipCondition: (ans) => !ans.logErrors,
+    expectedOutputs: [outputPath('retry.csv'), outputPath('error-analysis.json')]
   };
 }
 
@@ -511,7 +473,7 @@ function generateErrorAnalysisStep(answers: WizardAnswers, jobId?: string): Migr
  * Generate retry step
  */
 function generateRetryStep(answers: WizardAnswers): MigrationStep {
-  const args: string[] = ['--csv', 'retry.csv'];
+  const args: string[] = ['--csv', outputPath('retry.csv')];
 
   // Add org configuration
   addOrgArgs(args, answers);
@@ -523,10 +485,11 @@ function generateRetryStep(answers: WizardAnswers): MigrationStep {
     id: 'retry',
     name: 'Retry Failed Imports',
     description: 'Retry failed imports from error analysis',
-    command: 'npx tsx bin/orchestrate-migration.ts',
+    command: 'npx workos-migrate import',
     args,
     optional: true,
-    skipCondition: (ans) => !ans.logErrors
+    skipCondition: (ans) => !ans.logErrors,
+    expectedOutputs: []
   };
 }
 
@@ -558,25 +521,25 @@ function getImportCsvPath(answers: WizardAnswers): string {
 
   // If validation with auto-fix was run, use the validated CSV
   if (answers.validateCsv && answers.autoFixIssues) {
-    return 'users-validated.csv';
+    return outputPath('users-validated.csv');
   }
 
   // If Clerk, use the transformed CSV
   if (answers.source === 'clerk') {
-    return 'clerk-transformed.csv';
+    return outputPath('clerk-transformed.csv');
   }
 
   // If Firebase, use the transformed CSV
   if (answers.source === 'firebase') {
-    return 'firebase-transformed.csv';
+    return outputPath('firebase-transformed.csv');
   }
 
   // If Auth0 passwords were merged, use the merged CSV
   if (answers.source === 'auth0' && answers.auth0HasPasswords) {
-    return 'auth0-export-with-passwords.csv';
+    return outputPath('auth0-export-with-passwords.csv');
   }
 
-  return 'auth0-export.csv';
+  return outputPath('auth0-export.csv');
 }
 
 /**
@@ -584,22 +547,6 @@ function getImportCsvPath(answers: WizardAnswers): string {
  */
 function generateWarnings(answers: WizardAnswers): string[] {
   const warnings: string[] = [];
-
-  if (!answers.validateCsv) {
-    warnings.push('Skipping CSV validation may result in import errors');
-  }
-
-  if (!answers.logErrors) {
-    warnings.push('Error logging disabled - failed imports cannot be retried');
-  }
-
-  if (answers.scale === 'large' && !answers.enableCheckpointing) {
-    warnings.push('Large migration without checkpointing - cannot resume if interrupted');
-  }
-
-  if (answers.scale === 'large' && !answers.enableWorkers) {
-    warnings.push('Large migration without workers - import will take longer');
-  }
 
   if (answers.importMode === 'single-org' && !answers.orgId && !answers.orgExternalId && !answers.orgName) {
     warnings.push('No organization specified for single-org mode');
@@ -644,7 +591,6 @@ function generateRecommendations(answers: WizardAnswers): string[] {
   }
 
   if (answers.enableCheckpointing) {
-    recommendations.push('Checkpoint directory: .workos-checkpoints/');
     recommendations.push('You can resume this migration with --resume flag');
   }
 

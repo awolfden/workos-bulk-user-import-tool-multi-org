@@ -129,7 +129,7 @@ async function main() {
   results.push(await runTest(
     'Module Verification',
     'npx',
-    ['tsx', 'src/workers/__test-distributedRateLimiter.ts']
+    ['tsx', 'src/workers/__tests__/distributedRateLimiter.test.ts']
   ));
   console.log(results[results.length - 1].passed ? '  ✓ Passed' : '  ✗ Failed');
   console.log(`  Duration: ${results[results.length - 1].duration}ms\n`);
@@ -175,7 +175,7 @@ async function main() {
   results.push(await runTest(
     'Worker Isolation',
     'npx',
-    ['tsx', 'src/workers/__test-worker.ts']
+    ['tsx', 'src/workers/__tests__/worker.test.ts']
   ));
   console.log(results[results.length - 1].passed ? '  ✓ Passed' : '  ✗ Failed');
   console.log(`  Duration: ${results[results.length - 1].duration}ms\n`);
@@ -185,7 +185,7 @@ async function main() {
   results.push(await runTest(
     'Coordinator Integration',
     'npx',
-    ['tsx', 'src/workers/__test-coordinator.ts']
+    ['tsx', 'src/workers/__tests__/coordinator.test.ts']
   ));
   console.log(results[results.length - 1].passed ? '  ✓ Passed' : '  ✗ Failed');
   console.log(`  Duration: ${results[results.length - 1].duration}ms\n`);
@@ -197,7 +197,7 @@ async function main() {
     'npx',
     [
       'tsx', 'bin/import-users.ts',
-      '--csv', 'examples/phase3-test-simple.csv',
+      '--csv', 'src/workers/__tests__/fixtures/test-simple.csv',
       '--job-id', 'e2e-test-single',
       '--dry-run',
       '--workers', '1',
@@ -214,7 +214,7 @@ async function main() {
     'npx',
     [
       'tsx', 'bin/import-users.ts',
-      '--csv', 'examples/phase3-chunk-test.csv',
+      '--csv', 'src/workers/__tests__/fixtures/test-chunk.csv',
       '--job-id', 'e2e-test-multi',
       '--dry-run',
       '--workers', '2',

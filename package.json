@@ -5,20 +5,11 @@
   "description": "Complete migration toolkit for WorkOS User Management with Auth0 export, validation, and MCP support",
   "type": "module",
   "bin": {
-    "workos-import-users": "bin/import-users.ts",
-    "workos-validate-csv": "bin/validate-csv.ts",
-    "workos-map-fields": "bin/map-fields.ts",
-    "workos-export-auth0": "bin/export-auth0.ts",
-    "workos-merge-auth0-passwords": "bin/merge-auth0-passwords.ts",
-    "workos-setup-auth0-test": "bin/setup-auth0-test-orgs.ts",
-    "workos-analyze-errors": "bin/analyze-errors.ts",
-    "workos-orchestrate": "bin/orchestrate-migration.ts",
-    "workos-migrate": "bin/migrate-wizard.ts",
-    "workos-enroll-totp": "bin/enroll-totp.ts"
+    "workos-migrate": "bin/cli.ts"
   },
   "scripts": {
-    "start": "tsx bin/import-users.ts",
-    "import:example": "tsx bin/import-users.ts --csv examples/common/example-input.csv",
+    "start": "tsx bin/cli.ts import",
+    "import:example": "tsx bin/cli.ts import --csv examples/common/example-input.csv",
     "typecheck": "tsc --noEmit",
     "test": "tsx scripts/run-all-tests.ts"
   },

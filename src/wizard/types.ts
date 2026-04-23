@@ -44,6 +44,7 @@ export interface WizardAnswers {
 
   // Scale and performance
   scale: ScaleCategory;
+  detectedRowCount?: number;
   enableCheckpointing: boolean;
   enableWorkers?: boolean;
   workerCount?: number;
@@ -116,6 +117,7 @@ export interface MigrationStep {
   optional: boolean;
   skipCondition?: (answers: WizardAnswers) => boolean;
   estimatedDuration?: string;
+  expectedOutputs?: string[];
 }
 
 /**
@@ -166,13 +168,15 @@ export interface MigrationResult {
  * Wizard options from CLI flags
  */
 export interface WizardOptions {
-  dryRun?: boolean;
   yes?: boolean;
   resume?: boolean;
   quiet?: boolean;
   source?: MigrationSource;
   orgId?: string;
   auth0Domain?: string;
+  noValidate?: boolean;
+  noAutoFix?: boolean;
+  noErrorLog?: boolean;
 }
 
 /**

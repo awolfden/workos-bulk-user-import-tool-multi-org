@@ -1,12 +1,7 @@
-#!/usr/bin/env node
 /**
- * Phase 3: Field Mapper - CLI Entry Point
+ * Phase 3: Field Mapper
  *
  * Transform CSV files from provider format to WorkOS format.
- *
- * Usage:
- *   npx tsx bin/map-fields.ts --input auth0-export.csv --output workos-ready.csv --profile auth0
- *   npx tsx bin/map-fields.ts --list-profiles
  */
 
 import 'dotenv/config';
@@ -15,49 +10,47 @@ import chalk from 'chalk';
 import { FieldMapper } from '../src/mapper/fieldMapper.js';
 import { loadProfile, listBuiltInProfiles, getProfileInfo } from '../src/mapper/profiles/index.js';
 
-const program = new Command();
-
-program
-  .name('map-fields')
-  .description('Transform CSV files from provider format to WorkOS format')
-  .version('1.0.0');
-
-program
-  .option('--input <path>', 'Input CSV file path')
-  .option('--output <path>', 'Output CSV file path')
-  .option('--profile <name|path>', 'Profile name (auth0) or path to custom JSON profile')
-  .option('--quiet', 'Suppress progress output')
-  .option('--validate', 'Validate output CSV after mapping (using Phase 2 validator)')
-  .option('--list-profiles', 'List available built-in profiles and exit');
-
-program.parse();
-const options = program.opts();
+export function registerCommand(parent: Command) {
+  const cmd = parent
+    .command('map-fields')
+    .description('Transform CSV files from provider format to WorkOS format')
+    .version('1.0.0')
+    .option('--input <path>', 'Input CSV file path')
+    .option('--output <path>', 'Output CSV file path')
+    .option('--profile <name|path>', 'Profile name (auth0) or path to custom JSON profile')
+    .option('--quiet', 'Suppress progress output')
+    .option('--validate', 'Validate output CSV after mapping (using Phase 2 validator)')
+    .option('--list-profiles', 'List available built-in profiles and exit')
+    .action(async (opts) => {
+      await main(opts, cmd);
+    });
+}
 
 /**
  * Main execution
  */
-async function main() {
+async function main(options: Record<string, any>, cmd: Command) {
   try {
     // Handle --list-profiles
     if (options.listProfiles) {
-      await listProfiles();
+      await listProfilesDisplay();
       process.exit(0);
     }
 
     // Validate required options
     if (!options.input) {
       console.error(chalk.red('Error: --input is required'));
-      program.help();
+      cmd.help();
       process.exit(2);
     }
     if (!options.output) {
       console.error(chalk.red('Error: --output is required'));
-      program.help();
+      cmd.help();
       process.exit(2);
     }
     if (!options.profile) {
       console.error(chalk.red('Error: --profile is required'));
-      program.help();
+      cmd.help();
       process.exit(2);
     }
 
@@ -110,7 +103,7 @@ async function main() {
 /**
  * List available built-in profiles
  */
-async function listProfiles() {
+async function listProfilesDisplay() {
   console.log(chalk.bold('\nAvailable Built-in Profiles:\n'));
 
   const profiles = listBuiltInProfiles();
@@ -126,10 +119,10 @@ async function listProfiles() {
   }
 
   console.log(chalk.gray('To use a built-in profile:'));
-  console.log(chalk.gray('  npx tsx bin/map-fields.ts --input input.csv --output output.csv --profile auth0\n'));
+  console.log(chalk.gray('  npx workos-migrate map-fields --input input.csv --output output.csv --profile auth0\n'));
 
   console.log(chalk.gray('To use a custom profile:'));
-  console.log(chalk.gray('  npx tsx bin/map-fields.ts --input input.csv --output output.csv --profile ./custom-profile.json\n'));
+  console.log(chalk.gray('  npx workos-migrate map-fields --input input.csv --output output.csv --profile ./custom-profile.json\n'));
 }
 
 /**
@@ -188,9 +181,3 @@ function displaySummary(summary: any, outputPath: string) {
     console.log(chalk.gray('\nReview errors above and fix source CSV before importing.'));
   }
 }
-
-// Run
-main().catch((error) => {
-  console.error('Unhandled error:', error);
-  process.exit(2);
-});

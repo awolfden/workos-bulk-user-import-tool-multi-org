@@ -7,8 +7,8 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import chalk from 'chalk';
-import prompts from 'prompts';
 import type { MigrationStep, StepResult, WizardAnswers } from './types.js';
+import { outputPath } from '../outputDir.js';
 
 /**
  * Execute a migration step
@@ -93,7 +93,12 @@ function runCommand(command: string, args: string[], quiet: boolean): Promise<st
     let cmd: string;
     let cmdArgs: string[];
 
-    if (command.startsWith('npx tsx')) {
+    if (command.startsWith('npx workos-migrate')) {
+      cmd = 'npx';
+      const subcommand = command.replace('npx workos-migrate ', '');
+      cmdArgs = ['workos-migrate', subcommand, ...args];
+    } else if (command.startsWith('npx tsx')) {
+      // Backward compat
       cmd = 'npx';
       const scriptPath = command.replace('npx tsx ', '');
       cmdArgs = ['tsx', scriptPath, ...args];
@@ -140,8 +145,7 @@ function runCommand(command: string, args: string[], quiet: boolean): Promise<st
 export async function executeSteps(
   steps: MigrationStep[],
   answers: WizardAnswers,
-  quiet: boolean = false,
-  requireConsent: boolean = true
+  quiet: boolean = false
 ): Promise<StepResult[]> {
   const results: StepResult[] = [];
 
@@ -173,6 +177,17 @@ export async function executeSteps(
     const result = await executeStep(step, answers, quiet);
     results.push(result);
 
+    // Announce generated files after successful step
+    if (result.success && !quiet && step.expectedOutputs?.length) {
+      const generated = step.expectedOutputs.filter(f => fs.existsSync(f));
+      if (generated.length > 0) {
+        console.log(chalk.gray('  Generated files:'));
+        generated.forEach(f => {
+          console.log(chalk.gray(`    → ${f}`));
+        });
+      }
+    }
+
     // Stop on failure for non-optional steps
     if (!result.success && !step.optional) {
       if (!quiet) {
@@ -186,33 +201,6 @@ export async function executeSteps(
       if (!quiet) {
         console.log(chalk.yellow(`\n⚠️  Optional step failed: ${step.name}`));
         console.log(chalk.gray('Continuing with remaining steps...'));
-      }
-    }
-
-    // Ask for user consent before continuing (unless last step or quiet mode)
-    if (result.success && requireConsent && i < steps.length - 1 && !quiet) {
-      const nextStep = steps[i + 1];
-      if (!nextStep) {
-        continue; // Skip if next step is undefined
-      }
-      const hasMoreSteps = i + 2 < steps.length;
-
-      console.log(chalk.gray(`\nNext: ${nextStep.name}`));
-
-      const continueAnswer = await prompts({
-        type: 'confirm',
-        name: 'continue',
-        message: hasMoreSteps ? 'Continue to next step?' : 'Continue to final step?',
-        initial: true
-      });
-
-      if (!continueAnswer.continue) {
-        if (!quiet) {
-          console.log(chalk.yellow('\n⚠️  Migration paused by user'));
-          console.log(chalk.gray(`Completed ${i + 1}/${steps.length} steps`));
-          console.log(chalk.gray('You can resume this migration later if checkpointing is enabled.'));
-        }
-        break;
       }
     }
   }
@@ -242,7 +230,7 @@ export function shouldRunStep(
     }
 
     // Check if errors file exists
-    let errorsPath = answers.errorsPath || 'errors.jsonl';
+    let errorsPath = answers.errorsPath || outputPath('errors.jsonl');
 
     // If checkpointing was enabled, construct checkpoint-aware path
     if (answers.enableCheckpointing) {
@@ -281,19 +269,19 @@ export function shouldRunStep(
     }
 
     // Check if retry CSV was generated AND has content
-    if (!fs.existsSync('retry.csv')) {
+    if (!fs.existsSync(outputPath('retry.csv'))) {
       return false;
     }
 
     // Check if file has actual content (more than just header row)
     try {
-      const stats = fs.statSync('retry.csv');
+      const stats = fs.statSync(outputPath('retry.csv'));
       if (stats.size === 0) {
         return false; // Empty file
       }
 
       // Read file and check if it has more than just the header line
-      const content = fs.readFileSync('retry.csv', 'utf-8').trim();
+      const content = fs.readFileSync(outputPath('retry.csv'), 'utf-8').trim();
       const lines = content.split('\n').filter(line => line.trim().length > 0);
       return lines.length > 1; // Has header + at least one data row
     } catch {

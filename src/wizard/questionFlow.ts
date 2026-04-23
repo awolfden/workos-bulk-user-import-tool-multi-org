@@ -4,9 +4,10 @@
  * Interactive questions to gather migration configuration.
  */
 
+import fs from "node:fs";
 import prompts from "prompts";
 import chalk from "chalk";
-import type { WizardAnswers, WizardOptions } from "./types.js";
+import type { WizardAnswers, WizardOptions, ScaleCategory } from "./types.js";
 
 /**
  * Ask all wizard questions and return answers
@@ -67,8 +68,11 @@ export async function askQuestions(
       type: "text",
       name: "customCsvPath",
       message: "Path to your CSV file:",
-      validate: (value: string) =>
-        value.trim().length > 0 || "CSV path is required",
+      validate: (value: string) => {
+        if (!value.trim()) return "CSV path is required";
+        if (!fs.existsSync(value.trim())) return `File not found: ${value.trim()}`;
+        return true;
+      },
     });
 
     if (!csvAnswer.customCsvPath) {
@@ -144,17 +148,15 @@ export async function askQuestions(
   // Role configuration (universal — all sources)
   await askRoleConfiguration(answers);
 
-  // Question 3: Scale and performance
-  await askScaleAndPerformance(answers);
+  // Scale and performance — auto-detect from input file when possible
+  await detectOrAskScale(answers);
 
-  // Question 4: Validation
-  await askValidation(answers);
-
-  // Question 5: Error handling
-  await askErrorHandling(answers);
-
-  // Question 6: Dry run
-  await askDryRun(answers);
+  // Smart defaults — always on, opt-out via CLI flags only
+  answers.validateCsv = options.noValidate ? false : true;
+  answers.autoFixIssues = (options.noValidate || options.noAutoFix) ? false : true;
+  answers.logErrors = options.noErrorLog ? false : true;
+  answers.errorsPath = 'errors.jsonl';
+  answers.runDryRunFirst = false;
 
   return answers as WizardAnswers;
 }
@@ -169,43 +171,12 @@ async function askAuth0Credentials(
   console.log(chalk.cyan("\n📋 Auth0 Configuration"));
   console.log(
     chalk.gray(
-      "We need your Auth0 M2M application credentials to export users.\n"
+      "Enter your Auth0 M2M application credentials.\n" +
+      "Need to set these up? Go to Auth0 Dashboard → Applications →\n" +
+      "Create Application → Machine to Machine → Select Auth0 Management API →\n" +
+      "Grant: read:users, read:organizations, read:organization_members\n"
     )
   );
-
-  // Show setup instructions
-  const needsSetup = await prompts({
-    type: "confirm",
-    name: "needsSetup",
-    message: "Do you have Auth0 M2M application credentials?",
-    initial: false,
-  });
-
-  if (!needsSetup.needsSetup) {
-    console.log(
-      chalk.yellow("\nLet me guide you through setting up Auth0 credentials:\n")
-    );
-    console.log("1. Go to your Auth0 Dashboard → Applications → Applications");
-    console.log('2. Click "Create Application" → "Machine to Machine"');
-    console.log('3. Name it "WorkOS Migration Tool"');
-    console.log("4. Select the Auth0 Management API");
-    console.log("5. Grant these permissions:");
-    console.log("   ✓ read:users");
-    console.log("   ✓ read:organizations");
-    console.log("   ✓ read:organization_members");
-    console.log("6. Copy the Domain, Client ID, and Client Secret\n");
-
-    const ready = await prompts({
-      type: "confirm",
-      name: "ready",
-      message: "Ready to enter credentials?",
-      initial: true,
-    });
-
-    if (!ready.ready) {
-      throw new Error("Auth0 credentials are required");
-    }
-  }
 
   // Ask for credentials
   if (options.auth0Domain) {
@@ -387,10 +358,10 @@ async function askAuth0Credentials(
       message: "Path to Auth0 password NDJSON file:",
       validate: (value: string) => {
         if (!value.trim()) return "Password file path is required";
-        // Basic validation - file should end in .json or .ndjson
         if (!value.match(/\.(ndjson|json|jsonl)$/i)) {
           return "File should be NDJSON format (.ndjson, .json, or .jsonl)";
         }
+        if (!fs.existsSync(value.trim())) return `File not found: ${value.trim()}`;
         return true;
       },
     });
@@ -434,6 +405,7 @@ async function askClerkConfiguration(
     validate: (value: string) => {
       if (!value.trim()) return "Clerk CSV path is required";
       if (!value.endsWith(".csv")) return "File should be a .csv file";
+      if (!fs.existsSync(value.trim())) return `File not found: ${value.trim()}`;
       return true;
     },
   });
@@ -461,6 +433,7 @@ async function askClerkConfiguration(
       validate: (value: string) => {
         if (!value.trim()) return "Org mapping CSV path is required";
         if (!value.endsWith(".csv")) return "File should be a .csv file";
+        if (!fs.existsSync(value.trim())) return `File not found: ${value.trim()}`;
         return true;
       },
     });
@@ -530,6 +503,7 @@ async function askFirebaseConfiguration(
     validate: (value: string) => {
       if (!value.trim()) return "Firebase JSON path is required";
       if (!value.endsWith(".json")) return "File should be a .json file";
+      if (!fs.existsSync(value.trim())) return `File not found: ${value.trim()}`;
       return true;
     },
   });
@@ -665,6 +639,7 @@ async function askFirebaseConfiguration(
       validate: (value: string) => {
         if (!value.trim()) return "Org mapping CSV path is required";
         if (!value.endsWith(".csv")) return "File should be a .csv file";
+        if (!fs.existsSync(value.trim())) return `File not found: ${value.trim()}`;
         return true;
       },
     });
@@ -821,28 +796,21 @@ async function askRoleConfiguration(
     return;
   }
 
-  // Ask for role definitions CSV
-  const hasDefinitionsAnswer = await prompts({
-    type: "confirm",
-    name: "hasRoleDefinitions",
-    message:
-      "Do you have a role definitions CSV? (defines roles and their permissions)",
-    initial: true,
+  // Ask for role definitions CSV (optional — leave empty to skip)
+  const definitionsPathAnswer = await prompts({
+    type: "text",
+    name: "roleDefinitionsPath",
+    message: "Path to role definitions CSV (leave empty to skip):",
+    validate: (value: string) => {
+      if (!value.trim()) return true; // Empty = skip
+      if (!value.endsWith(".csv")) return "File should be a .csv file";
+      if (!fs.existsSync(value.trim())) return `File not found: ${value.trim()}`;
+      return true;
+    },
   });
 
-  answers.hasRoleDefinitions = hasDefinitionsAnswer.hasRoleDefinitions;
-
-  if (hasDefinitionsAnswer.hasRoleDefinitions) {
-    const definitionsPathAnswer = await prompts({
-      type: "text",
-      name: "roleDefinitionsPath",
-      message: "Path to role definitions CSV:",
-      validate: (value: string) => {
-        if (!value.trim()) return "Path is required";
-        if (!value.endsWith(".csv")) return "File should be a .csv file";
-        return true;
-      },
-    });
+  if (definitionsPathAnswer.roleDefinitionsPath?.trim()) {
+    answers.hasRoleDefinitions = true;
     answers.roleDefinitionsPath = definitionsPathAnswer.roleDefinitionsPath;
     console.log(chalk.green("✓ Role definitions configured\n"));
   }
@@ -855,6 +823,7 @@ async function askRoleConfiguration(
     validate: (value: string) => {
       if (!value.trim()) return "Path is required";
       if (!value.endsWith(".csv")) return "File should be a .csv file";
+      if (!fs.existsSync(value.trim())) return `File not found: ${value.trim()}`;
       return true;
     },
   });
@@ -954,16 +923,7 @@ async function askOrgSpecification(
       if (!orgValueAnswer.orgName)
         throw new Error("Organization name is required");
       answers.orgName = orgValueAnswer.orgName;
-
-      // Ask if should create org if missing
-      const createAnswer = await prompts({
-        type: "confirm",
-        name: "createOrgIfMissing",
-        message: "Create organization if it doesn't exist?",
-        initial: true,
-      });
-
-      answers.createOrgIfMissing = createAnswer.createOrgIfMissing;
+      answers.createOrgIfMissing = true; // Always create when specifying by name
     }
   }
 
@@ -971,154 +931,90 @@ async function askOrgSpecification(
 }
 
 /**
- * Ask scale and performance questions
+ * Detect scale from input file or ask the user
  */
-async function askScaleAndPerformance(
+async function detectOrAskScale(
   answers: Partial<WizardAnswers>
 ): Promise<void> {
   console.log(chalk.cyan("⚡ Scale & Performance"));
 
-  const scaleAnswer = await prompts({
-    type: "select",
-    name: "scale",
-    message: "Approximately how many users are you migrating?",
-    choices: [
-      { title: "Less than 10,000", value: "small" },
-      { title: "10,000 - 100,000", value: "medium" },
-      { title: "More than 100,000", value: "large" },
-    ],
-  });
-
-  if (!scaleAnswer.scale) {
-    throw new Error("Scale is required");
+  // Auto-detect scale from input file when available
+  const inputFile = answers.clerkCsvPath || answers.firebaseJsonPath || answers.customCsvPath;
+  if (inputFile) {
+    const detected = detectScaleFromFile(inputFile);
+    if (detected) {
+      answers.scale = detected.scale;
+      answers.detectedRowCount = detected.rowCount;
+      console.log(chalk.gray(`Detected ${detected.rowCount.toLocaleString()} users (${detected.scale} scale)\n`));
+    }
   }
 
-  answers.scale = scaleAnswer.scale;
+  // Fall back to asking if we couldn't detect (Auth0 or detection failure)
+  if (!answers.scale) {
+    const scaleAnswer = await prompts({
+      type: "select",
+      name: "scale",
+      message: "Approximately how many users are you migrating?",
+      choices: [
+        { title: "Less than 10,000", value: "small" },
+        { title: "10,000 - 100,000", value: "medium" },
+        { title: "More than 100,000", value: "large" },
+      ],
+    });
 
-  // Recommend checkpointing for medium/large
-  const recommendCheckpoint = answers.scale !== "small";
+    if (!scaleAnswer.scale) {
+      throw new Error("Scale is required");
+    }
 
-  const checkpointAnswer = await prompts({
-    type: "confirm",
-    name: "enableCheckpointing",
-    message: "Enable checkpointing for resumability?",
-    initial: recommendCheckpoint,
-    hint: recommendCheckpoint ? "(recommended for your scale)" : undefined,
-  });
+    answers.scale = scaleAnswer.scale;
+  }
 
-  answers.enableCheckpointing =
-    checkpointAnswer.enableCheckpointing ?? recommendCheckpoint;
+  // Auto-configure performance based on scale
+  answers.enableCheckpointing = answers.scale !== "small";
+  if (answers.scale === "large") {
+    answers.enableWorkers = true;
+    answers.workerCount = 4;
+  } else {
+    answers.enableWorkers = false;
+  }
 
-  // Ask about workers for medium and large migrations
-  if ((answers.scale === "medium" || answers.scale === "large") && answers.enableCheckpointing) {
-    const workersAnswer = await prompts([
-      {
-        type: "confirm",
-        name: "enableWorkers",
-        message: "Enable multi-worker processing for faster imports?",
-        initial: answers.scale === "large", // Recommend for large, optional for medium
-        hint: answers.scale === "large"
-          ? "(recommended for large migrations)"
-          : "(can improve performance for medium migrations)",
-      },
-      {
-        type: (prev: boolean) => (prev ? "number" : null),
-        name: "workerCount",
-        message: "How many workers?",
-        initial: answers.scale === "large" ? 4 : 2, // Fewer workers for medium scale
-        min: 2,
-        max: 8,
-        validate: (value: number) =>
-          (value >= 2 && value <= 8) || "Workers must be between 2 and 8",
-      },
-    ]);
-
-    answers.enableWorkers = workersAnswer.enableWorkers;
-    answers.workerCount = workersAnswer.workerCount;
+  if (answers.enableCheckpointing) {
+    console.log(chalk.gray("Checkpointing enabled for resumability"));
+  }
+  if (answers.enableWorkers) {
+    console.log(chalk.gray(`Multi-worker processing enabled (${answers.workerCount} workers)`));
   }
 
   console.log();
 }
 
 /**
- * Ask validation questions
+ * Detect scale from a CSV or JSON file by counting rows/entries
  */
-async function askValidation(answers: Partial<WizardAnswers>): Promise<void> {
-  console.log(chalk.cyan("✅ Data Validation"));
+function detectScaleFromFile(filePath: string): { scale: ScaleCategory; rowCount: number } | null {
+  try {
+    if (!fs.existsSync(filePath)) return null;
 
-  const validationAnswer = await prompts([
-    {
-      type: "confirm",
-      name: "validateCsv",
-      message: "Validate CSV before importing?",
-      initial: true,
-      hint: "(recommended)",
-    },
-    {
-      type: (prev: boolean) => (prev ? "confirm" : null),
-      name: "autoFixIssues",
-      message: "Automatically fix common issues (whitespace, formatting)?",
-      initial: true,
-    },
-  ]);
+    if (filePath.endsWith('.json')) {
+      // Firebase JSON — count users array
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      const count = Array.isArray(data.users) ? data.users.length : 0;
+      return { scale: categorizeScale(count), rowCount: count };
+    }
 
-  answers.validateCsv = validationAnswer.validateCsv ?? true;
-  answers.autoFixIssues = validationAnswer.autoFixIssues ?? true;
-
-  console.log();
+    // CSV — count lines minus header
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const lines = content.split('\n').filter(l => l.trim().length > 0);
+    const count = Math.max(0, lines.length - 1); // minus header
+    return { scale: categorizeScale(count), rowCount: count };
+  } catch {
+    return null;
+  }
 }
 
-/**
- * Ask error handling questions
- */
-async function askErrorHandling(
-  answers: Partial<WizardAnswers>
-): Promise<void> {
-  console.log(chalk.cyan("🔧 Error Handling"));
-
-  const errorAnswer = await prompts([
-    {
-      type: "confirm",
-      name: "logErrors",
-      message: "Log errors to file for retry?",
-      initial: true,
-      hint: "(recommended)",
-    },
-    {
-      type: (prev: boolean) => (prev ? "text" : null),
-      name: "errorsPath",
-      message: "Error log file path:",
-      initial: "errors.jsonl",
-    },
-  ]);
-
-  answers.logErrors = errorAnswer.logErrors ?? true;
-  answers.errorsPath = errorAnswer.errorsPath || "errors.jsonl";
-
-  console.log();
+function categorizeScale(count: number): ScaleCategory {
+  if (count < 10000) return 'small';
+  if (count <= 100000) return 'medium';
+  return 'large';
 }
 
-/**
- * Ask about dry run
- */
-async function askDryRun(answers: Partial<WizardAnswers>): Promise<void> {
-  console.log(chalk.cyan("🧪 Dry Run"));
-  console.log(
-    chalk.gray(
-      "A dry run validates your import without creating any users in WorkOS.\n" +
-      "This helps verify configuration, CSV format, and organization resolution.\n"
-    )
-  );
-
-  const dryRunAnswer = await prompts({
-    type: "confirm",
-    name: "runDryRunFirst",
-    message: "Run a dry-run test before the live import?",
-    initial: true,
-    hint: "(recommended for first-time migrations)",
-  });
-
-  answers.runDryRunFirst = dryRunAnswer.runDryRunFirst ?? true;
-
-  console.log();
-}

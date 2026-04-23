@@ -1,22 +1,9 @@
-#!/usr/bin/env node
 /**
  * Process Role Definitions
  *
  * Creates roles and permissions in WorkOS from a definitions CSV.
  * Checks for existing roles before creation, warns on permission mismatches,
  * and never overwrites existing roles.
- *
- * Usage:
- *   npx tsx bin/process-role-definitions.ts \
- *     --definitions role-definitions.csv
- *
- *   npx tsx bin/process-role-definitions.ts \
- *     --definitions role-definitions.csv \
- *     --org-mapping clerk-org-mapping.csv
- *
- *   npx tsx bin/process-role-definitions.ts \
- *     --definitions role-definitions.csv \
- *     --dry-run
  */
 
 import { Command } from 'commander';
@@ -26,28 +13,30 @@ import { RoleCache } from '../src/roles/roleCache.js';
 import { OrganizationCache } from '../src/cache/organizationCache.js';
 import { processRoleDefinitions } from '../src/roles/roleDefinitionsProcessor.js';
 import { parseOrgMappingForUniqueOrgs } from '../src/roles/orgMappingReader.js';
+import { ensureOutputDir } from '../src/outputDir.js';
 
-const program = new Command();
+export function registerCommand(parent: Command) {
+  parent
+    .command('process-roles')
+    .description('Create roles and permissions in WorkOS from a definitions CSV')
+    .requiredOption('--definitions <path>', 'Path to role definitions CSV')
+    .option('--org-mapping <path>', 'Path to org mapping CSV (for resolving org_external_id to WorkOS org IDs)')
+    .option('--dry-run', 'Validate and show what would be created without making API calls')
+    .option('--quiet', 'Suppress output messages')
+    .option('--report <path>', 'Path for processing report JSON', 'output/role-definitions-report.json')
+    .action(async (opts) => {
+      await main(opts);
+    });
+}
 
-program
-  .name('process-role-definitions')
-  .description('Create roles and permissions in WorkOS from a definitions CSV')
-  .requiredOption('--definitions <path>', 'Path to role definitions CSV')
-  .option('--org-mapping <path>', 'Path to org mapping CSV (for resolving org_external_id to WorkOS org IDs)')
-  .option('--dry-run', 'Validate and show what would be created without making API calls')
-  .option('--quiet', 'Suppress output messages')
-  .option('--report <path>', 'Path for processing report JSON', 'role-definitions-report.json')
-  .parse(process.argv);
-
-const opts = program.opts<{
+async function main(opts: {
   definitions: string;
   orgMapping?: string;
   dryRun?: boolean;
   quiet?: boolean;
   report: string;
-}>();
-
-async function main() {
+}) {
+  ensureOutputDir();
   const startTime = Date.now();
 
   if (!opts.quiet) {
@@ -197,5 +186,3 @@ async function main() {
     process.exit(1);
   }
 }
-
-main();
