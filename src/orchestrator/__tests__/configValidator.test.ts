@@ -69,7 +69,7 @@ function testSingleOrgMissingIdentifier(): void {
 
   assert(result.errors.length === 1, 'Should have 1 error');
   assert(
-    result.errors[0].includes('requires --org-id'),
+    result.errors[0]!.includes('requires --org-id'),
     'Should mention missing org identifier'
   );
 
@@ -89,7 +89,7 @@ function testMutualExclusivity(): void {
 
   assert(result.errors.length === 1, 'Should have 1 error');
   assert(
-    result.errors[0].includes('Cannot specify both'),
+    result.errors[0]!.includes('Cannot specify both'),
     'Should mention mutual exclusivity'
   );
 
@@ -105,7 +105,7 @@ function testWorkersRequireCheckpoint(): void {
   const result = validateConfig(options, 'multi-org', 1000);
 
   assert(result.errors.length === 1, 'Should have 1 error');
-  assert(result.errors[0].includes('requires checkpoint'), 'Should mention checkpoint requirement');
+  assert(result.errors[0]!.includes('requires checkpoint'), 'Should mention checkpoint requirement');
 
   // Cleanup
   fs.unlinkSync(options.csvPath);
@@ -135,7 +135,7 @@ function testCsvNotFound(): void {
   const result = validateConfig(options, 'single-org', 1000);
 
   assert(result.errors.length === 1, 'Should have 1 error');
-  assert(result.errors[0].includes('not found'), 'Should mention file not found');
+  assert(result.errors[0]!.includes('not found'), 'Should mention file not found');
 }
 
 // Test 7: Warning for large import without checkpoint
@@ -148,7 +148,7 @@ function testLargeImportWarning(): void {
   assert(result.errors.length === 0, 'Should have no errors');
   assert(result.warnings.length === 1, 'Should have 1 warning');
   assert(
-    result.warnings[0].includes('Large import'),
+    result.warnings[0]!.includes('Large import'),
     'Should warn about large import'
   );
 
@@ -166,7 +166,7 @@ function testMultiOrgWithSingleOrgFlags(): void {
   assert(result.errors.length === 0, 'Should have no errors');
   assert(result.warnings.length === 1, 'Should have 1 warning');
   assert(
-    result.warnings[0].includes('will be ignored'),
+    result.warnings[0]!.includes('will be ignored'),
     'Should warn flags will be ignored'
   );
 
@@ -183,7 +183,7 @@ function testInvalidConcurrency(): void {
 
   assert(result.errors.length === 1, 'Should have 1 error');
   assert(
-    result.errors[0].includes('concurrency must be >= 1'),
+    result.errors[0]!.includes('concurrency must be >= 1'),
     'Should mention concurrency validation'
   );
 
@@ -200,7 +200,7 @@ function testResumeWithoutJobId(): void {
 
   assert(result.errors.length === 1, 'Should have 1 error');
   assert(
-    result.errors[0].includes('resume requires --job-id'),
+    result.errors[0]!.includes('resume requires --job-id'),
     'Should mention job-id requirement'
   );
 

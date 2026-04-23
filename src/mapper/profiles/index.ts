@@ -34,7 +34,8 @@ const BUILT_IN_PROFILES: Record<string, () => Promise<{ default: MappingProfile 
 export async function loadProfile(nameOrPath: string): Promise<MappingProfile> {
   // Check if it's a built-in profile name
   if (nameOrPath in BUILT_IN_PROFILES) {
-    const module = await BUILT_IN_PROFILES[nameOrPath]();
+    const loader = BUILT_IN_PROFILES[nameOrPath]!;
+    const module = await loader();
     return validateProfile(module.default);
   }
 
@@ -83,7 +84,7 @@ function validateProfile(profile: MappingProfile): MappingProfile {
 
   // Validate each mapping
   for (let i = 0; i < profile.mappings.length; i++) {
-    const mapping = profile.mappings[i];
+    const mapping = profile.mappings[i]!;
     if (!mapping.sourceField) {
       throw new Error(`Mapping ${i} missing required field: sourceField`);
     }

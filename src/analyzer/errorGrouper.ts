@@ -125,7 +125,7 @@ export function groupErrors(errors: ErrorRecord[]): ErrorGroup[] {
   const result: ErrorGroup[] = [];
 
   for (const [groupId, group] of groups.entries()) {
-    const classification = classifyRetryability(group.errors[0]);
+    const classification = classifyRetryability(group.errors[0]!);
     const severity = determineSeverity(
       group.errorType,
       group.httpStatus,

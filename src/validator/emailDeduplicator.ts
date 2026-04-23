@@ -82,7 +82,7 @@ export class EmailDeduplicator {
     for (const [email, group] of emailGroups.entries()) {
       if (group.rows.length === 1) {
         // No duplicates, keep as-is
-        deduplicatedRows.push(group.rows[0]);
+        deduplicatedRows.push(group.rows[0]!);
       } else {
         // Duplicates found - merge them
         duplicatesFound++;
@@ -146,7 +146,7 @@ export class EmailDeduplicator {
     const metadataMerged: string[] = [];
 
     // Start with the first row as base
-    const mergedRow: CSVRow = { ...rows[0] };
+    const mergedRow: CSVRow = { ...rows[0]! };
 
     // Merge email_verified: true if ANY row has it as true
     const emailVerifiedValues = rows
@@ -181,7 +181,7 @@ export class EmailDeduplicator {
         conflicts.push({
           field,
           values: uniqueValues,
-          chosen: uniqueValues[0],
+          chosen: uniqueValues[0]!,
           strategy: 'first-non-empty'
         });
       }
@@ -205,7 +205,7 @@ export class EmailDeduplicator {
         conflicts.push({
           field,
           values: uniqueValues,
-          chosen: uniqueValues[0],
+          chosen: uniqueValues[0]!,
           strategy: 'first-non-empty'
         });
       }
@@ -247,7 +247,7 @@ export class EmailDeduplicator {
         conflicts.push({
           field: `metadata.${key}`,
           values: uniqueValues,
-          chosen: uniqueValues[0],
+          chosen: uniqueValues[0]!,
           strategy: 'first-occurrence'
         });
       }
@@ -255,11 +255,11 @@ export class EmailDeduplicator {
 
     // Set merged metadata if any
     if (Object.keys(mergedMetadata).length > 0) {
-      // Store as JSON string if original was string, otherwise as object
-      if (typeof rows[0].metadata === 'string') {
+      // Always store as JSON string to match CSVRow type
+      if (typeof rows[0]!.metadata === 'string') {
         mergedRow.metadata = JSON.stringify(mergedMetadata);
       } else {
-        mergedRow.metadata = mergedMetadata;
+        mergedRow.metadata = JSON.stringify(mergedMetadata);
       }
     }
 

@@ -35,6 +35,7 @@ See the [Custom CSV Import Guide](docs/guides/CUSTOM-CSV-IMPORT.md) for import m
 | **Firebase** | `npx workos-migrate transform-firebase ...` | [Firebase Migration](docs/guides/FIREBASE-MIGRATION.md) |
 | **Custom CSV** | `npx workos-migrate import --csv ...` | [Custom CSV Import](docs/guides/CUSTOM-CSV-IMPORT.md) |
 | **Roles & Permissions** | `npx workos-migrate process-roles ...` | [Role Mapping](docs/guides/ROLE-MAPPING.md) |
+| **TOTP Migration** | `npx workos-migrate enroll-totp ...` | [Auth0 Migration](docs/guides/AUTH0-MIGRATION.md) |
 
 ## CSV Format
 

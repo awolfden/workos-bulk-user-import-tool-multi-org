@@ -19,6 +19,7 @@ import { registerCommand as registerExportAuth0 } from './export-auth0.js';
 import { registerCommand as registerMergePasswords } from './merge-auth0-passwords.js';
 import { registerCommand as registerMapFields } from './map-fields.js';
 import { registerCommand as registerProcessRoles } from './process-role-definitions.js';
+import { registerCommand as registerEnrollTotp } from './enroll-totp.js';
 
 const program = new Command();
 
@@ -38,6 +39,7 @@ registerExportAuth0(program);
 registerMergePasswords(program);
 registerMapFields(program);
 registerProcessRoles(program);
+registerEnrollTotp(program);
 
 // Default: run wizard when no subcommand given
 program.action((_opts, cmd) => {

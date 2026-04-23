@@ -84,8 +84,8 @@ async function testBasicCsvGeneration(): Promise<void> {
 
     const rows = readCsv(outputPath);
     assert(rows.length === 2, 'Should have 2 rows');
-    assert(rows[0].email === 'user1@example.com', 'First row should have correct email');
-    assert(rows[1].email === 'user2@example.com', 'Second row should have correct email');
+    assert(rows[0]!.email === 'user1@example.com', 'First row should have correct email');
+    assert(rows[1]!.email === 'user2@example.com', 'Second row should have correct email');
   } finally {
     cleanupFile(outputPath);
   }
@@ -132,7 +132,7 @@ async function testDeduplication(): Promise<void> {
 
     const rows = readCsv(outputPath);
     assert(rows.length === 2, 'Should deduplicate to 2 unique emails');
-    assert(rows[0].first_name === 'First', 'Should keep first occurrence (First Attempt)');
+    assert(rows[0]!.first_name === 'First', 'Should keep first occurrence (First Attempt)');
   } finally {
     cleanupFile(outputPath);
   }
@@ -198,7 +198,7 @@ async function testColumnOrdering(): Promise<void> {
 
     // Read raw CSV to check column order
     const content = fs.readFileSync(outputPath, 'utf-8');
-    const headerLine = content.split('\n')[0];
+    const headerLine = content.split('\n')[0]!;
     const columns = headerLine.split(',');
 
     // Standard columns should come first
@@ -275,9 +275,9 @@ async function testAllStandardColumns(): Promise<void> {
 
     const rows = readCsv(outputPath);
     assert(rows.length === 1, 'Should have 1 row');
-    assert(rows[0].email === 'user@example.com', 'Should have email');
-    assert(rows[0].first_name === 'User', 'Should have first_name');
-    assert(rows[0].org_name === 'Test Org', 'Should have org_name');
+    assert(rows[0]!.email === 'user@example.com', 'Should have email');
+    assert(rows[0]!.first_name === 'User', 'Should have first_name');
+    assert(rows[0]!.org_name === 'Test Org', 'Should have org_name');
   } finally {
     cleanupFile(outputPath);
   }

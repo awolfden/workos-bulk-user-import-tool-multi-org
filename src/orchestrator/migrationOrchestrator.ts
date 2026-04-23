@@ -80,13 +80,11 @@ export class MigrationOrchestrator {
         resolvedOrgId = this.options.orgId;
       } else if (this.options.orgExternalId) {
         try {
-          const org = await resolveOrganization(
-            undefined,
-            this.options.orgExternalId,
-            undefined,
-            this.options.createOrgIfMissing
-          );
-          resolvedOrgId = org.id;
+          const org = await resolveOrganization({
+            orgExternalId: this.options.orgExternalId,
+            createIfMissing: this.options.createOrgIfMissing,
+          });
+          resolvedOrgId = org;
         } catch (err) {
           throw new Error(
             `Failed to resolve organization: ${err instanceof Error ? err.message : String(err)}`
@@ -94,13 +92,11 @@ export class MigrationOrchestrator {
         }
       } else if (this.options.orgName) {
         try {
-          const org = await resolveOrganization(
-            undefined,
-            undefined,
-            this.options.orgName,
-            this.options.createOrgIfMissing
-          );
-          resolvedOrgId = org.id;
+          const org = await resolveOrganization({
+            orgName: this.options.orgName,
+            createIfMissing: this.options.createOrgIfMissing,
+          });
+          resolvedOrgId = org;
         } catch (err) {
           throw new Error(
             `Failed to resolve organization: ${err instanceof Error ? err.message : String(err)}`

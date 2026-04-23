@@ -58,7 +58,6 @@ async function runTests() {
         () => mod.createEnvironmentRole({
           name: 'Test',
           slug: 'test',
-          permissions: [],
         }),
         /WORKOS_SECRET_KEY/
       );
@@ -81,7 +80,6 @@ async function runTests() {
           organizationId: 'org_123',
           name: 'Test',
           slug: 'test',
-          permissions: [],
         }),
         /WORKOS_SECRET_KEY/
       );

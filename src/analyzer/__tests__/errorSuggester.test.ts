@@ -58,9 +58,9 @@ function testInvalidEmailSuggestion(): void {
   const suggestions = generateSuggestions(groups);
 
   assert(suggestions.length === 1, 'Should generate 1 suggestion');
-  assert(suggestions[0].actionable === true, 'Should be actionable');
-  assert(suggestions[0].suggestion.includes('Fix email addresses'), 'Should suggest fixing emails');
-  assert(suggestions[0].exampleFix !== undefined, 'Should have example fix');
+  assert(suggestions[0]!.actionable === true, 'Should be actionable');
+  assert(suggestions[0]!.suggestion.includes('Fix email addresses'), 'Should suggest fixing emails');
+  assert(suggestions[0]!.exampleFix !== undefined, 'Should have example fix');
 }
 
 // Test 2: Missing Required Field
@@ -79,8 +79,8 @@ function testMissingRequiredSuggestion(): void {
   const suggestions = generateSuggestions(groups);
 
   assert(suggestions.length === 1, 'Should generate 1 suggestion');
-  assert(suggestions[0].actionable === true, 'Should be actionable');
-  assert(suggestions[0].suggestion.includes('Add missing required fields'), 'Should suggest adding fields');
+  assert(suggestions[0]!.actionable === true, 'Should be actionable');
+  assert(suggestions[0]!.suggestion.includes('Add missing required fields'), 'Should suggest adding fields');
 }
 
 // Test 3: Duplicate User
@@ -99,8 +99,8 @@ function testDuplicateUserSuggestion(): void {
   const suggestions = generateSuggestions(groups);
 
   assert(suggestions.length === 1, 'Should generate 1 suggestion');
-  assert(suggestions[0].actionable === true, 'Should be actionable');
-  assert(suggestions[0].suggestion.includes('already exist'), 'Should mention users exist');
+  assert(suggestions[0]!.actionable === true, 'Should be actionable');
+  assert(suggestions[0]!.suggestion.includes('already exist'), 'Should mention users exist');
 }
 
 // Test 4: Duplicate Membership
@@ -119,8 +119,8 @@ function testDuplicateMembershipSuggestion(): void {
   const suggestions = generateSuggestions(groups);
 
   assert(suggestions.length === 1, 'Should generate 1 suggestion');
-  assert(suggestions[0].actionable === true, 'Should be actionable');
-  assert(suggestions[0].suggestion.includes('Memberships already exist'), 'Should mention memberships exist');
+  assert(suggestions[0]!.actionable === true, 'Should be actionable');
+  assert(suggestions[0]!.suggestion.includes('Memberships already exist'), 'Should mention memberships exist');
 }
 
 // Test 5: Organization Not Found
@@ -138,9 +138,9 @@ function testOrgNotFoundSuggestion(): void {
   const suggestions = generateSuggestions(groups);
 
   assert(suggestions.length === 1, 'Should generate 1 suggestion');
-  assert(suggestions[0].actionable === true, 'Should be actionable');
-  assert(suggestions[0].suggestion.includes('not found'), 'Should mention not found');
-  assert(suggestions[0].suggestion.includes('org_name'), 'Should suggest adding org_name');
+  assert(suggestions[0]!.actionable === true, 'Should be actionable');
+  assert(suggestions[0]!.suggestion.includes('not found'), 'Should mention not found');
+  assert(suggestions[0]!.suggestion.includes('org_name'), 'Should suggest adding org_name');
 }
 
 // Test 6: Invalid JSON
@@ -159,8 +159,8 @@ function testInvalidJsonSuggestion(): void {
   const suggestions = generateSuggestions(groups);
 
   assert(suggestions.length === 1, 'Should generate 1 suggestion');
-  assert(suggestions[0].actionable === true, 'Should be actionable');
-  assert(suggestions[0].suggestion.includes('JSON'), 'Should mention JSON');
+  assert(suggestions[0]!.actionable === true, 'Should be actionable');
+  assert(suggestions[0]!.suggestion.includes('JSON'), 'Should mention JSON');
 }
 
 // Test 7: Password Hash Incomplete
@@ -179,8 +179,8 @@ function testPasswordHashSuggestion(): void {
   const suggestions = generateSuggestions(groups);
 
   assert(suggestions.length === 1, 'Should generate 1 suggestion');
-  assert(suggestions[0].actionable === true, 'Should be actionable');
-  assert(suggestions[0].suggestion.includes('password_hash_type'), 'Should mention password_hash_type');
+  assert(suggestions[0]!.actionable === true, 'Should be actionable');
+  assert(suggestions[0]!.suggestion.includes('password_hash_type'), 'Should mention password_hash_type');
 }
 
 // Test 8: Rate Limiting
@@ -200,8 +200,8 @@ function testRateLimitingSuggestion(): void {
   const suggestions = generateSuggestions(groups);
 
   assert(suggestions.length === 1, 'Should generate 1 suggestion');
-  assert(suggestions[0].actionable === false, 'Should NOT be actionable (config change)');
-  assert(suggestions[0].suggestion.includes('concurrency'), 'Should mention concurrency');
+  assert(suggestions[0]!.actionable === false, 'Should NOT be actionable (config change)');
+  assert(suggestions[0]!.suggestion.includes('concurrency'), 'Should mention concurrency');
 }
 
 // Test 9: Server Errors
@@ -221,8 +221,8 @@ function testServerErrorSuggestion(): void {
   const suggestions = generateSuggestions(groups);
 
   assert(suggestions.length === 1, 'Should generate 1 suggestion');
-  assert(suggestions[0].actionable === false, 'Should NOT be actionable (wait required)');
-  assert(suggestions[0].suggestion.includes('Wait'), 'Should suggest waiting');
+  assert(suggestions[0]!.actionable === false, 'Should NOT be actionable (wait required)');
+  assert(suggestions[0]!.suggestion.includes('Wait'), 'Should suggest waiting');
 }
 
 // Test 10: Validation Errors
@@ -241,8 +241,8 @@ function testValidationErrorSuggestion(): void {
   const suggestions = generateSuggestions(groups);
 
   assert(suggestions.length === 1, 'Should generate 1 suggestion');
-  assert(suggestions[0].actionable === true, 'Should be actionable');
-  assert(suggestions[0].suggestion.includes('Validation error'), 'Should mention validation');
+  assert(suggestions[0]!.actionable === true, 'Should be actionable');
+  assert(suggestions[0]!.suggestion.includes('Validation error'), 'Should mention validation');
 }
 
 // Test 11: No Matching Pattern
@@ -288,8 +288,8 @@ function testMultipleGroups(): void {
   const suggestions = generateSuggestions(groups);
 
   assert(suggestions.length === 2, 'Should generate 2 suggestions (excluding unknown)');
-  assert(suggestions[0].pattern.includes('Invalid email'), 'First suggestion should match first group');
-  assert(suggestions[1].pattern.includes('already exists'), 'Second suggestion should match second group');
+  assert(suggestions[0]!.pattern.includes('Invalid email'), 'First suggestion should match first group');
+  assert(suggestions[1]!.pattern.includes('already exists'), 'Second suggestion should match second group');
 }
 
 // Run all tests

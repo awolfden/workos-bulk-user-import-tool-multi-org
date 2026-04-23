@@ -113,7 +113,7 @@ export class CSVValidator {
 
           // Extract mode from mode-detection rule
           if (rule.id === 'mode-detection' && ruleIssues.length > 0) {
-            const modeIssue = ruleIssues[0];
+            const modeIssue = ruleIssues[0]!;
             const modeMatch = modeIssue.message.match(/Detected mode: (\S+)/);
             if (modeMatch) {
               this.mode = modeMatch[1] as 'single-org' | 'multi-org' | 'user-only';
