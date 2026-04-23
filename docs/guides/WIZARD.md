@@ -16,7 +16,7 @@ The Migration Wizard guides you through the complete migration process:
 ## Quick Start
 
 ```bash
-WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/migrate-wizard.ts
+WORKOS_SECRET_KEY=sk_test_123 npx workos-migrate wizard
 ```
 
 The wizard will ask you questions and guide you through each step.
@@ -62,22 +62,14 @@ The wizard will check prerequisites and help you set them up if missing.
 
 **Roles & Permissions:**
 - Do you have role/permission data to migrate? (Yes/No)
-- If yes: Do you have a role definitions CSV? → path
+- If yes: Do you have a role definitions CSV? -> path
 - Path to user-role mapping CSV
 
 **Scale & Performance:**
-- How many users? (<10K, 10K-100K, >100K)
-- Enable checkpointing? (recommended for large imports)
-- Enable workers for parallel processing? (recommended for >100K)
-- Number of workers? (4 recommended)
+Scale is auto-detected from your CSV/JSON file size. Checkpointing and worker count are automatically configured based on the detected scale -- no manual input needed.
 
-**Validation:**
-- Validate CSV before importing? (recommended)
-- Auto-fix common issues? (recommended)
-
-**Error Handling:**
-- Log errors to file? (recommended)
-- Error log path (default: `output/errors.jsonl`)
+**Validation & Error Logging:**
+Validation and error logging are auto-enabled by default. You can opt out using the `--no-validate`, `--no-auto-fix`, and `--no-error-log` CLI flags if needed.
 
 ### 2. Shows Migration Plan
 
@@ -95,23 +87,23 @@ Your migration will follow these steps:
 
 1. Export from Auth0
    Export users and organizations from Auth0
-   Command: npx tsx bin/export-auth0.ts --domain ...
+   Command: npx workos-migrate export-auth0 --domain ...
 
 2. Validate CSV
    Validate CSV data and auto-fix common issues
-   Command: npx tsx bin/validate-csv.ts --csv ...
+   Command: npx workos-migrate validate --csv ...
 
 3. Execute Import
    Import users to WorkOS
-   Command: npx tsx bin/import-users.ts --csv ...
+   Command: npx workos-migrate import --csv ...
 
-💡 Recommendations:
-  • Checkpoint directory: .workos-checkpoints/
-  • You can resume with --resume flag
+Recommendations:
+  - Checkpoint directory: .workos-checkpoints/
+  - You can resume with --resume flag
 
 ════════════════════════════════════════════════════
 
-? Ready to start the migration? › (Y/n)
+? Ready to start the migration? > (Y/n)
 ```
 
 ### 3. Executes Migration
@@ -121,11 +113,11 @@ Once you confirm, the wizard runs each step automatically:
 ```
 Step 1/5: Export from Auth0
 ════════════════════════════════════════════════════
-Running: npx tsx bin/export-auth0.ts ...
+Running: npx workos-migrate export-auth0 ...
 
 [====================] 100% | 1,234 users exported
 
-✓ Export from Auth0 completed
+Step completed: Export from Auth0
 
 Step 2/5: Validate CSV
 ════════════════════════════════════════════════════
@@ -139,7 +131,7 @@ Step 2/5: Validate CSV
 MIGRATION COMPLETE
 ════════════════════════════════════════════════════
 
-✓ Migration completed successfully!
+Migration completed successfully!
 
 Steps:
   Total:     5
@@ -154,31 +146,37 @@ Users:
 Duration: 4m 32s
 
 Generated Files:
-  • output/auth0-export.csv
-  • output/users-validated.csv
-  • output/validation-report.json
-  • output/migration-summary.json
+  - output/auth0-export.csv
+  - output/users-validated.csv
+  - output/validation-report.json
+  - output/migration-summary.json
 
-✓ All users successfully migrated!
+All users successfully migrated!
 ```
 
 ## CLI Options
 
 ```bash
 # Interactive mode (default)
-npx tsx bin/migrate-wizard.ts
-
-# Dry-run (show plan without executing)
-npx tsx bin/migrate-wizard.ts --dry-run
+npx workos-migrate wizard
 
 # Non-interactive (skip confirmation)
-npx tsx bin/migrate-wizard.ts --yes
+npx workos-migrate wizard --yes
 
 # Quiet mode
-npx tsx bin/migrate-wizard.ts --quiet
+npx workos-migrate wizard --quiet
+
+# Skip validation step
+npx workos-migrate wizard --no-validate
+
+# Skip auto-fix during validation
+npx workos-migrate wizard --no-auto-fix
+
+# Disable error logging to file
+npx workos-migrate wizard --no-error-log
 
 # Pre-fill options for automation
-npx tsx bin/migrate-wizard.ts \
+npx workos-migrate wizard \
   --source auth0 \
   --org-id org_abc123 \
   --yes
@@ -205,22 +203,16 @@ npx tsx bin/migrate-wizard.ts \
 - Source: Auth0
 - Import mode: Single organization
 - Org ID: `org_abc123`
-- Scale: Less than 10,000
-- Checkpointing: No
-- Workers: No
 
-**Result:** Simple, fast migration in 1-2 minutes
+**Result:** Scale is auto-detected. Simple, fast migration in 1-2 minutes.
 
 ### Scenario 2: Large Multi-Org Migration (> 100K users)
 
 **Answers:**
 - Source: Auth0
 - Import mode: Multiple organizations
-- Scale: More than 100,000
-- Checkpointing: Yes
-- Workers: Yes (4 workers)
 
-**Result:** Parallel processing with checkpoints, ~15-20 minutes for 100K users
+**Result:** Scale is auto-detected from file size. Checkpointing and parallel workers are auto-configured for large imports, ~15-20 minutes for 100K users.
 
 ### Scenario 3: Custom CSV Import
 
@@ -229,23 +221,20 @@ npx tsx bin/migrate-wizard.ts \
 - CSV path: `/path/to/users.csv`
 - Import mode: (depends on your CSV)
 
-**Result:** Skips export step, goes straight to validation and import
+**Result:** Skips export step, goes straight to validation and import.
 
 ### Scenario 4: Clerk Migration
 
 **Answers:**
 - Source: Clerk
 - Clerk CSV path: `clerk-export.csv`
-- Org mapping: Yes → `clerk-org-mapping.csv`
+- Org mapping: Yes -> `clerk-org-mapping.csv`
 - Import mode: Multi-org (auto-set from org mapping)
-- Roles: Yes → role definitions: `role-definitions.csv`, mapping: `user-role-mapping.csv`
-- Scale: Less than 10,000
-- Checkpointing: No
-- Workers: No
+- Roles: Yes -> role definitions: `role-definitions.csv`, mapping: `user-role-mapping.csv`
 
-**Result:** Transforms Clerk CSV → validates → imports with org memberships and role assignments. Bcrypt passwords are migrated automatically.
+**Result:** Transforms Clerk CSV -> validates -> imports with org memberships and role assignments. Bcrypt passwords are migrated automatically.
 
-See [Clerk Migration Guide](../guides/CLERK-MIGRATION.md) for full details.
+See [Clerk Migration Guide](CLERK-MIGRATION.md) for full details.
 
 ## Resuming Interrupted Migrations
 
@@ -253,7 +242,7 @@ If the wizard is interrupted (Ctrl+C, crash, etc.):
 
 ```bash
 # Resume from checkpoint (if checkpointing was enabled)
-npx tsx bin/migrate-wizard.ts --resume
+npx workos-migrate wizard --resume
 ```
 
 The wizard will:
@@ -264,18 +253,18 @@ The wizard will:
 ## When to Use the Wizard vs. Direct Tools
 
 ### Use the Wizard When:
-✅ First time migrating from Auth0 or Clerk
-✅ Want guided step-by-step process
-✅ Prefer interactive prompts
-✅ Don't want to remember command syntax
+- First time migrating from Auth0 or Clerk
+- Want guided step-by-step process
+- Prefer interactive prompts
+- Don't want to remember command syntax
 
 ### Use Direct Tools When:
-✅ Need fine-grained control over steps
-✅ Automating in scripts/CI
-✅ Want to customize each command
-✅ Already familiar with the workflow
+- Need fine-grained control over steps
+- Automating in scripts/CI
+- Want to customize each command
+- Already familiar with the workflow
 
-See [Quick Start Guide](QUICK-START.md) for direct tool usage.
+See [Custom CSV Import Guide](CUSTOM-CSV-IMPORT.md) for direct tool usage.
 
 ## Troubleshooting
 
@@ -292,25 +281,25 @@ echo "WORKOS_SECRET_KEY=sk_test_123" > .env
 ### "Auth0 domain should end with .auth0.com"
 
 Use full domain:
-- ✓ Correct: `dev-example.us.auth0.com`
-- ✗ Wrong: `dev-example`
+- Correct: `dev-example.us.auth0.com`
+- Wrong: `dev-example`
 
 ### "Organization ID should start with org_"
 
 Use full WorkOS organization ID:
-- ✓ Correct: `org_abc123xyz`
-- ✗ Wrong: `abc123xyz`
+- Correct: `org_abc123xyz`
+- Wrong: `abc123xyz`
 
 ### Migration interrupted
 
 If you enabled checkpointing:
 ```bash
-npx tsx bin/migrate-wizard.ts --resume
+npx workos-migrate wizard --resume
 ```
 
 If no checkpoint:
 ```bash
-npx tsx bin/migrate-wizard.ts  # Start over
+npx workos-migrate wizard  # Start over
 ```
 
 ## Password Migration
@@ -333,7 +322,7 @@ Auth0 doesn't provide password hashes via the Management API. You must request a
 - Seamless migration
 - Better user experience
 
-See [Password Migration Guide](../guides/PASSWORD-MIGRATION.md) for details.
+See [Auth0 Migration Guide](AUTH0-MIGRATION.md) for details.
 
 ## Next Steps
 
@@ -341,14 +330,11 @@ After wizard completes:
 
 - **Success**: Users are migrated to WorkOS!
 - **Errors**: Review `output/error-analysis.json` and run retry
-- **Learn more**: See [Import Phase](../phases/05-IMPORT.md)
-- **Advanced**: See [Worker Pool](../advanced/WORKER-POOL.md) for large-scale optimization
+- **Learn more**: See [Custom CSV Import Guide](CUSTOM-CSV-IMPORT.md)
 
 ## Related Documentation
 
-- [Quick Start Guide](QUICK-START.md) - Direct tool usage
-- [Clerk Migration Guide](../guides/CLERK-MIGRATION.md) - Clerk-specific details
-- [Phase 1: Export](../phases/01-EXPORT.md) - Auth0 export details
-- [Phase 2: Validate](../phases/02-VALIDATE.md) - Validation rules
-- [Phase 5: Import](../phases/05-IMPORT.md) - Import options
-- [Password Migration Guide](../guides/PASSWORD-MIGRATION.md) - Password formats
+- [Custom CSV Import Guide](CUSTOM-CSV-IMPORT.md) - Direct tool usage
+- [Clerk Migration Guide](CLERK-MIGRATION.md) - Clerk-specific details
+- [Auth0 Migration Guide](AUTH0-MIGRATION.md) - Auth0 export and password details
+- [Troubleshooting](TROUBLESHOOTING.md) - Common issues and solutions

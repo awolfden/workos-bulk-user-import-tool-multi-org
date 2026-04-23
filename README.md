@@ -1,12 +1,12 @@
 # WorkOS Migration Toolkit
 
-Migrate users from Auth0, Clerk, Firebase (or any IdP) to WorkOS.
+Migrate users from Auth0, Clerk, Firebase (or any identity provider) to WorkOS.
 
 ## Quick Start
 
 ```bash
 npm install
-WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/migrate-wizard.ts
+npx workos-migrate wizard
 ```
 
 The wizard walks you through the entire migration — export, validation, and import.
@@ -14,8 +14,10 @@ The wizard walks you through the entire migration — export, validation, and im
 ## Already Have a CSV?
 
 ```bash
-WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/import-users.ts --csv users.csv
+npx workos-migrate import --csv users.csv
 ```
+
+See the [Custom CSV Import Guide](docs/guides/CUSTOM-CSV-IMPORT.md) for import modes, validation, and advanced options.
 
 ## What This Tool Does
 
@@ -23,14 +25,16 @@ WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/import-users.ts --csv users.csv
 - **Password Migration** — Migrate bcrypt, Auth0, Firebase (scrypt), and Okta password hashes
 - **Large Scale** — Built for 1M+ users with checkpointing, parallel processing, and error recovery
 
-## Source-Specific Guides
+## Migration Paths
 
-| Source | Guide |
-|--------|-------|
-| Auth0 | [Auth0 Migration](docs/phases/01-EXPORT.md) |
-| Clerk | [Clerk Migration](docs/guides/CLERK-MIGRATION.md) |
-| Firebase | [Firebase Migration](docs/guides/FIREBASE-MIGRATION.md) |
-| Custom CSV | [CSV Format Reference](docs/guides/CSV-FORMAT.md) |
+| Path | Command | Guide |
+|------|---------|-------|
+| **Interactive Wizard** | `npx workos-migrate wizard` | [Wizard Guide](docs/guides/WIZARD.md) |
+| **Auth0** | `npx workos-migrate export-auth0 ...` | [Auth0 Migration](docs/guides/AUTH0-MIGRATION.md) |
+| **Clerk** | `npx workos-migrate transform-clerk ...` | [Clerk Migration](docs/guides/CLERK-MIGRATION.md) |
+| **Firebase** | `npx workos-migrate transform-firebase ...` | [Firebase Migration](docs/guides/FIREBASE-MIGRATION.md) |
+| **Custom CSV** | `npx workos-migrate import --csv ...` | [Custom CSV Import](docs/guides/CUSTOM-CSV-IMPORT.md) |
+| **Roles & Permissions** | `npx workos-migrate process-roles ...` | [Role Mapping](docs/guides/ROLE-MAPPING.md) |
 
 ## CSV Format
 
@@ -52,61 +56,6 @@ bob@beta.com,Bob,Jones,beta-inc,Beta Inc
 
 See [CSV Format Reference](docs/guides/CSV-FORMAT.md) for all supported columns.
 
-## Advanced Usage
-
-<details>
-<summary>Planning, workers, checkpointing, and automation</summary>
-
-### Pre-Flight Check
-
-Analyze your CSV and get recommendations before importing:
-
-```bash
-npx tsx bin/import-users.ts --csv users.csv --plan
-```
-
-### Parallel Processing
-
-Use workers for large imports (50K+ users):
-
-```bash
-npx tsx bin/import-users.ts \
-  --csv users.csv \
-  --job-id prod-migration \
-  --workers 4
-```
-
-### Checkpointing & Resume
-
-Resume interrupted imports:
-
-```bash
-npx tsx bin/import-users.ts --resume prod-migration
-```
-
-### Automation
-
-Skip interactive prompts for scripting/CI:
-
-```bash
-npx tsx bin/import-users.ts --csv users.csv --yes
-```
-
-### Role Migration
-
-Create roles and assign them during import:
-
-```bash
-npx tsx bin/import-users.ts \
-  --csv users.csv \
-  --role-definitions roles.csv \
-  --role-mapping user-roles.csv
-```
-
-See [Role Mapping Guide](docs/guides/ROLE-MAPPING.md) for details.
-
-</details>
-
 ## Installation
 
 ```bash
@@ -117,15 +66,26 @@ npm install
 
 **Requirements:** Node.js 18+
 
-## Troubleshooting
+Set your WorkOS API key:
 
-- **Errors during import?** See [Troubleshooting Guide](docs/guides/TROUBLESHOOTING.md)
-- **Password questions?** See [Password Migration Guide](docs/guides/PASSWORD-MIGRATION.md)
-- **Multi-org setup?** See [Multi-Org Guide](docs/guides/MULTI-ORG.md)
+```bash
+export WORKOS_SECRET_KEY=sk_test_...
+# Or add to .env file
+echo 'WORKOS_SECRET_KEY=sk_test_...' > .env
+```
 
 ## Documentation
 
-See [Full Documentation](docs/README.md) for detailed guides on every feature.
+| Guide | Description |
+|-------|-------------|
+| [Wizard Guide](docs/guides/WIZARD.md) | Interactive step-by-step migration |
+| [Auth0 Migration](docs/guides/AUTH0-MIGRATION.md) | Export from Auth0, password hashes, multi-org |
+| [Clerk Migration](docs/guides/CLERK-MIGRATION.md) | Transform Clerk exports, org/role mapping |
+| [Firebase Migration](docs/guides/FIREBASE-MIGRATION.md) | Transform Firebase JSON, scrypt passwords |
+| [Custom CSV Import](docs/guides/CUSTOM-CSV-IMPORT.md) | Direct import, validation, large-scale, workers |
+| [CSV Format Reference](docs/guides/CSV-FORMAT.md) | All supported columns and metadata format |
+| [Role Mapping](docs/guides/ROLE-MAPPING.md) | Role definitions and user-role assignments |
+| [Troubleshooting](docs/guides/TROUBLESHOOTING.md) | Common errors, error analysis, deduplication |
 
 ## License
 

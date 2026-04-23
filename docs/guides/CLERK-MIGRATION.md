@@ -10,8 +10,8 @@ The Clerk migration transforms a Clerk user CSV export into WorkOS-compatible fo
 
 1. **Export** — Download your user CSV from the Clerk dashboard
 2. **Transform** — Convert Clerk CSV fields to WorkOS format (`transform-clerk`)
-3. **Validate** — Check the transformed CSV for errors (`validate-csv`)
-4. **Import** — Migrate users into WorkOS (`import-users`)
+3. **Validate** — Check the transformed CSV for errors (`validate`)
+4. **Import** — Migrate users into WorkOS (`import`)
 
 You can run these steps manually via CLI or let the wizard handle them automatically.
 
@@ -125,7 +125,7 @@ Each row is a single user-role pair. Users with multiple roles have multiple row
 Pass `--role-mapping` to the transform step. Role slugs are merged into the output CSV as a `role_slugs` column:
 
 ```bash
-npx tsx bin/transform-clerk.ts \
+npx workos-migrate transform-clerk \
   --clerk-csv clerk-export.csv \
   --org-mapping clerk-org-mapping.csv \
   --role-mapping user-role-mapping.csv \
@@ -139,7 +139,7 @@ The import step then reads role slugs from the transformed CSV and assigns them 
 If your roles don't already exist in WorkOS, process a role definitions CSV first:
 
 ```bash
-npx tsx bin/process-role-definitions.ts \
+npx workos-migrate process-roles \
   --definitions role-definitions.csv
 ```
 
@@ -147,12 +147,12 @@ See [Role Mapping Guide](ROLE-MAPPING.md) for the full workflow.
 
 ## Option A: Wizard (Recommended)
 
-The wizard automates the full transform → validate → import pipeline.
+The wizard automates the full transform -> validate -> import pipeline.
 
 ### Launch
 
 ```bash
-WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/migrate-wizard.ts
+WORKOS_SECRET_KEY=sk_test_123 npx workos-migrate wizard
 ```
 
 ### Wizard Prompts
@@ -171,7 +171,7 @@ WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/migrate-wizard.ts
 ### What the Wizard Does Automatically
 
 1. **Transform Clerk Export** — Runs `transform-clerk` to convert your Clerk CSV to WorkOS format (outputs `output/clerk-transformed.csv`)
-2. **Validate CSV** — Runs `validate-csv` with auto-fix (outputs `output/users-validated.csv`)
+2. **Validate CSV** — Runs `validate` with auto-fix (outputs `output/users-validated.csv`)
 3. **Plan Import** — Shows estimated duration and configuration
 4. **Dry Run** (if enabled) — Tests import without creating users
 5. **Execute Import** — Imports users into WorkOS
@@ -184,7 +184,7 @@ WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/migrate-wizard.ts
 **Without org mapping:**
 
 ```bash
-npx tsx bin/transform-clerk.ts \
+npx workos-migrate transform-clerk \
   --clerk-csv clerk-export.csv \
   --output workos-users.csv
 ```
@@ -192,7 +192,7 @@ npx tsx bin/transform-clerk.ts \
 **With org mapping:**
 
 ```bash
-npx tsx bin/transform-clerk.ts \
+npx workos-migrate transform-clerk \
   --clerk-csv clerk-export.csv \
   --org-mapping user-org-mapping.csv \
   --output workos-users.csv
@@ -213,7 +213,7 @@ The transform step produces a summary showing total users, transformed count, sk
 ### Step 2: Validate CSV
 
 ```bash
-npx tsx bin/validate-csv.ts \
+npx workos-migrate validate \
   --csv workos-users.csv \
   --auto-fix \
   --fixed-csv output/users-validated.csv \
@@ -225,13 +225,13 @@ npx tsx bin/validate-csv.ts \
 **Simple import:**
 
 ```bash
-npx tsx bin/import-users.ts --csv output/users-validated.csv
+npx workos-migrate import --csv output/users-validated.csv
 ```
 
 **Multi-org import with workers:**
 
 ```bash
-npx tsx bin/import-users.ts \
+npx workos-migrate import \
   --csv output/users-validated.csv \
   --job-id clerk-migration \
   --workers 4
@@ -240,7 +240,7 @@ npx tsx bin/import-users.ts \
 **Dry run first:**
 
 ```bash
-npx tsx bin/import-users.ts --csv output/users-validated.csv --dry-run
+npx workos-migrate import --csv output/users-validated.csv --dry-run
 ```
 
 ## Password Handling
@@ -329,8 +329,7 @@ If using `org_external_id` without `org_name`, the organization must already exi
 
 ## Related Documentation
 
-- [Wizard Guide](../getting-started/WIZARD.md) — Interactive migration walkthrough
+- [Wizard Guide](WIZARD.md) — Interactive migration walkthrough
 - [CSV Format Reference](CSV-FORMAT.md) — WorkOS CSV column reference
-- [Multi-Organization Imports](MULTI-ORG.md) — Multi-org import details
-- [Password Migration](PASSWORD-MIGRATION.md) — Password hash formats
+- [Custom CSV Import](CUSTOM-CSV-IMPORT.md) — Multi-org and custom CSV import details
 - [Troubleshooting](TROUBLESHOOTING.md) — General troubleshooting

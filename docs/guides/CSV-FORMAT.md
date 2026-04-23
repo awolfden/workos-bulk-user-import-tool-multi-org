@@ -1,6 +1,6 @@
 # CSV Format Reference
 
-Complete reference for CSV file format used by the WorkOS Multi-Org Migration Toolkit.
+Complete reference for CSV file format used by the WorkOS Migration Toolkit.
 
 ## Required Columns
 
@@ -65,7 +65,7 @@ Pre-hashed password. Must be used with `password_hash_type`.
 
 Specifies the password hash algorithm. Required when `password_hash` is provided.
 
-See [Password Migration Guide](PASSWORD-MIGRATION.md) for supported formats.
+See [Auth0 Migration Guide](AUTH0-MIGRATION.md#password-hash-formats) for supported formats.
 
 ### `metadata`
 
@@ -185,7 +185,7 @@ alice@example.com,Alice,Smith,user-001,gamma-llc,Gamma LLC
 - 3 memberships created (one in each org)
 - User data from first row used
 
-See [Multi-Org Guide](MULTI-ORG.md) for details.
+See [Custom CSV Import Guide](CUSTOM-CSV-IMPORT.md#multi-organization-imports) for details.
 
 ### Using WorkOS Organization IDs
 
@@ -196,6 +196,102 @@ bob@example.com,Bob,org_xyz789
 ```
 
 No API lookup needed (fastest).
+
+## Metadata
+
+WorkOS has strict metadata validation rules. Understanding these requirements avoids common import failures.
+
+### All Metadata Values Must Be Strings
+
+WorkOS requires ALL metadata values to be strings. No exceptions.
+
+**Forbidden types:**
+- Booleans: `"active": true`
+- Numbers: `"count": 42`
+- Arrays: `"roles": ["admin", "user"]`
+- Objects: `"settings": {"theme": "dark"}`
+
+**Correct format:**
+- String booleans: `"active": "true"`
+- String numbers: `"count": "42"`
+- JSON string arrays: `"roles": "[\"admin\",\"user\"]"`
+- JSON string objects: `"settings": "{\"theme\":\"dark\"}"`
+
+### Reserved Field Names
+
+Certain field names conflict with WorkOS's internal organization handling and must not be used as metadata keys:
+
+- `organization_id`
+- `organization_name`
+- `org_id`
+- `org_name`
+- `organizationId`
+- `organizationName`
+
+**Solution:** Rename with a prefix (e.g., `auth0_organization_id`).
+
+### JSON Encoding Rules for CSV
+
+When encoding metadata as JSON inside a CSV cell:
+
+1. The JSON value must use double quotes (standard JSON)
+2. Inside a CSV field, double quotes are escaped as `""` (CSV escaping rule)
+3. The entire field should be wrapped in double quotes
+
+**What works:**
+```csv
+email,first_name,last_name,email_verified,external_id,org_external_id,org_name,metadata
+alice@acme.com,Alice,Smith,true,user_001,org_123,Acme Corp,"{""department"":""Engineering"",""active"":""true"",""count"":""42""}"
+```
+
+**What fails:**
+```csv
+email,first_name,last_name,email_verified,external_id,org_external_id,org_name,metadata
+alice@acme.com,Alice,Smith,true,user_001,org_123,Acme Corp,"{""department"":""Engineering"",""active"":true,""count"":42}"
+```
+
+The second example fails with a `metadata_required` error (422 status code) because `active` and `count` are not strings.
+
+### Best Practices for Metadata Columns
+
+1. **Convert all metadata values to strings** before writing to CSV
+2. **Avoid reserved field names** or rename them with a prefix
+3. **Place the metadata column last** in your CSV, after all organization columns
+4. **Test with small datasets first** -- validate 10-20 users before a full import
+5. **Keep original values** -- sanitization preserves data (arrays become JSON strings)
+6. **Document custom fields** -- note which fields were renamed (e.g., `org_id` to `auth0_org_id`)
+
+### Sanitization Example
+
+If building a custom exporter, sanitize metadata before writing:
+
+```typescript
+function sanitizeMetadataForWorkOS(metadata: Record<string, unknown>): Record<string, string> {
+  const sanitized: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(metadata)) {
+    // Rename reserved fields
+    if (['organization_id', 'organization_name', 'org_id', 'org_name'].includes(key)) {
+      sanitized[`auth0_${key}`] = convertToString(value);
+      continue;
+    }
+
+    // Convert all values to strings
+    sanitized[key] = convertToString(value);
+  }
+
+  return sanitized;
+}
+
+function convertToString(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (typeof value === 'number') return String(value);
+  // Arrays and objects
+  return JSON.stringify(value);
+}
+```
 
 ## Validation Rules
 
@@ -248,7 +344,7 @@ alice@example.com,value1,value2
 
 Output:
 ```
-⚠ Warning: Unknown columns will be ignored: custom_field, another_field
+Warning: Unknown columns will be ignored: custom_field, another_field
 ```
 
 ## BOM (Byte Order Mark)
@@ -278,7 +374,7 @@ Same email in multiple rows:
 
 Identical `external_id` in multiple rows:
 - Should match same user
-- Inconsistent with different emails → warning
+- Inconsistent with different emails causes a warning
 
 ## CSV Escaping
 
@@ -305,15 +401,13 @@ alice@example.com,Alice,"{""key"":""value, with comma""}"
 ### Validate Before Import
 
 ```bash
-npx tsx bin/validate-csv.ts --csv users.csv
+npx workos-migrate validate --csv users.csv
 ```
-
-See [Validation Phase](../phases/02-VALIDATE.md) for details.
 
 ### Auto-Fix Common Issues
 
 ```bash
-npx tsx bin/validate-csv.ts \
+npx workos-migrate validate \
   --csv users.csv \
   --auto-fix \
   --fixed-csv users-fixed.csv
@@ -328,13 +422,13 @@ Auto-fixes:
 
 ### Mistake 1: Single Quotes in JSON
 
-❌ Wrong:
+Wrong:
 ```csv
 email,metadata
 alice@example.com,"{'role':'admin'}"
 ```
 
-✅ Correct:
+Correct:
 ```csv
 email,metadata
 alice@example.com,"{""role"":""admin""}"
@@ -342,13 +436,13 @@ alice@example.com,"{""role"":""admin""}"
 
 ### Mistake 2: Both org_id and org_external_id
 
-❌ Wrong:
+Wrong:
 ```csv
 email,org_id,org_external_id
 alice@example.com,org_123,acme-corp
 ```
 
-✅ Correct (choose one):
+Correct (choose one):
 ```csv
 email,org_id
 alice@example.com,org_123
@@ -356,13 +450,13 @@ alice@example.com,org_123
 
 ### Mistake 3: Missing email_verified Value
 
-❌ Wrong:
+Wrong:
 ```csv
 email,email_verified
 alice@example.com,
 ```
 
-✅ Correct:
+Correct:
 ```csv
 email,email_verified
 alice@example.com,false
@@ -370,28 +464,42 @@ alice@example.com,false
 
 ### Mistake 4: Password Hash Without Type
 
-❌ Wrong:
+Wrong:
 ```csv
 email,password_hash
 alice@example.com,$2a$10$...
 ```
 
-✅ Correct:
+Correct:
 ```csv
 email,password_hash,password_hash_type
 alice@example.com,$2a$10$...,bcrypt
 ```
 
+### Mistake 5: Non-String Metadata Values
+
+Wrong:
+```csv
+email,metadata
+alice@example.com,"{""active"":true,""count"":42}"
+```
+
+Correct:
+```csv
+email,metadata
+alice@example.com,"{""active"":""true"",""count"":""42""}"
+```
+
 ## Example Files
 
 See `examples/` directory:
-- `example-input.csv` - Basic examples
-- `multi-org-simple.csv` - Multi-org examples
-- `multi-org-multi-membership.csv` - Multi-membership examples
+- `examples/common/example-input.csv` - Basic examples
+- `examples/common/multi-org-simple.csv` - Multi-org examples
+- `examples/common/multi-org-multi-membership.csv` - Multi-membership examples
 
 ## Related Documentation
 
-- [Validation Phase](../phases/02-VALIDATE.md) - CSV validation
-- [Multi-Org Guide](MULTI-ORG.md) - Multi-organization imports
-- [Password Migration Guide](PASSWORD-MIGRATION.md) - Password formats
-- [Metadata Guide](METADATA.md) - WorkOS metadata best practices
+- [Custom CSV Import Guide](CUSTOM-CSV-IMPORT.md) - Import modes, multi-org, large-scale
+- [Auth0 Migration Guide](AUTH0-MIGRATION.md) - Auth0 export, password hash formats
+- [Role Mapping Guide](ROLE-MAPPING.md) - Role and permission migration
+- [Troubleshooting](TROUBLESHOOTING.md) - Common errors and solutions

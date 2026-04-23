@@ -6,20 +6,22 @@ Guide for migrating roles and permissions from your existing auth system to Work
 
 The role mapping feature lets you assign WorkOS roles to users during migration. This involves two steps:
 
-1. **Role Definitions** — Create roles (and their permissions) in WorkOS
-2. **User-Role Mapping** — Assign roles to users during import
+1. **Role Definitions** -- Create roles (and their permissions) in WorkOS
+2. **User-Role Mapping** -- Assign roles to users during import
 
 Both steps are optional and independent. If your roles already exist in WorkOS, skip step 1. If role assignments are embedded in your user CSV (via a `role_slugs` column), you can skip the separate mapping CSV.
 
 ## Prerequisites
 
-- **WorkOS API key** — Set `WORKOS_SECRET_KEY` environment variable
-- **Role definitions CSV** (optional) — Defines roles and permissions to create in WorkOS
-- **User-role mapping CSV** (optional) — Maps users to their role assignments
+- **WorkOS API key** -- Set `WORKOS_SECRET_KEY` environment variable
+- **Role definitions CSV** (optional) -- Defines roles and permissions to create in WorkOS
+- **User-role mapping CSV** (optional) -- Maps users to their role assignments
 
 ## Role Definitions CSV
 
 Defines the roles that should exist in WorkOS before import.
+
+See [`examples/common/role-definitions.csv`](../../examples/common/role-definitions.csv) for a working example.
 
 ### Format
 
@@ -44,8 +46,8 @@ org-member,Member,organization,"content:read"
 
 ### Role Types
 
-- **Environment roles** — Global roles that apply across your entire WorkOS environment
-- **Organization roles** — Roles scoped to a specific organization. Each org role must specify which organization it belongs to via `org_id` or `org_external_id`. If you want the same role in multiple orgs, add one row per org.
+- **Environment roles** -- Global roles that apply across your entire WorkOS environment
+- **Organization roles** -- Roles scoped to a specific organization. Each org role must specify which organization it belongs to via `org_id` or `org_external_id`. If you want the same role in multiple orgs, add one row per org.
 
 ### Organization Roles with External IDs
 
@@ -69,12 +71,12 @@ org-viewer,Viewer,organization,"content:read",,globex-io
 
 ```bash
 # Environment roles only (no org mapping needed)
-npx tsx bin/process-role-definitions.ts \
+npx workos-migrate process-roles \
   --definitions role-definitions.csv \
   --report output/role-definitions-report.json
 
 # With organization roles (pass org mapping to resolve external IDs)
-npx tsx bin/process-role-definitions.ts \
+npx workos-migrate process-roles \
   --definitions role-definitions.csv \
   --org-mapping clerk-org-mapping.csv \
   --report output/role-definitions-report.json
@@ -87,6 +89,8 @@ If a role with the same slug already exists, it is preserved (not overwritten). 
 ## User-Role Mapping CSV
 
 Maps each user to one or more roles. Each row is a single user-role pair; users with multiple roles have multiple rows.
+
+See [`examples/common/user-role-mapping.csv`](../../examples/common/user-role-mapping.csv) for a working example.
 
 ### Format
 
@@ -127,14 +131,14 @@ When both inline `role_slugs` and a `--role-mapping` CSV are provided, they are 
 The migration wizard includes role configuration prompts:
 
 ```bash
-WORKOS_SECRET_KEY=sk_test_123 npx tsx bin/migrate-wizard.ts
+WORKOS_SECRET_KEY=sk_test_123 npx workos-migrate wizard
 ```
 
 After selecting your source and import mode, the wizard asks:
 
-1. **Do you have role/permission data to migrate?** — Yes/No
-2. **Do you have a role definitions CSV?** — Yes/No → path
-3. **Path to user-role mapping CSV** — Enter the mapping CSV path
+1. **Do you have role/permission data to migrate?** -- Yes/No
+2. **Do you have a role definitions CSV?** -- Yes/No then path
+3. **Path to user-role mapping CSV** -- Enter the mapping CSV path
 
 The wizard automatically generates the correct commands with `--role-definitions` and `--role-mapping` flags.
 
@@ -144,12 +148,12 @@ The wizard automatically generates the correct commands with `--role-definitions
 
 ```bash
 # Without org roles:
-npx tsx bin/process-role-definitions.ts \
+npx workos-migrate process-roles \
   --definitions role-definitions.csv \
   --report output/role-definitions-report.json
 
-# With org roles (Clerk example — pass the same org mapping CSV used for import):
-npx tsx bin/process-role-definitions.ts \
+# With org roles (Clerk example -- pass the same org mapping CSV used for import):
+npx workos-migrate process-roles \
   --definitions role-definitions.csv \
   --org-mapping clerk-org-mapping.csv \
   --report output/role-definitions-report.json
@@ -158,7 +162,7 @@ npx tsx bin/process-role-definitions.ts \
 ### Step 2: Transform (Clerk only)
 
 ```bash
-npx tsx bin/transform-clerk.ts \
+npx workos-migrate transform-clerk \
   --clerk-csv clerk-export.csv \
   --org-mapping clerk-org-mapping.csv \
   --role-mapping user-role-mapping.csv \
@@ -170,7 +174,7 @@ For Clerk, the `--role-mapping` flag merges role slugs into the transformed CSV.
 ### Step 3: Validate
 
 ```bash
-npx tsx bin/validate-csv.ts \
+npx workos-migrate validate \
   --csv workos-users.csv \
   --auto-fix \
   --fixed-csv output/users-validated.csv
@@ -181,7 +185,7 @@ The validator checks `role_slugs` format (lowercase alphanumeric with hyphens/un
 ### Step 4: Import
 
 ```bash
-npx tsx bin/import-users.ts \
+npx workos-migrate import \
   --csv output/users-validated.csv \
   --role-mapping user-role-mapping.csv
 ```
@@ -189,7 +193,7 @@ npx tsx bin/import-users.ts \
 Or with role definitions (creates roles before import):
 
 ```bash
-npx tsx bin/import-users.ts \
+npx workos-migrate import \
   --csv output/users-validated.csv \
   --role-definitions role-definitions.csv \
   --role-mapping user-role-mapping.csv
@@ -210,10 +214,10 @@ The `--role-mapping` flag on `transform-clerk` merges role slugs directly into t
 
 ## Conflict Handling
 
-- **Role already exists with same permissions** — Skipped, logged as "already exists"
-- **Role already exists with different permissions** — Preserved as-is, warning logged with permission diff
-- **Duplicate user-role pairs in mapping** — Deduplicated, warning logged
-- **Invalid role slug during import** — Logged as role_assignment error, user still imported
+- **Role already exists with same permissions** -- Skipped, logged as "already exists"
+- **Role already exists with different permissions** -- Preserved as-is, warning logged with permission diff
+- **Duplicate user-role pairs in mapping** -- Deduplicated, warning logged
+- **Invalid role slug during import** -- Logged as role_assignment error, user still imported
 
 ## Environment vs Organization Roles
 
@@ -222,7 +226,7 @@ The `--role-mapping` flag on `transform-clerk` merges role slugs directly into t
 | Scope | Entire WorkOS environment | Single organization |
 | When to use | Global admin, super-admin | Org-level admin, member |
 | `role_type` | `environment` | `organization` |
-| Org columns needed? | No | Yes — `org_id` or `org_external_id` required |
+| Org columns needed? | No | Yes -- `org_id` or `org_external_id` required |
 | `--org-mapping` needed? | No | Yes, if using `org_external_id` |
 
 ## Troubleshooting
@@ -230,7 +234,7 @@ The `--role-mapping` flag on `transform-clerk` merges role slugs directly into t
 ### "Role not found" during import
 
 The role slug referenced in the mapping doesn't exist in WorkOS. Either:
-- Run `process-role-definitions` first to create the role
+- Run `npx workos-migrate process-roles` first to create the role
 - Create the role manually in the WorkOS dashboard
 
 ### "Invalid role slug" validation error
@@ -252,7 +256,9 @@ When a role already exists with different permissions, the existing role is pres
 
 ## Related Documentation
 
-- [CSV Format Reference](CSV-FORMAT.md) — Complete column reference
-- [Clerk Migration](CLERK-MIGRATION.md) — Clerk-specific migration guide
-- [Multi-Organization Imports](MULTI-ORG.md) — Multi-org import details
-- [Wizard Guide](../getting-started/WIZARD.md) — Interactive wizard walkthrough
+- [CSV Format Reference](CSV-FORMAT.md) -- Complete column reference
+- [Clerk Migration](CLERK-MIGRATION.md) -- Clerk-specific migration guide
+- [Firebase Migration](FIREBASE-MIGRATION.md) -- Firebase migration guide
+- [Custom CSV Import](CUSTOM-CSV-IMPORT.md) -- Import modes, multi-org, large-scale
+- [Wizard Guide](WIZARD.md) -- Interactive wizard walkthrough
+- [Troubleshooting](TROUBLESHOOTING.md) -- Common errors and solutions
